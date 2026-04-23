@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pachislot Data Dashboard</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- ChartJS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+</head>
+<body class="dark-theme">
+    <div class="glass-background"></div>
+    <div class="glow-orb top-left"></div>
+    <div class="glow-orb bottom-right"></div>
+
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="glass-panel header">
+            <h1 class="gradient-text">Pachislot Analysis</h1>
+            
+            <div class="theme-toggle">
+                <button id="theme-btn" class="icon-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <!-- Sun/Moon icon dynamically rendered in JS or CSS -->
+                        <path class="sun" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Controls -->
+        <section class="controls glass-panel">
+            <div class="control-group">
+                <h3>機種 (Machine)</h3>
+                <div class="tabs" id="machine-tabs">
+                    <button class="tab-btn active" data-target="hanahana">ハナハナ</button>
+                    <button class="tab-btn" data-target="juggler">ジャグラー</button>
+                    <button class="tab-btn" data-target="all">すべて</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>期間 (Period)</h3>
+                <div class="tabs" id="period-tabs">
+                    <button class="tab-btn" data-target="1m">過去1か月</button>
+                    <button class="tab-btn active" data-target="3m">過去3か月</button>
+                    <button class="tab-btn" data-target="all_time">全期間表示</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>特定日 (Special Days)</h3>
+                <select id="event-filter" class="styled-select">
+                    <option value="none">フィルタなし</option>
+                    <option value="3">3の付く日 (3,13,23)</option>
+                    <option value="5">5の付く日 (5,15,25)</option>
+                    <option value="8">8の付く日 (8,18,28)</option>
+                    <option value="358">3・5・8の付く日 (イベント)</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            
+            <!-- Summary Table and Chart -->
+            <section class="data-section glass-panel">
+                <h2 class="section-title">日別集計 (Daily Summary)</h2>
+                <div class="table-chart-wrapper">
+                    <!-- Table -->
+                    <div class="table-container">
+                        <table id="summary-table">
+                            <thead>
+                                <tr>
+                                    <th>日付</th>
+                                    <th>合計差枚</th>
+                                    <th>平均差枚</th>
+                                    <th>総G数</th>
+                                    <th>出率(%)</th>
+                                    <th>末尾寄せ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summary-tbody">
+                                <!-- Data injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Chart -->
+                    <div class="chart-container">
+                        <canvas id="diff-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Heatmap Modal / Section -->
+            <section class="heatmap-section glass-panel">
+                <div class="heatmap-header">
+                    <h2 class="section-title">差枚ヒートマップ (Heatmap)</h2>
+                    <div class="heatmap-date-label" id="heatmap-date-label">全期間平均</div>
+                </div>
+                
+                <div class="heatmap-legend">
+                    <div class="legend-item"><span class="color-box" style="background-color: rgba(128,0,128,0.7);"></span>-2000以下</div>
+                    <div class="legend-item"><span class="color-box" style="background-color: rgba(0,0,255,0.7);"></span>-1999 ~ -1000</div>
+                    <div class="legend-item"><span class="color-box" style="background-color: rgba(173,216,230,0.7);"></span>-999 ~ -1</div>
+                    <div class="legend-item"><span class="color-box" style="background-color: transparent; border: 1px solid #ccc;"></span>0 (無色)</div>
+                    <div class="legend-item"><span class="color-box" style="background-color: rgba(255,255,0,0.7);"></span>1 ~ 999</div>
+                    <div class="legend-item"><span class="color-box" style="background-color: rgba(255,165,0,0.7);"></span>1000 ~ 1999</div>
+                    <div class="legend-item"><span class="color-box" style="background-color: rgba(255,0,0,0.7);"></span>2000以上</div>
+                </div>
+
+                <div class="heatmap-wrapper" id="heatmap-wrapper">
+                    <!-- Grid injected here -->
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Machine Detail Modal -->
+    <div id="machine-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close-btn">&times;</span>
+            <h2 id="modal-title">台番号</h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

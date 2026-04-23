@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pachinko Scraper Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-blue: #3b82f6;
+            --accent-blue-hover: #2563eb;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 0;
+            text-align: center;
+            background: -webkit-linear-gradient(45deg, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        select, input[type="text"] {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-main);
+            padding: 10px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input[type="text"]:focus {
+            border-color: var(--accent-blue);
+        }
+
+        /* Checkbox styling */
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        button {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+        }
+
+        button:hover {
+            background: var(--accent-blue-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            background-color: #ef4444; /* Default red */
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .dot.active {
+            background-color: #22c55e;
+            box-shadow: 0 0 10px #22c55e;
+        }
+
+        #log-container {
+            height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .log-entry {
+            word-wrap: break-word;
+        }
+        .log-INFO { color: #60a5fa; }
+        .log-WARNING { color: #facc15; }
+        .log-ERROR { color: #f87171; }
+
+        #chart-container {
+            width: 100%;
+            min-height: 600px;
+        }
+        
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        /* Scrollbar styles */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="glass-panel">
+        <div class="header-actions">
+            <h1>P's Cube Scraper</h1>
+            <div class="status-indicator">
+                <div class="dot" id="status-dot"></div>
+                <span id="status-text">待機中</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>対象機種を選択 (未選択で全機種)</label>
+            <div class="checkbox-group" id="models-container">
+                <!-- Checkboxes will be populated here -->
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="specific-machines">特定台番号 (カンマ区切り、空欄で全台)</label>
+            <input type="text" id="specific-machines" placeholder="例: 123, 456, 789">
+        </div>
+
+        <button id="start-btn" onclick="startScraping()">スクレイピング開始</button>
+    </div>
+
+    <div class="glass-panel">
+        <label>Live Logs</label>
+        <div id="log-container"></div>
+    </div>
+
+    <div class="glass-panel">
+        <div class="header-actions">
+            <label>ボーダー差分 結果</label>
+            <select id="view-mode" onchange="renderChart()" style="padding: 5px; font-size: 0.9rem; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--glass-border); border-radius: 4px;">
+                <option value="machine">台番号ごと</option>
+                <option value="model">機種ごと（平均）</option>
+            </select>
+        </div>
+        <div id="chart-container"></div>
+    </div>
+</div>
+
+<script>
+    let ws;
+    let chartData = {}; // Format: { "machine_num": { data } }
+    
+    // UI Elements
+    const modelsContainer = document.getElementById('models-container');
+    const startBtn = document.getElementById('start-btn');
+    const logContainer = document.getElementById('log-container');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const specificMachines = document.getElementById('specific-machines');
+
+    // Initialize
+    async function init() {
+        try {
+            // Fetch models
+            const res = await fetch('/api/models');
+            const models = await res.json();
+            
+            models.forEach(model => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-label';
+                label.innerHTML = `<input type="checkbox" value="${model}"> ${model}`;
+                modelsContainer.appendChild(label);
+            });
+
+            // Fetch initial status and data
+            const statusRes = await fetch('/api/status');
+            const statusData = await statusRes.json();
+            
+            if (statusData.is_scraping) {
+                setScrapingState(true);
+            }
+            if (statusData.data && Object.keys(statusData.data).length > 0) {
+                chartData = statusData.data;
+                renderChart();
+            }
+
+            // Connect WebSocket
+            connectWebSocket();
+            
+        } catch (e) {
+            appendLog('ERROR', `初期化エラー: ${e.message}`);
+        }
+    }
+
+    function connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+        
+        ws.onopen = () => appendLog('INFO', 'WebSocket接続完了');
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'log') {
+                appendLog(data.level || 'INFO', data.message);
+            } else if (data.type === 'progress') {
+                chartData = data.data; // Update local data
+                renderChart(); // Redraw chart
+            } else if (data.type === 'done') {
+                setScrapingState(false);
+                appendLog('INFO', '処理が完了しました。');
+            }
+        };
+        
+        ws.onclose = () => {
+            appendLog('WARNING', 'WebSocket切断。5秒後に再接続します...');
+            setTimeout(connectWebSocket, 5000);
+        };
+    }
+
+    async function startScraping() {
+        const selectedModels = Array.from(modelsContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+        const machines = specificMachines.value;
+
+        const payload = {
+            models: selectedModels.length > 0 ? selectedModels : null,
+            specific_machines: machines
+        };
+
+        try {
+            const res = await fetch('/api/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                setScrapingState(true);
+                // Clear previous chart
+                chartData = {};
+                renderChart();
+            } else {
+                appendLog('ERROR', result.message);
+            }
+        } catch (e) {
+            appendLog('ERROR', `リクエストエラー: ${e.message}`);
+        }
+    }
+
+    function setScrapingState(isScraping) {
+        startBtn.disabled = isScraping;
+        if (isScraping) {
+            statusDot.classList.add('active');
+            statusText.textContent = "実行中";
+        } else {
+            statusDot.classList.remove('active');
+            statusText.textContent = "待機中";
+        }
+    }
+
+    function appendLog(level, message) {
+        const div = document.createElement('div');
+        div.className = `log-entry log-${level}`;
+        const time = new Date().toLocaleTimeString();
+        div.textContent = `[${time}] ${message}`;
+        logContainer.appendChild(div);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function renderChart() {
+        if (Object.keys(chartData).length === 0) return;
+
+        const viewMode = document.getElementById('view-mode') ? document.getElementById('view-mode').value : 'machine';
+
+        const categories = [];
+        const borderDiffMed = [];
+        const minVals = [];
+        const maxVals = [];
+        const colors = [];
+        const hoverTexts = [];
+
+        if (viewMode === 'machine') {
+            const entries = Object.entries(chartData);
+            // We will display them as: ModelName (MachineNum)
+            entries.forEach(([machineNum, data]) => {
+                const label = `${data["機種名"]} (${machineNum})`;
+                categories.push(label);
+                
+                const diffMed = data["ボーダー差(med)"] || 0;
+                borderDiffMed.push(diffMed);
+                
+                minVals.push(data["ボーダー差(min)"] || 0);
+                maxVals.push(data["ボーダー差(max)"] || 0);
+                
+                colors.push(diffMed >= 0 ? '#3b82f6' : '#ef4444');
+                
+                hoverTexts.push(`回転率(med): ${data["回転率(med)"]}<br>最終差玉: ${data["最終差玉"]}<br>累計スタート: ${data["累計スタート"]}`);
+            });
+        } else {
+            const modelGroups = {};
+            Object.values(chartData).forEach(data => {
+                const diffMed = data["ボーダー差(med)"] || 0;
+                // 外れ値を除外 (+-8の範囲外)
+                if (diffMed < -8 || diffMed > 8) {
+                    return;
+                }
+
+                const modelName = data["機種名"];
+                if (!modelGroups[modelName]) {
+                    modelGroups[modelName] = { medSum: 0, minSum: 0, maxSum: 0, count: 0 };
+                }
+                modelGroups[modelName].medSum += diffMed;
+                modelGroups[modelName].minSum += (data["ボーダー差(min)"] || 0);
+                modelGroups[modelName].maxSum += (data["ボーダー差(max)"] || 0);
+                modelGroups[modelName].count += 1;
+            });
+
+            Object.entries(modelGroups).forEach(([modelName, group]) => {
+                if (group.count === 0) return;
+                
+                categories.push(modelName);
+                
+                const avgMed = group.medSum / group.count;
+                borderDiffMed.push(avgMed);
+                
+                minVals.push(group.minSum / group.count);
+                maxVals.push(group.maxSum / group.count);
+                
+                colors.push(avgMed >= 0 ? '#3b82f6' : '#ef4444');
+                
+                hoverTexts.push(`集計台数: ${group.count}台<br>平均ボーダー差(med): ${avgMed.toFixed(2)}`);
+            });
+        }
+
+        const traceMain = {
+            y: categories,
+            x: borderDiffMed,
+            type: 'bar',
+            orientation: 'h',
+            marker: { color: colors },
+            width: 0.5,
+            hovertext: hoverTexts,
+            hoverinfo: 'x+text',
+            name: 'ボーダー差分(med)',
+            error_x: {
+                type: 'data',
+                symmetric: false,
+                array: maxVals.map((max, i) => Math.max(0, max - borderDiffMed[i])),
+                arrayminus: minVals.map((min, i) => Math.max(0, borderDiffMed[i] - min)),
+                visible: true,
+                color: '#fff',
+                thickness: 2,
+                width: 5
+            }
+        };
+
+        const shapes = [];
+        for (let i = 0; i < categories.length; i++) {
+            if (i % 2 === 0) {
+                shapes.push({
+                    type: 'rect',
+                    xref: 'paper',
+                    yref: 'y',
+                    x0: 0,
+                    x1: 1,
+                    y0: i - 0.5,
+                    y1: i + 0.5,
+                    fillcolor: 'rgba(255,255,255,0.05)',
+                    line: { width: 0 },
+                    layer: 'below'
+                });
+            }
+        }
+
+        // Determine max absolute range to keep 0 strictly in the center if desired
+        // But auto-range also naturally keeps 0 visible. We will let it auto-scale.
+
+        // Calculate dynamic height
+        const minRowHeight = 35; // 1行あたりのピクセル数
+        const calculatedHeight = Math.max(600, categories.length * minRowHeight + 150); // 上下のマージン用に150px確保
+
+        const layout = {
+            height: calculatedHeight,
+            plot_bgcolor: 'transparent',
+            paper_bgcolor: 'transparent',
+            font: { color: '#f8fafc', family: 'Inter' },
+            margin: { l: 200, r: 20, t: 20, b: 40 },
+            xaxis: { 
+                title: 'ボーダー差分',
+                gridcolor: 'rgba(255,255,255,0.1)',
+                zeroline: true,
+                zerolinecolor: 'rgba(255,255,255,0.5)',
+                zerolinewidth: 2,
+                dtick: 2,
+                range: [-8, 8]
+            },
+            yaxis: { 
+                autorange: 'reversed' // Show top to bottom
+            },
+            shapes: shapes,
+            showlegend: false
+        };
+
+        const config = { responsive: true, displayModeBar: false };
+
+        Plotly.newPlot('chart-container', [traceMain], layout, config);
+    }
+
+    // Run init on load
+    init();
+
+</script>
+</body>
+</html>
