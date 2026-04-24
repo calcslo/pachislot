@@ -178,9 +178,74 @@
         .log-WARNING { color: #facc15; }
         .log-ERROR { color: #f87171; }
 
-        #chart-container {
+        .dashboard-layout {
+            display: flex;
             width: 100%;
-            min-height: 600px;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.2);
+            overflow: hidden;
+            min-height: 400px;
+        }
+
+        .labels-container {
+            flex: 1;
+            min-width: 0;
+            overflow-x: auto;
+            border-right: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.02);
+            scrollbar-width: thin;
+            direction: rtl;
+            cursor: grab;
+        }
+        .labels-container:active {
+            cursor: grabbing;
+        }
+
+        .labels-inner {
+            display: flex;
+            flex-direction: column;
+            direction: ltr;
+            text-align: right;
+            width: max-content;
+            min-width: 100%;
+            padding-right: 10px;
+            padding-left: 10px;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .label-item {
+            height: 35px;
+            line-height: 35px;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .plot-container {
+            flex: 2;
+            min-width: 0;
+            overflow-x: auto;
+            scrollbar-width: thin;
+            cursor: grab;
+        }
+        .plot-container:active {
+            cursor: grabbing;
+        }
+
+        /* Custom scrollbars inside dashboard */
+        .labels-container::-webkit-scrollbar,
+        .plot-container::-webkit-scrollbar {
+            height: 8px;
+            background: rgba(0,0,0,0.1);
+        }
+        .labels-container::-webkit-scrollbar-thumb,
+        .plot-container::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
         }
         
         .header-actions {
@@ -190,11 +255,20 @@
             margin-bottom: 10px;
         }
 
-        /* Scrollbar styles */
+        /* Global Scrollbar styles */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 1.4rem; }
+            .container { padding: 10px; gap: 15px; }
+            .glass-panel { padding: 15px; }
+            .label-item { font-size: 0.75rem; }
+            .labels-container { flex: 1; }
+            .plot-container { flex: 2; }
+        }
 
     </style>
 </head>
@@ -238,7 +312,14 @@
                 <option value="model">機種ごと（平均）</option>
             </select>
         </div>
-        <div id="chart-container"></div>
+        <div class="dashboard-layout">
+            <div class="labels-container" id="labels-container">
+                <div class="labels-inner" id="labels-inner"></div>
+            </div>
+            <div class="plot-container" id="plot-container">
+                <div id="chart-container"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -377,7 +458,6 @@
 
         if (viewMode === 'machine') {
             const entries = Object.entries(chartData);
-            // We will display them as: ModelName (MachineNum)
             entries.forEach(([machineNum, data]) => {
                 const label = `${data["機種名"]} (${machineNum})`;
                 categories.push(label);
@@ -396,10 +476,7 @@
             const modelGroups = {};
             Object.values(chartData).forEach(data => {
                 const diffMed = data["ボーダー差(med)"] || 0;
-                // 外れ値を除外 (+-8の範囲外)
-                if (diffMed < -8 || diffMed > 8) {
-                    return;
-                }
+                if (diffMed < -8 || diffMed > 8) return;
 
                 const modelName = data["機種名"];
                 if (!modelGroups[modelName]) {
@@ -413,23 +490,20 @@
 
             Object.entries(modelGroups).forEach(([modelName, group]) => {
                 if (group.count === 0) return;
-                
                 categories.push(modelName);
-                
                 const avgMed = group.medSum / group.count;
                 borderDiffMed.push(avgMed);
-                
                 minVals.push(group.minSum / group.count);
                 maxVals.push(group.maxSum / group.count);
-                
                 colors.push(avgMed >= 0 ? '#3b82f6' : '#ef4444');
-                
                 hoverTexts.push(`集計台数: ${group.count}台<br>平均ボーダー差(med): ${avgMed.toFixed(2)}`);
             });
         }
 
+        const yVals = categories.map((_, i) => i);
+
         const traceMain = {
-            y: categories,
+            y: yVals,
             x: borderDiffMed,
             type: 'bar',
             orientation: 'h',
@@ -450,6 +524,18 @@
             }
         };
 
+        const traceTopAxis = {
+            x: [-10],
+            y: [0],
+            xaxis: 'x2',
+            yaxis: 'y',
+            type: 'scatter',
+            mode: 'markers',
+            marker: { color: 'rgba(0,0,0,0)' },
+            showlegend: false,
+            hoverinfo: 'none'
+        };
+
         const shapes = [];
         for (let i = 0; i < categories.length; i++) {
             if (i % 2 === 0) {
@@ -468,30 +554,72 @@
             }
         }
 
-        // Determine max absolute range to keep 0 strictly in the center if desired
-        // But auto-range also naturally keeps 0 visible. We will let it auto-scale.
+        const topMargin = 60;
+        const bottomMargin = 60;
+        const rowHeight = 35;
+        const plotHeight = categories.length * rowHeight + topMargin + bottomMargin;
 
-        // Calculate dynamic height
-        const minRowHeight = 35; // 1行あたりのピクセル数
-        const calculatedHeight = Math.max(600, categories.length * minRowHeight + 150); // 上下のマージン用に150px確保
+        const plotContainer = document.getElementById('plot-container');
+        Plotly.purge('chart-container');
+        document.getElementById('chart-container').style.width = ''; 
+
+        let W = plotContainer.clientWidth;
+        if (W === 0) W = (window.innerWidth - 60) * 0.66; // fallback
+
+        const marginL = 20;
+        const marginR = 20;
+        const totalPlotWidth = W * (20 / 12) + marginL + marginR;
+
+        document.getElementById('chart-container').style.width = `${totalPlotWidth}px`;
+
+        const labelsInner = document.getElementById('labels-inner');
+        labelsInner.innerHTML = '';
+        labelsInner.style.marginTop = `${topMargin}px`;
+        labelsInner.style.marginBottom = `${bottomMargin}px`;
+
+        categories.forEach(cat => {
+            const div = document.createElement('div');
+            div.className = 'label-item';
+            div.textContent = cat;
+            labelsInner.appendChild(div);
+        });
 
         const layout = {
-            height: calculatedHeight,
+            height: plotHeight,
+            width: totalPlotWidth,
             plot_bgcolor: 'transparent',
             paper_bgcolor: 'transparent',
             font: { color: '#f8fafc', family: 'Inter' },
-            margin: { l: 200, r: 20, t: 20, b: 40 },
+            margin: { l: marginL, r: marginR, t: topMargin, b: bottomMargin },
+            dragmode: false,
             xaxis: { 
-                title: 'ボーダー差分',
+                title: '',
                 gridcolor: 'rgba(255,255,255,0.1)',
                 zeroline: true,
                 zerolinecolor: 'rgba(255,255,255,0.5)',
                 zerolinewidth: 2,
                 dtick: 2,
-                range: [-8, 8]
+                range: [-10, 10],
+                side: 'bottom',
+                fixedrange: true
+            },
+            xaxis2: {
+                title: '',
+                overlaying: 'x',
+                side: 'top',
+                dtick: 2,
+                range: [-10, 10],
+                showgrid: false,
+                zeroline: false,
+                tickcolor: 'rgba(255,255,255,0.5)',
+                fixedrange: true
             },
             yaxis: { 
-                autorange: 'reversed' // Show top to bottom
+                range: [categories.length - 0.5, -0.5],
+                showticklabels: false,
+                showgrid: false,
+                zeroline: false,
+                fixedrange: true
             },
             shapes: shapes,
             showlegend: false
@@ -499,10 +627,64 @@
 
         const config = { responsive: true, displayModeBar: false };
 
-        Plotly.newPlot('chart-container', [traceMain], layout, config);
+        Plotly.newPlot('chart-container', [traceMain, traceTopAxis], layout, config).then(() => {
+            plotContainer.scrollLeft = marginL + (W / 3);
+        });
     }
 
-    // Run init on load
+    // Setup Drag-to-Scroll for Desktop
+    function setupDragScroll() {
+        const containers = [
+            document.getElementById('labels-container'),
+            document.getElementById('plot-container')
+        ];
+
+        containers.forEach(container => {
+            if (!container) return;
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            container.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return; // ignore non-left clicks
+
+                // Check if click is on native scrollbar
+                const rect = container.getBoundingClientRect();
+                const isOnScrollbarX = (e.clientY - rect.top) >= container.clientHeight;
+                const isOnScrollbarY = (e.clientX - rect.left) >= container.clientWidth;
+                if (isOnScrollbarX || isOnScrollbarY) return;
+
+                isDown = true;
+                startX = e.clientX;
+                scrollLeft = container.scrollLeft;
+
+                // Stop event from reaching Plotly
+                e.stopPropagation();
+                e.preventDefault();
+            }, { capture: true });
+
+            container.addEventListener('mouseleave', () => {
+                isDown = false;
+            }, { capture: true });
+
+            container.addEventListener('mouseup', () => {
+                isDown = false;
+            }, { capture: true });
+
+            container.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                
+                e.stopPropagation();
+                e.preventDefault();
+                
+                const walk = (e.clientX - startX) * 1.5; // Scroll speed multiplier
+                container.scrollLeft = scrollLeft - walk;
+            }, { capture: true });
+        });
+    }
+
+    // Run setup and init on load
+    setupDragScroll();
     init();
 
 </script>

@@ -14,8 +14,13 @@ import json
 import datetime
 import sqlite3
 import argparse
+import sys
 from playwright.sync_api import Page
 from scrapling.fetchers import StealthyFetcher
+
+class SVGTimeoutError(Exception):
+    """SVGの待機タイムアウト時に発生する例外"""
+    pass
 
 # ==========================================
 # ログ設定
@@ -207,7 +212,7 @@ def kill_process_on_port(port: int):
         logger.error(f"ポート {port} の解放中にエラー: {e}")
 
 def setup_docker_proxy():
-    max_retries = 3
+    max_retries = 20
     for attempt in range(max_retries):
         logger.info(f"Dockerコンテナ起動試行中 ({attempt + 1}/{max_retries})...")
         kill_process_on_port(8118)
@@ -333,119 +338,167 @@ def _get_active_chart_svg(page: Page, date_id: str) -> str | None:
         return None
 
 
+def handle_interstitial(page: Page):
+    """
+    「ご存意」などの割り込みダイアログやモーダルが表示されている場合に閉じる。
+    「ご存意」などの割り込みモーダルを閉じる。
+    """
+    try:
+        # P's Cube でよく出る割り込み要素のセレクタ
+        selectors = [
+            "text='閉じる'", 
+            "text='OK'", 
+            "text='確認'", 
+            "div.nc-modal-close",
+            "a.btn-main", # 通知画面のボタン
+            ".nc-dialog-close",
+            "text='機種データページ'" # 別のパターンのボタン
+        ]
+        for sel in selectors:
+            btn = page.query_selector(sel)
+            if btn and btn.is_visible():
+                logger.info(f"割り込み要素 '{sel}' を検知しました。クリックして閉じます。")
+                btn.click()
+                human_like_delay(0.5, 1.0)
+                break
+    except Exception as e:
+        logger.debug(f"割り込み要素の処理中にエラー（無視可能）: {e}")
+
+
 def _extract_last_diff_from_active_chart(page: Page, chart_date_id: str) -> int | str:
     """
     指定した日付のチャートコンテナ（例: id='CHART-20260423'）内のスランプグラフから
     最終差枚を抽出して返す。
-
-    アルゴリズム:
-    1. 横軸ラベル (tspan) から各ラベルの値とSVGローカル座標(y)を取得
-    2. グラフPath（g:nth-child(8) > g > g:nth-child(3) > path）の最終点のSVGローカル座標(y)を取得
-    3. ラベル座標を基準に線形補間して最終差枚を計算
     """
     try:
         page.wait_for_selector(f"#{chart_date_id} svg", timeout=8000)
     except Exception as e:
-        return f"解析エラー (SVG待機タイムアウト): {e}"
+        logger.error(f"SVG待機タイムアウト検知: {chart_date_id}")
+        raise SVGTimeoutError(f"SVG待機タイムアウト: {e}")
 
-    result = page.evaluate('''
+    result = page.evaluate(r'''
         (chartDateId) => {
-            // アクティブなチャートコンテナを取得
             const container = document.getElementById(chartDateId);
             if (!container) return `解析不能 (コンテナ不存在: ${chartDateId})`;
 
             const svg = container.querySelector('svg');
             if (!svg) return '解析不能 (SVG不存在)';
 
-            // ---- 1. 横軸ラベルの取得 ----
-            // セレクタ: g:nth-child(14) > g.amcharts-value-axis.value-axis-v1 > text > tspan
-            const labelGroup = svg.querySelector(
-                'g:nth-child(14) > g.amcharts-value-axis.value-axis-v1'
-            );
-            if (!labelGroup) return '解析不能 (ラベルグループ不存在)';
-
-            const tspans = Array.from(labelGroup.querySelectorAll('text > tspan'));
+            // ラベルが含まれるグループをより柔軟に探す
+            // text > tspan を持ち、かつそのテキストが数値であるものを探す
+            const allTextEls = Array.from(svg.querySelectorAll('text'));
+            const tspans = [];
+            
+            for (const textEl of allTextEls) {
+                const tspan = textEl.querySelector('tspan');
+                if (!tspan) continue;
+                
+                const text = tspan.textContent.trim();
+                // 数値（カンマ、マイナス含む）かどうか判定
+                if (/^-?[\d,]+$/.test(text)) {
+                    // X軸ラベル（時間 09:00など）と区別するため、コロンを含まないものを優先
+                    if (!text.includes(':')) {
+                        tspans.push(tspan);
+                    }
+                }
+            }
+            
             if (tspans.length === 0) return '解析不能 (ラベル不存在)';
 
-            // tspanの親textのy属性 + tspan自身のdy属性でSVGローカルY座標を求める
             const labelPoints = [];
             for (const tspan of tspans) {
                 const textEl = tspan.parentElement;
-                // text要素のtransform属性から translateY を取得
-                const transform = textEl.getAttribute('transform') || '';
-                let textY = 0;
-                const tMatch = transform.match(/translate\(([^,]+),([^)]+)\)/);
-                if (tMatch) {
-                    textY = parseFloat(tMatch[2]);
-                } else {
-                    textY = parseFloat(textEl.getAttribute('y') || '0');
-                }
-
-                // tspanのテキストから数値を抽出（カンマ・全角スペース除去）
-                const rawText = tspan.textContent.replace(/[^-0-9]/g, '');
+                const text = tspan.textContent.trim();
+                
+                const rawText = text.replace(/[^-0-9]/g, '');
+                if (!rawText || isNaN(parseInt(rawText, 10))) continue;
+                
                 const val = parseInt(rawText, 10);
-                if (!isNaN(val)) {
-                    labelPoints.push({ svgY: textY, val: val });
+                if (Math.abs(val) > 100000) continue;
+                if (text.includes(':')) continue;
+                
+                // text要素のtransform属性から translateY を取得し、y属性があれば足し合わせる
+                const transform = textEl.getAttribute('transform') || '';
+                let textY = parseFloat(textEl.getAttribute('y') || '0');
+                
+                const tMatch = transform.match(/translate\(([^,\s]+)[,\s]+([^)]+)\)/);
+                if (tMatch) {
+                    textY += parseFloat(tMatch[2]);
                 }
+                
+                labelPoints.push({ svgY: textY, val: val });
             }
 
             if (labelPoints.length < 2) return '解析不能 (ラベル点不足)';
-
-            // 値の大きい順（SVGのY座標は上が小さい）にソート
-            // svgYが小さい = 画面上方 = 値が大きい
             labelPoints.sort((a, b) => a.svgY - b.svgY);
 
             // ---- 2. グラフPathの最終点を取得 ----
-            // セレクタ: g:nth-child(8) > g > g:nth-child(3) > path
-            const graphPath = svg.querySelector(
-                'g:nth-child(8) > g > g:nth-child(3) > path'
-            );
+            // amcharts-graph-smoothedLine または amcharts-graph-line を汎用的に探す
+            const graphPath = svg.querySelector('g[class*="amcharts-graph-"] path') ||
+                              svg.querySelector('g.amcharts-graph-smoothedLine path') ||
+                              svg.querySelector('g.amcharts-graph-line path') ||
+                              svg.querySelector('g:nth-child(8) > g > g:nth-child(3) > path');
+            
             if (!graphPath) return '解析不能 (グラフPath不存在)';
 
             const d = graphPath.getAttribute('d');
             if (!d) return '解析不能 (Path d属性なし)';
 
-            // Pathのd属性から最終座標を取得
-            // amChartsのPathは "M x,y L x,y L x,y..." または "M x y L x y ..." 形式
-            // 最後のLコマンドまたはMコマンドの座標を取得する
-            const coordPattern = /[ML]\s*([\d.]+)[,\s]+([\d.]+)/gi;
-            let lastMatch = null;
-            let m;
-            while ((m = coordPattern.exec(d)) !== null) {
-                lastMatch = m;
+            // amchartsのsmoothedLineは末尾に "M0,0 L0,0" というダミーパスが付く。
+            // 実データ部分のみを抽出するため、最初のMコマンド以降で
+            // "M0,0" または "M 0,0" が現れる前の部分を使う。
+            // 例: "M0,149 Q1,149... Q288,185 M0,0 L0,0"
+            //     → "M0,149 Q1,149... Q288,185" の部分のみを対象とする
+            let dataPath = d;
+            // 末尾のダミーパス "M0[, ]0" を除去
+            const dummyIdx = d.search(/M\s*0[,\s]+0\s*L/);
+            if (dummyIdx > 0) {
+                dataPath = d.substring(0, dummyIdx).trim();
             }
-            if (!lastMatch) return '解析不能 (Path座標抽出失敗)';
 
-            // グラフPathが属するgのtransformを考慮してSVGローカルY座標を取得
-            const pathLocalY = parseFloat(lastMatch[2]);
+            // Q (二次ベジエ曲線) の終端座標も含めて全座標を抽出
+            // Q cx,cy x,y → 終端は x,y
+            // M x,y / L x,y → そのまま
+            const allCoordsFromData = [];
+            const mlPattern = /[ML]\s*(-?[\d.]+)[,\s]+(-?[\d.]+)/gi;
+            const qPattern = /Q\s*-?[\d.]+[,\s]+-?[\d.]+[,\s]+(-?[\d.]+)[,\s]+(-?[\d.]+)/gi;
+            let mc;
+            while ((mc = mlPattern.exec(dataPath)) !== null) {
+                allCoordsFromData.push({ x: parseFloat(mc[1]), y: parseFloat(mc[2]), cmd: mc[0][0] });
+            }
+            while ((mc = qPattern.exec(dataPath)) !== null) {
+                allCoordsFromData.push({ x: parseFloat(mc[1]), y: parseFloat(mc[2]), cmd: 'Q' });
+            }
+            // x座標でソートして最後（最大x）の点を取得
+            allCoordsFromData.sort((a, b) => a.x - b.x);
+            
+            const debugCoordCount = allCoordsFromData.length;
+            const lastValidCoord = allCoordsFromData.length > 0 ? allCoordsFromData[allCoordsFromData.length - 1] : null;
+            const last5Coords = allCoordsFromData.slice(-5);
 
-            // グラフPathの親g群のtranslateYを累積する
+            if (!lastValidCoord) return '解析不能 (有効Path座標抽出失敗)';
+
+            const pathLocalY = lastValidCoord.y;
             let translateY = 0;
             let el = graphPath.parentElement;
             while (el && el !== svg) {
                 const t = el.getAttribute('transform') || '';
-                const tm = t.match(/translate\(([^,]+),([^)]+)\)/);
+                const tm = t.match(/translate\(([^,\s]+)[,\s]+([^)]+)\)/);
                 if (tm) translateY += parseFloat(tm[2]);
                 el = el.parentElement;
             }
             const graphSvgY = pathLocalY + translateY;
 
-            // ---- 3. 線形補間で最終差枚を計算 ----
-            // labelPointsのsvgYはラベルが属するg > textのtranslateYベースなので
-            // graphSvgYと同じ座標系か確認が必要。
-            // ラベルも同様に親gのtransformを考慮する必要があるため、
-            // 最初のラベルのtextエレメントを辿って累積translateYを算出する。
             const firstTextEl = tspans[0].parentElement;
             let labelBaseTranslateY = 0;
             let labelEl = firstTextEl.parentElement;
             while (labelEl && labelEl !== svg) {
                 const t = labelEl.getAttribute('transform') || '';
-                const tm = t.match(/translate\(([^,]+),([^)]+)\)/);
+                const tm = t.match(/translate\(([^,\s]+)[,\s]+([^)]+)\)/);
                 if (tm) labelBaseTranslateY += parseFloat(tm[2]);
                 labelEl = labelEl.parentElement;
             }
 
-            // ラベルのSVGグローバルY座標（ラベル自身のtextY + 親群のtranslateY）
             const adjustedLabels = labelPoints.map(lp => ({
                 svgY: lp.svgY + labelBaseTranslateY,
                 val: lp.val
@@ -474,14 +527,25 @@ def _extract_last_diff_from_active_chart(page: Page, chart_date_id: str) -> int 
 
             if (p1.svgY === p2.svgY) return p1.val;
 
-            // SVGはY軸が反転（上が小さい）なので、svgYが小さいほど値は大きい
-            // p1.svgY < p2.svgY → p1.val > p2.val
             const ratio = (graphSvgY - p1.svgY) / (p2.svgY - p1.svgY);
             const interpolated = p1.val + ratio * (p2.val - p1.val);
-            return Math.round(interpolated);
+            const finalVal = Math.round(interpolated);
+            
+            // デバッグログ用に詳細情報を返す
+            const last5Str = last5Coords.map(c => `(x:${c.x.toFixed(1)},y:${c.y.toFixed(1)})`).join(' ');
+            const labelStr = adjustedLabels.map(l => `${l.val}@${l.svgY.toFixed(1)}`).join(' ');
+            return `[${finalVal}] pathLocalY:${pathLocalY.toFixed(2)} transY:${translateY.toFixed(2)} gSvgY:${graphSvgY.toFixed(2)} | p1:${p1.val}(y:${p1.svgY.toFixed(1)}) p2:${p2.val}(y:${p2.svgY.toFixed(1)}) | coordN:${debugCoordCount} last5:${last5Str} | labels:[${labelStr}] | dummyCut:${dummyIdx > 0}`;
         }
     ''', chart_date_id)
 
+    if isinstance(result, str) and "[" in result:
+        logger.debug(f"Graph Debug: {result}")
+        # 数値だけ抽出
+        match = re.search(r'\[(-?\d+)\]', result)
+        if match: return int(match.group(1))
+    elif isinstance(result, str):
+        logger.warning(f"Graph解析エラー: {result}")
+    
     return result
 
 
@@ -569,28 +633,46 @@ def extract_slot_table(page: Page) -> dict:
     1行目: BONUS, 2行目: BIG, 3行目: REG, 9行目: 累計ゲーム
     各行の td(1):本日, td(2):1日前, td(3):2日前
     """
-    return page.evaluate('''() => {
+    return page.evaluate(r'''() => {
         const table = document.querySelector('#tblDAb');
         const data = { '本日': {}, '1日前': {}, '2日前': {} };
         if (!table) return data;
         
         const rows = Array.from(table.querySelectorAll('tr'));
-        const mapping = {
-            0: 'BONUS',
-            1: 'BIG',
-            2: 'REG',
-            8: '累計ゲーム'
-        };
+        
+        // 項目名（ラベル）によるマッピング
+        // exactMatch: trueの項目は完全一致、falseは部分一致
+        // ※ BIG/REGはincludes()だと「BIG確率」「REG確率」にもマッチし
+        //   確率値(1/xxx)で上書きされてしまうため完全一致にする
+        const labelMap = [
+            { target: 'BONUS',  key: 'BONUS',    exactMatch: true },
+            { target: 'BIG',    key: 'BIG',      exactMatch: true },
+            { target: 'REG',    key: 'REG',      exactMatch: true },
+            { target: '累計', key: '累計ゲーム', exactMatch: false }
+        ];
 
-        for (const [rowIndex, label] of Object.entries(mapping)) {
-            const row = rows[parseInt(rowIndex)];
-            if (row) {
-                const cells = Array.from(row.querySelectorAll('td'));
-                // td(1)〜td(3) が存在するか確認 (cells[0]〜cells[2])
-                if (cells.length >= 3) {
-                    data['本日'][label] = cells[0].innerText.replace(/,/g, '').trim();
-                    data['1日前'][label] = cells[1].innerText.replace(/,/g, '').trim();
-                    data['2日前'][label] = cells[2].innerText.replace(/,/g, '').trim();
+        for (const row of rows) {
+            const cells = Array.from(row.querySelectorAll('td, th'));
+            if (cells.length < 2) continue;
+
+            const rowLabel = cells[0].innerText.trim();
+            
+            for (const {target, key, exactMatch} of labelMap) {
+                const matched = exactMatch ? (rowLabel === target) : rowLabel.includes(target);
+                if (matched) {
+                    // 数値セル（本日, 1日前, 2日前）を取得
+                    // cells[0]はラベルなので、数値はcells[1]〜cells[3]
+                    if (cells.length >= 4) {
+                        data['本日'][key] = cells[1].innerText.replace(/,/g, '').trim();
+                        data['1日前'][key] = cells[2].innerText.replace(/,/g, '').trim();
+                        data['2日前'][key] = cells[3].innerText.replace(/,/g, '').trim();
+                    } else if (cells.length === 3) {
+                        // 2日前までしかない場合の予備
+                        data['本日'][key] = cells[0].innerText.replace(/,/g, '').trim();
+                        data['1日前'][key] = cells[1].innerText.replace(/,/g, '').trim();
+                        data['2日前'][key] = cells[2].innerText.replace(/,/g, '').trim();
+                    }
+                    break; // 1行は1ラベルにのみマッチさせる
                 }
             }
         }
@@ -642,7 +724,7 @@ def site1_action(page: Page) -> None:
         logger.info(f"Site 1: 全 {len(matched_models)} 機種が見つかりました。")
 
         # === DEBUG MARKER: あとで消す（デバッグ用 最初の3機種のみ） ===
-        matched_models = matched_models[:3]
+        #matched_models = matched_models[:3]
         # ==============================================================
 
         for model_name in matched_models:
@@ -671,13 +753,21 @@ def site1_action(page: Page) -> None:
             logger.info(f"Site 1: '{model_name}' で {len(machine_numbers)} 件の台番号を取得。")
 
             # === DEBUG MARKER: あとで消す（デバッグ用 最初の3台のみ） ===
-            machine_numbers = machine_numbers[:3]
+            #machine_numbers = machine_numbers[:3]
             # ============================================================
 
             for idx, machine_num in enumerate(machine_numbers):
-                machine_id = f"{model_name}_{machine_num}"
-                if machine_id in progress["scraped_machines"]:
-                    logger.debug(f"Site 1: 台番号 {machine_num} は取得済みのためスキップ。")
+                # 本日、1日前、2日前の想定日付を計算
+                now = datetime.datetime.now()
+                if now.hour < 8:
+                    now -= datetime.timedelta(days=1)
+                expected_today = now.strftime("%Y-%m-%d")
+                expected_day1 = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+                expected_day2 = (now - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+
+                completed_dates = get_completed_dates_for_machine(model_name, machine_num)
+                if expected_today in completed_dates and expected_day1 in completed_dates and expected_day2 in completed_dates:
+                    logger.debug(f"Site 1: 台番号 {machine_num} は本日、1日前、2日前のデータがDBに揃っているためスキップ。")
                     continue
 
                 logger.debug(f"Site 1: [{idx+1}/{len(machine_numbers)}] 台番号 {machine_num} のデータ取得を開始")
@@ -687,6 +777,9 @@ def site1_action(page: Page) -> None:
                         num_btn.click()
                         page.wait_for_load_state("networkidle")
                         human_like_delay(2.0, 3.5)
+                        
+                        # 割り込み要素（ご存意ダイアログ等）のチェック
+                        handle_interstitial(page)
 
                         today_date_str = get_today_date(page)
                         today_dt = datetime.datetime.strptime(today_date_str, "%Y-%m-%d")
@@ -708,53 +801,78 @@ def site1_action(page: Page) -> None:
 
                         table_data = extract_slot_table(page)
 
-                        # parseInt for numbers if valid, else 0
-                        def parse_int(val):
-                            try: return int(val)
-                            except: return 0
-
                         # 本日→1日前→2日前の順にタブを切り替えながら最終差枚を一括取得
                         graph_results = extract_pscube_graph_data_all_days(page, today_date_str)
 
                         for day_label, actual_date in dates_to_scrape.items():
                             sasamai = graph_results.get(day_label, "取得失敗")
 
-                            record = {
-                                "日付": actual_date,
-                                "機種名": model_name,
-                                "台番号": machine_num,
-                                "BONUS": parse_int(table_data.get(day_label, {}).get("BONUS", 0)),
-                                "BIG": parse_int(table_data.get(day_label, {}).get("BIG", 0)),
-                                "REG": parse_int(table_data.get(day_label, {}).get("REG", 0)),
-                                "累計ゲーム": parse_int(table_data.get(day_label, {}).get("累計ゲーム", 0)),
-                                "最終差枚": sasamai if isinstance(sasamai, (int, float)) else 0
-                            }
-                            print(record)
-                            progress["data"].append(record)
+                            # DB保存
+                            conn_local = sqlite3.connect(DB_FILE)
+                            cursor_local = conn_local.cursor()
+                            try:
+                                bonus = table_data.get(day_label, {}).get("BONUS", 0)
+                                big = table_data.get(day_label, {}).get("BIG", 0)
+                                reg = table_data.get(day_label, {}).get("REG", 0)
+                                games = table_data.get(day_label, {}).get("累計ゲーム", 0)
+                                
+                                record_tuple = (
+                                    actual_date, model_name, machine_num,
+                                    int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
+                                    int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
+                                    int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
+                                    int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0,
+                                    sasamai if isinstance(sasamai, (int, float)) else 0
+                                )
+                                
+                                cursor_local.execute('''
+                                    INSERT OR REPLACE INTO slot_data (日付, 機種名, 台番号, BONUS, BIG, REG, 累計ゲーム, 最終差枚)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                ''', record_tuple)
+                                conn_local.commit()
+                                logger.info(f"Site 1: 台番号 {machine_num} ({actual_date}) 保存成功")
+                            finally:
+                                conn_local.close()
 
                         # 記録完了
-                        progress["scraped_machines"].append(machine_id)
-                        save_progress(progress)
                         logger.info(f"Site 1: 台番号 {machine_num} のデータ取得完了。")
                         
                         page.go_back(wait_until="networkidle")
                         human_like_delay(1.0, 2.0)
                         
                 except Exception as e:
+                    error_time = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
                     logger.error(f"Site 1: 台番号 {machine_num} 処理中にエラー: {e}")
-                    page.screenshot(path=f"error_slot_site1_machine_{machine_num}.png")
+                    screenshot_path = f"error_slot_site1_machine_{machine_num}_{error_time}.png"
+                    try:
+                        page.screenshot(path=screenshot_path)
+                    except Exception as ss_e:
+                        logger.error(f"スクリーンショット保存失敗: {ss_e}")
+                    
+                    with open(os.path.join(SCRIPT_DIR, "error_log.txt"), "a", encoding="utf-8") as f:
+                        f.write(f"[{error_time}] 台番号: {machine_num}, エラー原因: {e}, スクリーンショット: {screenshot_path}\n")
+                        
                     raise e # 外側のループでリトライさせるために例外を投げる
 
             page.go_back(wait_until="networkidle")
             human_like_delay(1.0, 2.0)
 
     except Exception as e:
+        error_time = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         logger.error(f"Site 1: 全体処理でエラーが発生しました: {e}")
-        page.screenshot(path="error_slot_site1_main.png")
+        screenshot_path = f"error_slot_site1_main_{error_time}.png"
+        try:
+            page.screenshot(path=screenshot_path)
+        except:
+            pass
+            
+        with open(os.path.join(SCRIPT_DIR, "error_log.txt"), "a", encoding="utf-8") as f:
+            f.write(f"[{error_time}] 全体処理エラー, エラー原因: {e}, スクリーンショット: {screenshot_path}\n")
+            
         raise e
 
 def scrape_site1_scrapling():
-    logger.info("Site 1: scrapling (StealthyFetcher) を使用して実行します")
+    logger.info("Site 1: scrapling (StealthyFetcher) を使用して実行します (プロキシなしテスト)")
     
     def action_wrapper(page: Page):
         site1_action(page)
@@ -773,7 +891,7 @@ def main():
     migrate_csv_to_db()
     
     # 処理ループ (エラー時のリトライ付き)
-    max_restarts = 5
+    max_restarts = 20
     for attempt in range(max_restarts):
         try:
             if not ensure_docker_desktop_running():
@@ -781,8 +899,8 @@ def main():
                 break
             
             if not setup_docker_proxy():
-                logger.error("プロキシの準備ができなかったため、処理を中止します。")
-                break
+                logger.error("Dockerプロキシのセットアップに失敗しました。再試行します。")
+                continue
             
             scrape_site1_scrapling()
             
@@ -793,9 +911,10 @@ def main():
         except Exception as e:
             logger.error(f"スクレイピング中に致命的なエラーが発生しました (試行 {attempt+1}/{max_restarts}): {e}")
             if attempt < max_restarts - 1:
-                logger.info("Dockerを再起動してリトライします...")
+                logger.info("Docker Desktopとコンテナを再起動してリトライします...")
                 subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
-                time.sleep(10)
+                stop_docker_desktop()
+                time.sleep(15)
             else:
                 logger.error("最大リトライ回数に達したため、処理を終了します。")
     
@@ -808,6 +927,27 @@ def main():
         
         # pickleをクリア
         clear_progress()
+        
+        # docsディレクトリへのJSON出力とGitHubへの自動アップロード
+        logger.info("docsディレクトリへのJSONデータエクスポートを開始します...")
+        try:
+            subprocess.run([sys.executable, "export_slot_data.py"], check=True)
+            logger.info("JSONデータのエクスポートが完了しました。")
+            
+            logger.info("GitHub Pagesへのアップロードを開始します...")
+            subprocess.run(["git", "add", "docs/"], check=True)
+            
+            commit_res = subprocess.run(
+                ["git", "commit", "-m", f"Auto update slot data {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"],
+                capture_output=True, text=True
+            )
+            if "nothing to commit" in commit_res.stdout or "nothing added to commit" in commit_res.stdout:
+                logger.info("変更がないため、コミット・プッシュはスキップします。")
+            else:
+                subprocess.run(["git", "push"], check=True)
+                logger.info("GitHub Pagesへのアップロードが完了しました。")
+        except Exception as e:
+            logger.error(f"データエクスポートまたはGitHubへのアップロード中にエラーが発生しました: {e}")
     else:
         logger.warning("取得データがありませんでした。")
     

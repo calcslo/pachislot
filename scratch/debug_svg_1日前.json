@@ -1,0 +1,332 @@
+{
+  "dayLabel": "1日前",
+  "svgs": [],
+  "allCharts": [
+    {
+      "id": "CHART-20260424",
+      "display": "none",
+      "height": 0
+    },
+    {
+      "id": "CHART-20260423",
+      "display": "block",
+      "height": 348
+    },
+    {
+      "id": "CHART-20260422",
+      "display": "",
+      "height": 0
+    }
+  ],
+  "activeChartId": "CHART-20260423",
+  "svgInfo": {
+    "width": null,
+    "height": null,
+    "viewBox": null
+  },
+  "allTextElements": [
+    {
+      "idx": 0,
+      "content": "12:00",
+      "tspanContent": "12:00",
+      "isNumeric": false,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(64,310)",
+      "parentClass": "amcharts-category-axis",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(64,310)",
+          "transY": 310
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-category-axis",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": 310,
+      "totalParentTransY": 330,
+      "finalSvgY": 645
+    },
+    {
+      "idx": 1,
+      "content": "18:00",
+      "tspanContent": "18:00",
+      "isNumeric": false,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(186,310)",
+      "parentClass": "amcharts-category-axis",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(186,310)",
+          "transY": 310
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-category-axis",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": 310,
+      "totalParentTransY": 330,
+      "finalSvgY": 645
+    },
+    {
+      "idx": 2,
+      "content": "-1,500",
+      "tspanContent": "-1,500",
+      "isNumeric": true,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(-12,296)",
+      "parentClass": "amcharts-value-axis value-axis-v1",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(-12,296)",
+          "transY": 296
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-value-axis value-axis-v1",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": 296,
+      "totalParentTransY": 316,
+      "finalSvgY": 617
+    },
+    {
+      "idx": 3,
+      "content": "-1,000",
+      "tspanContent": "-1,000",
+      "isNumeric": true,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(-12,246)",
+      "parentClass": "amcharts-value-axis value-axis-v1",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(-12,246)",
+          "transY": 246
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-value-axis value-axis-v1",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": 246,
+      "totalParentTransY": 266,
+      "finalSvgY": 517
+    },
+    {
+      "idx": 4,
+      "content": "-500",
+      "tspanContent": "-500",
+      "isNumeric": true,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(-12,197)",
+      "parentClass": "amcharts-value-axis value-axis-v1",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(-12,197)",
+          "transY": 197
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-value-axis value-axis-v1",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": 197,
+      "totalParentTransY": 217,
+      "finalSvgY": 419
+    },
+    {
+      "idx": 5,
+      "content": "0",
+      "tspanContent": "0",
+      "isNumeric": true,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(-12,147)",
+      "parentClass": "amcharts-value-axis value-axis-v1",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(-12,147)",
+          "transY": 147
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-value-axis value-axis-v1",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": 147,
+      "totalParentTransY": 167,
+      "finalSvgY": 319
+    },
+    {
+      "idx": 6,
+      "content": "500",
+      "tspanContent": "500",
+      "isNumeric": true,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(-12,97)",
+      "parentClass": "amcharts-value-axis value-axis-v1",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(-12,97)",
+          "transY": 97
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-value-axis value-axis-v1",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": 97,
+      "totalParentTransY": 117,
+      "finalSvgY": 219
+    },
+    {
+      "idx": 7,
+      "content": "1,000",
+      "tspanContent": "1,000",
+      "isNumeric": true,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(-12,48)",
+      "parentClass": "amcharts-value-axis value-axis-v1",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(-12,48)",
+          "transY": 48
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-value-axis value-axis-v1",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": 48,
+      "totalParentTransY": 68,
+      "finalSvgY": 121
+    },
+    {
+      "idx": 8,
+      "content": "1,500",
+      "tspanContent": "1,500",
+      "isNumeric": true,
+      "ownX": null,
+      "ownY": "5",
+      "ownTransform": "translate(-12,-2)",
+      "parentClass": "amcharts-value-axis value-axis-v1",
+      "ancestorTransforms": [
+        {
+          "tag": "text",
+          "cls": "amcharts-axis-label",
+          "transform": "translate(-12,-2)",
+          "transY": -2
+        },
+        {
+          "tag": "g",
+          "cls": "amcharts-value-axis value-axis-v1",
+          "transform": "translate(63,20)",
+          "transY": 20
+        }
+      ],
+      "ownYNum": 5,
+      "ownTransY": -2,
+      "totalParentTransY": 18,
+      "finalSvgY": 21
+    }
+  ],
+  "graphGroups": [
+    {
+      "class": "amcharts-graph-smoothedLine amcharts-graph-g1",
+      "childPaths": [
+        {
+          "parentClass": null,
+          "fill": "none",
+          "stroke": "#86b81b",
+          "dLength": 1791,
+          "dFirst200": "M0,149 Q1,149,1,149 Q2,149,2,149 Q3,149,3,149 Q4,149,4,149 Q4,149,5,149 Q5,149,6,149 Q6,149,6,149 Q7,149,7,149 Q7,149,8,149 Q8,148,9,148 Q9,148,9,148 Q10,148,10,149 Q10,150,11,152 Q11,153,12,156 Q12,1",
+          "dLast200": ",210 Q237,207,243,204 Q248,200,252,197 Q257,194,258,193 Q259,192,261,193 Q262,194,263,196 Q264,197,266,199 Q267,201,268,201 Q269,202,272,202 Q274,202,277,202 Q280,201,283,201 Q286,201,288,201M0,0 L0,0",
+          "totalCoords": 3,
+          "firstCoord": [
+            0,
+            149
+          ],
+          "lastCoord": [
+            0,
+            0
+          ],
+          "last5Coords": [
+            [
+              0,
+              149
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "pathTotalTransY": 20,
+          "finalGraphSvgY": 20,
+          "pathAncestors": [
+            {
+              "tag": "g",
+              "cls": "amcharts-graph-smoothedLine amcharts-graph-g1",
+              "transform": "translate(63,20)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "amcharts-graph-smoothedLine amcharts-graph-g1",
+      "childPaths": []
+    }
+  ]
+}

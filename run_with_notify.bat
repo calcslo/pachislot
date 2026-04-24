@@ -1,14 +1,10 @@
 @echo off
-cd /d "d:\PycharmProjects\pachislot"
-
-if exist ".venv\Scripts\python.exe" (
-    set PYTHON_EXE=".venv\Scripts\python.exe"
-) else (
-    set PYTHON_EXE=python
+setlocal
+cd /d "%~dp0"
+set "PYTHON_EXE=python"
+if exist ".venv\Scripts\python.exe" set "PYTHON_EXE=%~dp0.venv\Scripts\python.exe"
+"%PYTHON_EXE%" main.py
+if %ERRORLEVEL% neq 0 (
+    powershell -ExecutionPolicy Bypass -File notify.ps1 -ErrorCode %ERRORLEVEL%
 )
-
-%PYTHON_EXE% main.py
-
-if %ERRORLEVEL% NEQ 0 (
-    powershell -ExecutionPolicy Bypass -File notify.ps1 -Title "サーバー停止エラー" -Message "Pachislotサーバーがエラーで終了しました。確認してください。"
-)
+endlocal

@@ -1,2 +1,6 @@
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "cmd.exe /c """"d:\PycharmProjects\pachislot\run_with_notify.bat"""""", 0, False
+Set fso = CreateObject("Scripting.FileSystemObject")
+ScriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
+BatchPath = fso.BuildPath(ScriptDir, "run_with_notify.bat")
+
+WshShell.Run "cmd.exe /c """ & BatchPath & """", 0, False

@@ -4,6 +4,7 @@ import queue
 import os
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from contextlib import asynccontextmanager
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -14,7 +15,15 @@ import ogiya_pscube_scraping as scraper
 import pscube_calculator as calc
 import logging
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    poller = asyncio.create_task(queue_poller())
+    yield
+    # Shutdown
+    poller.cancel()
+
+app = FastAPI(lifespan=lifespan)
 
 # Mount static files
 os.makedirs("static", exist_ok=True)
@@ -79,10 +88,6 @@ async def queue_poller():
         except queue.Empty:
             pass
         await asyncio.sleep(0.1)
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(queue_poller())
 
 @app.get("/")
 async def get_index():

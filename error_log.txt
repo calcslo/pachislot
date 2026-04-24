@@ -1,0 +1,16 @@
+[20260424_153838] 台番号: 0852, エラー原因: Page.go_back: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_machine_0852_20260424_153838.png
+[20260424_153838] 全体処理エラー, エラー原因: Page.go_back: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_main_20260424_153838.png
+[20260424_234727] 台番号: 0845, エラー原因: name 'DB_PATH' is not defined, スクリーンショット: error_slot_site1_machine_0845_20260424_234727.png
+[20260424_234727] 全体処理エラー, エラー原因: name 'DB_PATH' is not defined, スクリーンショット: error_slot_site1_main_20260424_234727.png
+[20260425_000606] 台番号: 0854, エラー原因: Page.go_back: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_machine_0854_20260425_000606.png
+[20260425_000606] 全体処理エラー, エラー原因: Page.go_back: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_main_20260425_000606.png
+[20260425_031939] 台番号: 1103, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator("#CHART-20260424 svg") to be visible
+  - waiting for locator("#CHART-20260424 svg")
+, スクリーンショット: error_slot_site1_machine_1103_20260425_031939.png
+[20260425_031939] 全体処理エラー, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator("#CHART-20260424 svg") to be visible
+  - waiting for locator("#CHART-20260424 svg")
+, スクリーンショット: error_slot_site1_main_20260425_031939.png

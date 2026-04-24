@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pachislot Data Dashboard</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -24,21 +24,20 @@
             <div class="theme-toggle">
                 <button id="theme-btn" class="icon-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <!-- Sun/Moon icon dynamically rendered in JS or CSS -->
                         <path class="sun" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                 </button>
             </div>
         </header>
 
-        <!-- Controls -->
+        <!-- Global Controls -->
         <section class="controls glass-panel">
             <div class="control-group">
                 <h3>機種 (Machine)</h3>
                 <div class="tabs" id="machine-tabs">
-                    <button class="tab-btn active" data-target="hanahana">ハナハナ</button>
+                    <button class="tab-btn" data-target="hanahana">ハナハナ</button>
                     <button class="tab-btn" data-target="juggler">ジャグラー</button>
-                    <button class="tab-btn" data-target="all">すべて</button>
+                    <button class="tab-btn active" data-target="all">すべて</button>
                 </div>
             </div>
 
@@ -47,7 +46,7 @@
                 <div class="tabs" id="period-tabs">
                     <button class="tab-btn" data-target="1m">過去1か月</button>
                     <button class="tab-btn active" data-target="3m">過去3か月</button>
-                    <button class="tab-btn" data-target="all_time">全期間表示</button>
+                    <button class="tab-btn" data-target="all_time">全期間</button>
                 </div>
             </div>
 
@@ -63,11 +62,35 @@
             </div>
         </section>
 
+        <!-- Main Navigation -->
+        <div class="main-nav glass-panel">
+            <button class="nav-btn active" data-section="summary-section">サマリー</button>
+            <button class="nav-btn" data-section="heatmap-section">ヒートマップ</button>
+            <button class="nav-btn" data-section="analysis-section">詳細分析</button>
+        </div>
+
         <!-- Main Content Grid -->
         <div class="content-grid">
             
-            <!-- Summary Table and Chart -->
-            <section class="data-section glass-panel">
+            <!-- 1. Summary Section -->
+            <section id="summary-section" class="data-section glass-panel active-section">
+                <h2 class="section-title">月別集計 (Monthly Summary)</h2>
+                <div class="table-container mb-4">
+                    <table id="monthly-table">
+                        <thead>
+                            <tr>
+                                <th>月</th>
+                                <th>合計差枚</th>
+                                <th>平均差枚</th>
+                                <th>平均G数</th>
+                                <th>総G数</th>
+                                <th>出率(%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-tbody"></tbody>
+                    </table>
+                </div>
+
                 <h2 class="section-title">日別集計 (Daily Summary)</h2>
                 <div class="table-chart-wrapper">
                     <!-- Table -->
@@ -78,54 +101,132 @@
                                     <th>日付</th>
                                     <th>合計差枚</th>
                                     <th>平均差枚</th>
+                                    <th>平均G数</th>
                                     <th>総G数</th>
                                     <th>出率(%)</th>
                                     <th>末尾寄せ</th>
                                 </tr>
                             </thead>
-                            <tbody id="summary-tbody">
-                                <!-- Data injected here -->
-                            </tbody>
+                            <tbody id="summary-tbody"></tbody>
                         </table>
                     </div>
                     
                     <!-- Chart -->
-                    <div class="chart-container">
+                    <div class="chart-container" style="height: 500px;">
                         <canvas id="diff-chart"></canvas>
                     </div>
                 </div>
             </section>
 
-            <!-- Heatmap Modal / Section -->
-            <section class="heatmap-section glass-panel">
-                <div class="heatmap-header">
-                    <h2 class="section-title">差枚ヒートマップ (Heatmap)</h2>
-                    <div class="heatmap-date-label" id="heatmap-date-label">全期間平均</div>
-                </div>
-                
-                <div class="heatmap-legend">
-                    <div class="legend-item"><span class="color-box" style="background-color: rgba(128,0,128,0.7);"></span>-2000以下</div>
-                    <div class="legend-item"><span class="color-box" style="background-color: rgba(0,0,255,0.7);"></span>-1999 ~ -1000</div>
-                    <div class="legend-item"><span class="color-box" style="background-color: rgba(173,216,230,0.7);"></span>-999 ~ -1</div>
-                    <div class="legend-item"><span class="color-box" style="background-color: transparent; border: 1px solid #ccc;"></span>0 (無色)</div>
-                    <div class="legend-item"><span class="color-box" style="background-color: rgba(255,255,0,0.7);"></span>1 ~ 999</div>
-                    <div class="legend-item"><span class="color-box" style="background-color: rgba(255,165,0,0.7);"></span>1000 ~ 1999</div>
-                    <div class="legend-item"><span class="color-box" style="background-color: rgba(255,0,0,0.7);"></span>2000以上</div>
+            <!-- 2. Heatmap Section -->
+            <section id="heatmap-section" class="heatmap-section glass-panel" style="display:none;">
+                <div class="heatmap-controls">
                 </div>
 
-                <div class="heatmap-wrapper" id="heatmap-wrapper">
-                    <!-- Grid injected here -->
+                <!-- Diff Heatmap -->
+                <div class="heatmap-block">
+                    <h2 class="section-title">差枚ヒートマップ</h2>
+                    <div class="heatmap-legend" id="diff-legend">
+                        <!-- Dynamically injected thresholds -->
+                    </div>
+                    <div class="heatmap-wrapper" id="diff-heatmap-wrapper"></div>
+                </div>
+
+                <!-- Estimated Setting Heatmap -->
+                <div class="heatmap-block">
+                    <h2 class="section-title">推定設定ヒートマップ (ハナハナ・ジャグラー限定)</h2>
+                    <div class="heatmap-legend">
+                        <div class="legend-item"><span class="color-box" style="background-color: rgba(60,20,180,0.8);"></span>設定1</div>
+                        <div class="legend-item"><span class="color-box" style="background-color: rgba(30,100,230,0.8);"></span>設定2</div>
+                        <div class="legend-item"><span class="color-box" style="background-color: rgba(0,190,255,0.8);"></span>設定3</div>
+                        <div class="legend-item"><span class="color-box" style="background-color: rgba(255,220,0,0.8);"></span>設定4</div>
+                        <div class="legend-item"><span class="color-box" style="background-color: rgba(255,130,0,0.8);"></span>設定5</div>
+                        <div class="legend-item"><span class="color-box" style="background-color: rgba(230,40,40,0.8);"></span>設定6</div>
+                        <div class="legend-item"><span class="color-box" style="background-color: transparent; border: 1px solid #ccc;"></span>不明/データ不足</div>
+                    </div>
+                    <div class="heatmap-wrapper" id="setting-heatmap-wrapper"></div>
+                </div>
+
+                <!-- Row Average Heatmap -->
+                <div class="heatmap-block">
+                    <h2 class="section-title">列平均差枚ヒートマップ</h2>
+                    <div class="heatmap-legend" id="row-legend">
+                        <!-- Same as diff legend usually -->
+                    </div>
+                    <div class="heatmap-wrapper" id="row-heatmap-wrapper"></div>
+                    <div class="chart-container" style="margin-top: 2rem;">
+                        <canvas id="chart-row-avg-heatmap"></canvas>
+                    </div>
                 </div>
             </section>
-        </div>
-    </div>
 
-    <!-- Machine Detail Modal -->
-    <div id="machine-modal" class="modal">
-        <div class="modal-content glass-panel">
-            <span class="close-btn">&times;</span>
-            <h2 id="modal-title">台番号</h2>
-            <div id="modal-body"></div>
+            <!-- 3. Analysis Section -->
+            <section id="analysis-section" class="analysis-section glass-panel" style="display:none;">
+                
+                <div class="chart-grid">
+                    <!-- Column 1 -->
+                    <div class="chart-card">
+                        <h3 class="chart-title">台番号末尾別 平均差枚</h3>
+                        <canvas id="chart-digit"></canvas>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <h3 class="chart-title">nの付く日別 平均差枚</h3>
+                        <canvas id="chart-nday"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">曜日別 平均差枚</h3>
+                        <canvas id="chart-weekday"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">角からの位置別 平均差枚</h3>
+                        <canvas id="chart-position"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">連続凹み日数別 翌日平均差枚</h3>
+                        <canvas id="chart-cons-neg"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">連続凸日数別 翌日平均差枚</h3>
+                        <canvas id="chart-cons-pos"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">隣台差枚 × 自台平均差枚</h3>
+                        <canvas id="chart-neighbor-diff"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">隣台推定設定 × 自台平均推定設定</h3>
+                        <canvas id="chart-neighbor-setting"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">両隣差枚条件 × 自台平均差枚</h3>
+                        <canvas id="chart-both-neighbor-diff"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">両隣設定456条件 × 自台平均推定設定</h3>
+                        <canvas id="chart-both-neighbor-setting"></canvas>
+                    </div>
+
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">機種別 平均差枚</h3>
+                        <canvas id="chart-model"></canvas>
+                    </div>
+
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">列(横並び) 平均差枚</h3>
+                        <canvas id="chart-row-avg"></canvas>
+                    </div>
+                </div>
+
+            </section>
         </div>
     </div>
 
