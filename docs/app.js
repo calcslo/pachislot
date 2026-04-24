@@ -154,7 +154,12 @@ function estimateSetting(model, games, big, reg) {
 // Initialization
 // ==========================================
 
-async function init() {
+async // Chart.js global defaults
+Chart.defaults.font.size = 14;
+Chart.defaults.font.weight = 'bold';
+Chart.defaults.color = '#f1f5f9';
+
+function init() {
     setupTheme();
     setupEventListeners();
 
@@ -183,10 +188,10 @@ function buildLayoutLookup() {
                 const numVal = parseInt(numStr, 10);
                 
                 let hLeft = 0, hRight = 0, vTop = 0, vBottom = 0;
-                for(let i=cIdx-1; i>=0; i--) { if(layoutData[rIdx][i] && layoutData[rIdx][i] !== '') hLeft++; else break; }
-                for(let i=cIdx+1; i<layoutData[rIdx].length; i++) { if(layoutData[rIdx][i] && layoutData[rIdx][i] !== '') hRight++; else break; }
-                for(let i=rIdx-1; i>=0; i--) { if(layoutData[i][cIdx] && layoutData[i][cIdx] !== '') vTop++; else break; }
-                for(let i=rIdx+1; i<layoutData.length; i++) { if(layoutData[i][cIdx] && layoutData[i][cIdx] !== '') vBottom++; else break; }
+                for(let i=cIdx-1; i>=0; i--) { if(layoutData[rIdx][i] !== '') hLeft++; else break; }
+                for(let i=cIdx+1; i<layoutData[rIdx].length; i++) { if(layoutData[rIdx][i] !== '') hRight++; else break; }
+                for(let i=rIdx-1; i>=0; i--) { if(layoutData[i][cIdx] !== '') vTop++; else break; }
+                for(let i=rIdx+1; i<layoutData.length; i++) { if(layoutData[i][cIdx] !== '') vBottom++; else break; }
 
                 let dist = null;
                 let dir = 'horizontal';
