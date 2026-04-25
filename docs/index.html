@@ -44,8 +44,11 @@
             <div class="control-group">
                 <h3>期間 (Period)</h3>
                 <div class="tabs" id="period-tabs">
-                    <button class="tab-btn" data-target="1m">過去1か月</button>
-                    <button class="tab-btn active" data-target="3m">過去3か月</button>
+                    <button class="tab-btn" data-target="latest">最新日</button>
+                    <button class="tab-btn" data-target="3d">3日間</button>
+                    <button class="tab-btn" data-target="7d">7日間</button>
+                    <button class="tab-btn" data-target="1m">1か月</button>
+                    <button class="tab-btn active" data-target="3m">3か月</button>
                     <button class="tab-btn" data-target="all_time">全期間</button>
                 </div>
             </div>
@@ -66,7 +69,9 @@
         <div class="main-nav glass-panel">
             <button class="nav-btn active" data-section="summary-section">サマリー</button>
             <button class="nav-btn" data-section="heatmap-section">ヒートマップ</button>
+            <button class="nav-btn" data-section="machine-section">台番号別差枚</button>
             <button class="nav-btn" data-section="analysis-section">詳細分析</button>
+            <button class="nav-btn" data-section="target-section">🎯 狙い台</button>
         </div>
 
         <!-- Main Content Grid -->
@@ -100,6 +105,7 @@
                                 <tr>
                                     <th>日付</th>
                                     <th>合計差枚</th>
+                                    <th>月間累計差枚</th>
                                     <th>平均差枚</th>
                                     <th>平均G数</th>
                                     <th>総G数</th>
@@ -147,20 +153,30 @@
                     <div class="heatmap-wrapper" id="setting-heatmap-wrapper"></div>
                 </div>
 
-                <!-- Row Average Heatmap -->
+                <!-- Island Average Heatmap -->
                 <div class="heatmap-block">
-                    <h2 class="section-title">列平均差枚ヒートマップ</h2>
+                    <h2 class="section-title">島平均差枚ヒートマップ</h2>
                     <div class="heatmap-legend" id="row-legend">
                         <!-- Same as diff legend usually -->
                     </div>
                     <div class="heatmap-wrapper" id="row-heatmap-wrapper"></div>
-                    <div class="chart-container" style="margin-top: 2rem;">
+                    <!-- Column avg bar chart moved here -->
+                    <div class="chart-container" id="row-avg-chart-container" style="margin-top: 2rem;">
                         <canvas id="chart-row-avg-heatmap"></canvas>
                     </div>
                 </div>
             </section>
 
-            <!-- 3. Analysis Section -->
+            <!-- 3. Machine Section (台番号別差枚) -->
+            <section id="machine-section" class="glass-panel" style="display:none;">
+                <h2 class="section-title">台番号別 平均差枚</h2>
+                <p class="section-note">※同一台番号に複数機種がある場合、最新以外は（機種名）で表示</p>
+                <div class="chart-container" id="machine-chart-container">
+                    <canvas id="chart-machine-diff"></canvas>
+                </div>
+            </section>
+
+            <!-- 4. Analysis Section -->
             <section id="analysis-section" class="analysis-section glass-panel" style="display:none;">
                 
                 <div class="chart-grid">
@@ -220,13 +236,257 @@
                         <canvas id="chart-model"></canvas>
                     </div>
 
+                    <!-- 日付(1〜31日)ごとの平均差枚・出率 -->
                     <div class="chart-card" style="grid-column: 1 / -1;">
-                        <h3 class="chart-title">列(横並び) 平均差枚</h3>
-                        <canvas id="chart-row-avg"></canvas>
+                        <h3 class="chart-title">日付(1〜31日)別 平均差枚</h3>
+                        <canvas id="chart-dayofmonth-diff"></canvas>
+                    </div>
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">日付(1〜31日)別 出率(%)</h3>
+                        <canvas id="chart-dayofmonth-payout"></canvas>
+                    </div>
+
+                    <!-- 月通算差枚分析 -->
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">月通算差枚分析</h3>
+                        <div class="monthly-cumul-controls">
+                            <span style="font-size:0.85rem; color:var(--text-muted); margin-right:0.5rem;">絞り込み:</span>
+                            <div class="tabs" id="cumul-filter-tabs" style="display:inline-flex;">
+                                <button class="tab-btn active" data-target="all">全日</button>
+                                <button class="tab-btn" data-target="first_week">月初（第1週）</button>
+                                <button class="tab-btn" data-target="last_week">月末（最終週）</button>
+                            </div>
+                        </div>
+                        <div style="margin-top:1rem;">
+                            <h4 class="chart-subtitle">前日までの月累積差枚別 当日平均差枚（棒グラフ）</h4>
+                            <div class="chart-container" style="margin-top:0.5rem;">
+                                <canvas id="chart-cumul-diff-bar"></canvas>
+                            </div>
+                        </div>
+                        <div style="margin-top:1.5rem;">
+                            <h4 class="chart-subtitle">前日までの月累積差枚別 当日出率（棒グラフ）</h4>
+                            <div class="chart-container" style="margin-top:0.5rem;">
+                                <canvas id="chart-cumul-payout-bar"></canvas>
+                            </div>
+                        </div>
+                        <div style="margin-top:1.5rem;">
+                            <h4 class="chart-subtitle">前日累積差枚 × 当日差枚 散布図（相関係数付き）</h4>
+                            <div class="chart-container" style="height:400px; margin-top:0.5rem;">
+                                <canvas id="chart-cumul-scatter"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
             </section>
+
+            <!-- 5. Target Support Section -->
+            <section id="target-section" class="glass-panel" style="display:none;">
+                <h2 class="section-title">🎯 狙い台サポートツール</h2>
+                <p class="section-note">条件を設定して翌日の狙い台を絞り込みます。差枚・島平均はページ上部の期間・特定日フィルタを反映。連続凹み/凸は最新日時点（フィルタ無視）。フィルタ変更時は自動再計算。</p>
+
+                <!-- Condition Settings Panel -->
+                <div class="target-conditions-panel glass-panel">
+                    <h3 class="target-panel-title">条件設定</h3>
+
+                    <!-- Machine model filter -->
+                    <div class="target-model-filter">
+                        <div class="cond-header" style="margin-bottom:0.5rem;">
+                            <span class="cond-label">🎰 機種フィルタ</span>
+                            <span style="font-size:0.8rem;color:var(--text-muted);">（未選択 = すべて対象）</span>
+                        </div>
+                        <div class="cond-checkboxes" id="target-model-filter-list">
+                            <!-- dynamically populated -->
+                        </div>
+                    </div>
+
+                    <div class="target-conditions-grid">
+
+                        <!-- Consecutive negative streak -->
+                        <div class="target-condition-card" id="cond-card-cons-neg">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-cons-neg-enabled">
+                                    <span class="cond-label">連続凹み日数</span>
+                                </label>
+                                <span class="cond-badge" id="cond-cons-neg-badge">OFF</span>
+                            </div>
+                            <div class="cond-body cond-checkboxes" id="cond-cons-neg-days">
+                                <label><input type="checkbox" class="cons-neg-chk" value="1"> 1日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="2"> 2日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="3"> 3日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="4"> 4日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="5"> 5日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="6"> 6日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="7"> 7日以上</label>
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">最新日時点・期間フィルタ無視</div>
+                        </div>
+
+                        <!-- Consecutive positive streak -->
+                        <div class="target-condition-card" id="cond-card-cons-pos">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-cons-pos-enabled">
+                                    <span class="cond-label">連続凸日数</span>
+                                </label>
+                                <span class="cond-badge" id="cond-cons-pos-badge">OFF</span>
+                            </div>
+                            <div class="cond-body cond-checkboxes" id="cond-cons-pos-days">
+                                <label><input type="checkbox" class="cons-pos-chk" value="1"> 1日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="2"> 2日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="3"> 3日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="4"> 4日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="5"> 5日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="6"> 6日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="7"> 7日以上</label>
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">最新日時点・期間フィルタ無視</div>
+                        </div>
+
+                        <!-- Position from corner -->
+                        <div class="target-condition-card" id="cond-card-position">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-position-enabled">
+                                    <span class="cond-label">角からの位置</span>
+                                </label>
+                                <span class="cond-badge" id="cond-position-badge">OFF</span>
+                            </div>
+                            <div class="cond-body cond-checkboxes">
+                                <label><input type="checkbox" class="pos-chk" value="0"> 角</label>
+                                <label><input type="checkbox" class="pos-chk" value="1"> 角2</label>
+                                <label><input type="checkbox" class="pos-chk" value="2"> 角3</label>
+                                <label><input type="checkbox" class="pos-chk" value="other"> その他</label>
+                            </div>
+                        </div>
+
+                        <!-- Tail digit -->
+                        <div class="target-condition-card" id="cond-card-digit">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-digit-enabled">
+                                    <span class="cond-label">台番号末尾</span>
+                                </label>
+                                <span class="cond-badge" id="cond-digit-badge">OFF</span>
+                            </div>
+                            <div class="cond-body cond-checkboxes">
+                                <label><input type="checkbox" class="digit-chk" value="0"> 0</label>
+                                <label><input type="checkbox" class="digit-chk" value="1"> 1</label>
+                                <label><input type="checkbox" class="digit-chk" value="2"> 2</label>
+                                <label><input type="checkbox" class="digit-chk" value="3"> 3</label>
+                                <label><input type="checkbox" class="digit-chk" value="4"> 4</label>
+                                <label><input type="checkbox" class="digit-chk" value="5"> 5</label>
+                                <label><input type="checkbox" class="digit-chk" value="6"> 6</label>
+                                <label><input type="checkbox" class="digit-chk" value="7"> 7</label>
+                                <label><input type="checkbox" class="digit-chk" value="8"> 8</label>
+                                <label><input type="checkbox" class="digit-chk" value="9"> 9</label>
+                            </div>
+                        </div>
+
+                        <!-- Island avg diff -->
+                        <div class="target-condition-card" id="cond-card-island-avg">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-island-avg-enabled">
+                                    <span class="cond-label">島平均差枚</span>
+                                </label>
+                                <span class="cond-badge" id="cond-island-avg-badge">OFF</span>
+                            </div>
+                            <div class="cond-body">
+                                <span class="cond-unit">有効にすると多い順でソート（フィルタ期間内平均）</span>
+                            </div>
+                        </div>
+
+                        <!-- Machine avg diff -->
+                        <div class="target-condition-card" id="cond-card-machine-avg">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-machine-avg-enabled">
+                                    <span class="cond-label">台の平均差枚</span>
+                                </label>
+                                <span class="cond-badge" id="cond-machine-avg-badge">OFF</span>
+                            </div>
+                            <div class="cond-body">
+                                <span class="cond-unit">有効にすると多い順でソート（フィルタ期間内平均）</span>
+                            </div>
+                        </div>
+
+                    </div><!-- /.target-conditions-grid -->
+
+
+                    <!-- Priority and ranking settings -->
+                    <div class="target-priority-section">
+                        <div class="target-priority-block">
+                            <h4 class="priority-title">優先条件（2つまで選択）</h4>
+                            <p class="priority-hint">選んだ条件の合致数をランキングで優先します</p>
+                            <div class="priority-checkboxes" id="priority-conditions">
+                                <label><input type="checkbox" class="prio-chk" value="cons-neg"> 連続凹み</label>
+                                <label><input type="checkbox" class="prio-chk" value="cons-pos"> 連続凸</label>
+                                <label><input type="checkbox" class="prio-chk" value="position"> 角位置</label>
+                                <label><input type="checkbox" class="prio-chk" value="digit"> 台番号末尾</label>
+                                <label><input type="checkbox" class="prio-chk" value="island-avg"> 島平均差枚</label>
+                                <label><input type="checkbox" class="prio-chk" value="machine-avg"> 台平均差枚</label>
+                            </div>
+                        </div>
+                        <div class="target-priority-block">
+                            <h4 class="priority-title">差枚ランキング優先順位</h4>
+                            <p class="priority-hint">差枚系条件が有効な場合の1次ソートキー</p>
+                            <div class="priority-radios">
+                                <label><input type="radio" name="diff-priority" value="machine" checked> 台の平均差枚を優先</label>
+                                <label><input type="radio" name="diff-priority" value="island"> 島平均差枚を優先</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="target-search-btn" id="target-search-btn">🔍 検索して島図を表示</button>
+                </div><!-- /.target-conditions-panel -->
+
+                <!-- Results Area -->
+                <div id="target-results" style="display:none;">
+                    <!-- Legend -->
+                    <div class="target-legend-area">
+                        <h3 class="target-panel-title">凡例 &amp; ランキング</h3>
+                        <div id="target-legend" class="target-legend"></div>
+                    </div>
+
+                    <!-- Ranking List -->
+                    <div class="target-ranking-area">
+                        <h3 class="target-panel-title">ランキング（上位30台）</h3>
+                        <div id="target-ranking-list" class="target-ranking-list"></div>
+                    </div>
+
+                    <!-- Island Map -->
+                    <div class="target-map-area">
+                        <h3 class="target-panel-title">島図（色分け）</h3>
+                        <div class="heatmap-wrapper" id="target-heatmap-wrapper"></div>
+                    </div>
+                </div><!-- /#target-results -->
+
+                <!-- Mobile tap popup overlay -->
+                <div id="target-mobile-popup" class="target-mobile-popup" style="display:none;">
+                    <div class="target-mobile-popup-inner">
+                        <button class="target-mobile-close" id="target-mobile-close">✕</button>
+                        <div id="target-mobile-content"></div>
+                        <a id="target-mobile-link" href="#" target="_blank" class="target-mobile-data-btn">📊 データを見る</a>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Date Detail Modal -->
+    <div id="date-detail-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-container glass-panel">
+            <div class="modal-header">
+                <h2 id="modal-date-title" class="gradient-text">日付詳細</h2>
+                <button id="modal-close-btn" class="icon-btn modal-close">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Injected dynamically -->
+            </div>
         </div>
     </div>
 

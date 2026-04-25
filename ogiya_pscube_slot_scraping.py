@@ -22,6 +22,10 @@ class SVGTimeoutError(Exception):
     """SVGの待機タイムアウト時に発生する例外"""
     pass
 
+class ProxyError(Exception):
+    """プロキシ接続エラー時に発生する例外"""
+    pass
+
 # ==========================================
 # ログ設定
 # ==========================================
@@ -364,6 +368,42 @@ def handle_interstitial(page: Page):
     except Exception as e:
         logger.debug(f"割り込み要素の処理中にエラー（無視可能）: {e}")
 
+def check_page_health(page: Page):
+    """
+    プロキシエラーなどの異常画面が表示されていないか確認する。
+    ERR_PROXY_CONNECTION_FAILED などの文字列が見つかった場合、ProxyError を投げる。
+    """
+    try:
+        # Chromiumの標準的なエラー画面テキストをチェック
+        # page.content() は重い場合があるため、まずは inner_text で軽くチェックを試みる
+        # ただし、エラー画面では inner_text が空に近い場合があるため content も併用
+        
+        # 1. ページタイトルをチェック
+        title = page.title()
+        if "No internet" in title or "Proxy" in title:
+            logger.error(f"異常なページタイトルを検知しました: {title}")
+            raise ProxyError(f"Detected error page via title: {title}")
+
+        # 2. ページ内のエラーコードをチェック
+        content = page.content()
+        error_codes = ["ERR_PROXY_CONNECTION_FAILED", "ERR_CONNECTION_REFUSED", "ERR_TUNNEL_CONNECTION_FAILED"]
+        for code in error_codes:
+            if code in content:
+                logger.error(f"プロキシエラーコードを検知しました: {code}")
+                raise ProxyError(f"Detected proxy error code: {code}")
+        
+        # 3. 特定のメッセージをチェック (画像にある日本語メッセージなど)
+        if "proxy server" in content or "プロキシ" in content:
+            if "something wrong" in content or "問題があります" in content:
+                 logger.error("プロキシサーバーの問題に関するメッセージを検知しました。")
+                 raise ProxyError("Detected proxy error message on page")
+
+    except ProxyError as pe:
+        raise pe
+    except Exception as e:
+        # ページの状態取得自体に失敗する場合（ブラウザがクラッシュしている等）
+        logger.warning(f"ページ状態の確認中にエラー（無視可能か確認）: {e}")
+
 
 def _extract_last_diff_from_active_chart(page: Page, chart_date_id: str) -> int | str:
     """
@@ -602,6 +642,9 @@ def extract_pscube_graph_data_all_days(page: Page, today_date_str: str) -> dict:
         except Exception as e:
             logger.warning(f"タブ '{day_label}' のクリック中にエラー: {e}")
 
+        # 各タブの切り替え後にもチェック
+        check_page_health(page)
+
         # グラフから最終差枚を抽出
         sasamai = _extract_last_diff_from_active_chart(page, chart_id)
         logger.info(f"{day_label} ({chart_id}): 最終差枚 = {sasamai}")
@@ -690,15 +733,18 @@ def site1_action(page: Page) -> None:
         page.set_viewport_size({"width": 390, "height": 844})
         
         page.goto(SITE1_URL, wait_until="networkidle")
+        check_page_health(page)
         human_like_delay(2.0, 3.0)
 
         logger.debug("Site 1: スロットデータボタンをクリック")
         page.click(SITE1_SLOT_BTN)
         page.wait_for_load_state("networkidle")
+        check_page_health(page)
         human_like_delay(1.5, 3.0)
 
         logger.debug("Site 1: 機種一覧の読み込みのためスクロール")
         human_like_scroll(page)
+        check_page_health(page)
 
         logger.debug("Site 1: 機種名の特定処理")
         # Find all machine models
@@ -739,9 +785,11 @@ def site1_action(page: Page) -> None:
             
             model_btn.click()
             page.wait_for_load_state("networkidle")
+            check_page_health(page)
             human_like_delay(1.0, 2.0)
             
             human_like_scroll(page)
+            check_page_health(page)
             
             machine_links = page.query_selector_all(SITE1_MACHINE_LINK)
             machine_numbers = []
@@ -757,10 +805,11 @@ def site1_action(page: Page) -> None:
             # ============================================================
 
             for idx, machine_num in enumerate(machine_numbers):
-                # 本日、1日前、2日前の想定日付を計算
+                # --- 修正箇所: ここから (深夜早朝0-8時の実行時は1日ずらす) ---
                 now = datetime.datetime.now()
-                if now.hour < 8:
+                if 0 <= now.hour < 8:
                     now -= datetime.timedelta(days=1)
+                
                 expected_today = now.strftime("%Y-%m-%d")
                 expected_day1 = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
                 expected_day2 = (now - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
@@ -769,6 +818,7 @@ def site1_action(page: Page) -> None:
                 if expected_today in completed_dates and expected_day1 in completed_dates and expected_day2 in completed_dates:
                     logger.debug(f"Site 1: 台番号 {machine_num} は本日、1日前、2日前のデータがDBに揃っているためスキップ。")
                     continue
+                # --- 修正箇所: ここまで ---
 
                 logger.debug(f"Site 1: [{idx+1}/{len(machine_numbers)}] 台番号 {machine_num} のデータ取得を開始")
                 try:
@@ -776,10 +826,12 @@ def site1_action(page: Page) -> None:
                     if num_btn:
                         num_btn.click()
                         page.wait_for_load_state("networkidle")
+                        check_page_health(page)
                         human_like_delay(2.0, 3.5)
                         
                         # 割り込み要素（ご存意ダイアログ等）のチェック
                         handle_interstitial(page)
+                        check_page_health(page)
 
                         today_date_str = get_today_date(page)
                         today_dt = datetime.datetime.strptime(today_date_str, "%Y-%m-%d")
@@ -838,6 +890,7 @@ def site1_action(page: Page) -> None:
                         logger.info(f"Site 1: 台番号 {machine_num} のデータ取得完了。")
                         
                         page.go_back(wait_until="networkidle")
+                        check_page_health(page)
                         human_like_delay(1.0, 2.0)
                         
                 except Exception as e:
@@ -855,6 +908,7 @@ def site1_action(page: Page) -> None:
                     raise e # 外側のループでリトライさせるために例外を投げる
 
             page.go_back(wait_until="networkidle")
+            check_page_health(page)
             human_like_delay(1.0, 2.0)
 
     except Exception as e:
