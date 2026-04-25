@@ -154,12 +154,12 @@ function estimateSetting(model, games, big, reg) {
 // Initialization
 // ==========================================
 
-async // Chart.js global defaults
+// Chart.js global defaults
 Chart.defaults.font.size = 14;
 Chart.defaults.font.weight = 'bold';
 Chart.defaults.color = '#f1f5f9';
 
-function init() {
+async function init() {
     setupTheme();
     setupEventListeners();
 
