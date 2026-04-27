@@ -1,4 +1,5 @@
 import pickle
+import sqlite3
 import requests
 import re
 import time
@@ -26,6 +27,17 @@ logger = logging.getLogger(__name__)
 PROXY_SERVER = "http://localhost:8118"
 CONTAINER_NAME = "vpngate-proxy"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(SCRIPT_DIR, "slot_data.db")
+
+# みんレポ機種名 → DB登録名のマッピング（みんレポDB登録_オーギヤ半田.py と同期）
+MACHINE_NAME_MAP = {
+    "スマート沖スロ ニューキングハナハナV": "LBﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV",
+    "スマート沖スロ+ニューキングハナハナV": "LBﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV",
+    "ゴーゴージャグラー３":               "ｺﾞｰｺﾞｰｼﾞｬｸﾞﾗｰ3",
+    "ジャグラーガールズSS":               "ｼﾞｬｸﾞﾗｰｶﾞｰﾙｽﾞSS",
+    "ウルトラミラクルジャグラー":         "ｳﾙﾄﾗﾐﾗｸﾙｼﾞｬｸﾞﾗｰ",
+    "ミスタージャグラー":                 "ﾐｽﾀｰｼﾞｬｸﾞﾗｰ",
+}
 
 # BOT検知回避用 User-Agent リスト
 USER_AGENTS = [
@@ -83,6 +95,41 @@ def stop_docker_desktop():
         subprocess.run(f'taskkill /F /IM "{proc}" /T', shell=True, capture_output=True)
 
 
+def is_proxy_working() -> bool:
+    """プロキシが正常に動作しているか確認する。"""
+    try:
+        resp = requests.get(
+            "http://httpbin.org/ip",
+            proxies={"http": PROXY_SERVER, "https": PROXY_SERVER},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            logger.info(f"プロキシ動作確認OK: {resp.json().get('origin')}")
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def is_port_in_use(port: int) -> bool:
+    """指定ポートが使用中か確認する。"""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+
+def is_port_owner_docker(port: int) -> bool:
+    """指定ポートを使用しているのがDockerコンテナか確認する。"""
+    try:
+        res = subprocess.run(
+            ["docker", "ps", "--filter", f"publish={port}", "--format", "{{.ID}}"],
+            capture_output=True, text=True
+        )
+        return bool(res.stdout.strip())
+    except Exception:
+        return False
+
+
 def kill_process_on_port(port: int):
     """指定ポートを使用しているプロセスを強制終了する。"""
     try:
@@ -104,17 +151,33 @@ def kill_process_on_port(port: int):
         logger.error(f"ポート {port} の解放中にエラー: {e}")
 
 
-def setup_docker_proxy() -> bool:
+def setup_docker_proxy(force_restart_docker: bool = False) -> bool:
     """
     VPN Gate Proxyコンテナを起動し、IPが切り替わったことを確認する。
-    成功したら True を返す。失敗した場合は最大20回リトライ。
+    force_restart_docker: Trueの場合、無条件でDocker Desktopの再起動から行う。
     """
-    max_retries = 20
+    if not force_restart_docker:
+        # すでにポートが占有されている場合のチェック
+        if is_port_in_use(8118):
+            if is_port_owner_docker(8118):
+                logger.info("ポート 8118 は既にDockerコンテナによって使用されています。接続確認を行います...")
+                if is_proxy_working():
+                    logger.info("既存のプロキシコンテナが正常に動作しています。")
+                    return True
+                else:
+                    logger.warning("既存のプロキシコンテナが動作していません。フルリセットを行います。")
+                    return restart_proxy()
+            else:
+                logger.warning("ポート 8118 がDocker以外のプロセスによって占有されています。解放を試みます。")
+                kill_process_on_port(8118)
+
+    max_retries = 10
     for attempt in range(max_retries):
         logger.info(f"Dockerコンテナ起動試行中 ({attempt + 1}/{max_retries})...")
-        kill_process_on_port(8118)
+        
+        # コンテナのクリーンアップ
         subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
-
+        
         process = subprocess.Popen(
             ["docker", "run", "--rm", "--name", CONTAINER_NAME,
              "--cap-add=NET_ADMIN", "--device=/dev/net/tun",
@@ -170,31 +233,21 @@ def setup_docker_proxy() -> bool:
                     break
 
             if success:
-                logger.info("localhost:8118 でプロキシの導通確認を行います...")
-                try:
-                    resp = requests.get(
-                        "http://httpbin.org/ip",
-                        proxies={"http": PROXY_SERVER, "https": PROXY_SERVER},
-                        timeout=15
-                    )
-                    if resp.status_code == 200:
-                        logger.info(f"プロキシ接続成功: {resp.json().get('origin')}")
-                        return True
-                    else:
-                        logger.warning(f"導通確認失敗 (ステータスコード: {resp.status_code})")
-                except Exception as e:
-                    logger.warning(f"導通確認中にエラー: {e}")
+                if is_proxy_working():
+                    return True
+                else:
+                    logger.warning("コンテナは起動しましたが、プロキシが正常に動作していません。")
 
         except Exception as e:
             logger.error(f"監視中にエラーが発生しました: {e}")
 
-        logger.warning("起動に失敗しました。再起動します。")
+        logger.warning("起動に失敗しました。コンテナを破棄して再試行します。")
         subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
         process.terminate()
         time.sleep(5)
 
-    logger.error("最大試行回数を超えました。")
-    return False
+    logger.error("コンテナ起動の試行回数が上限に達しました。Docker Desktopの再起動を行います。")
+    return restart_proxy()
 
 
 def restart_proxy() -> bool:
@@ -211,7 +264,7 @@ def restart_proxy() -> bool:
         logger.error("Docker Desktopを再起動できませんでした。")
         return False
 
-    return setup_docker_proxy()
+    return setup_docker_proxy(force_restart_docker=True)
 
 
 # ==========================================
@@ -282,6 +335,40 @@ def save_to_pickle(data, file_path):
 
 
 # ==========================================
+# DB 既存データ確認
+# ==========================================
+
+def is_data_already_scraped(date_str: str, machine_name: str) -> bool:
+    """
+    指定された日付と機種のデータが既に slot_data.db に存在するか確認する。
+    date_str: YYYY/MM/DD
+    machine_name: みんレポ上の機種名
+    """
+    if not os.path.exists(DB_FILE):
+        return False
+
+    # DB登録名に変換（マッピングにある場合）
+    db_machine_name = MACHINE_NAME_MAP.get(machine_name, machine_name)
+    # 日付フォーマット変換 (YYYY/MM/DD -> YYYY-MM-DD)
+    db_date_str = date_str.replace("/", "-")
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # 該当の日付・機種のデータが1件でもあれば「取得済み」とみなす
+        query = "SELECT COUNT(*) FROM slot_data WHERE 日付 = ? AND 機種名 = ?"
+        cursor.execute(query, (db_date_str, db_machine_name))
+        count = cursor.fetchone()[0]
+        
+        conn.close()
+        return count > 0
+    except Exception as e:
+        logger.error(f"DB確認中にエラー: {e}")
+        return False
+
+
+# ==========================================
 # メインスクレイピングロジック（1回分）
 # ==========================================
 
@@ -335,7 +422,7 @@ def _do_scraping(session: requests.Session, start_date: datetime, end_date: date
         logger.info(f"  {text}: {link}")
 
     kishu_values = [
-        '%E3%83%89%E3%83%A9%E3%82%B4%E3%83%B3%E3%83%8F%E3%83%8A%E3%83%8F%E3%83%8A%EF%BD%9E%E9%96%83%E5%85%89%EF%BD%9E%E2%80%9030',
+        #'%E3%83%89%E3%83%A9%E3%82%B4%E3%83%B3%E3%83%8F%E3%83%8A%E3%83%8F%E3%83%8A%EF%BD%9E%E9%96%83%E5%85%89%EF%BD%9E%E2%80%9030',
         '%E3%82%B8%E3%83%A3%E3%82%B0%E3%83%A9%E3%83%BC%E3%82%AC%E3%83%BC%E3%83%AB%E3%82%BASS',
         "%E3%82%A6%E3%83%AB%E3%83%88%E3%83%A9%E3%83%9F%E3%83%A9%E3%82%AF%E3%83%AB%E3%82%B8%E3%83%A3%E3%82%B0%E3%83%A9%E3%83%BC",
         "%E3%83%9F%E3%82%B9%E3%82%BF%E3%83%BC%E3%82%B8%E3%83%A3%E3%82%B0%E3%83%A9%E3%83%BC",
@@ -355,7 +442,6 @@ def _do_scraping(session: requests.Session, start_date: datetime, end_date: date
         for detail_link in detail_links:
             kishu_param = detail_link.split('?kishu=')[-1]
             kishumei = unquote(kishu_param)
-            logger.info(f"取得中: {kishumei}")
 
             link_text = valid_links[i][0]
             today_loop = datetime.today()
@@ -369,6 +455,8 @@ def _do_scraping(session: requests.Session, start_date: datetime, end_date: date
                     if parsed_date > today_loop:
                         parsed_date = datetime(today_loop.year - 1, parsed_date.month, parsed_date.day)
                 date_text = parsed_date.strftime("%Y/%m/%d")
+                # 何月の何の機種かをログに表示
+                logger.info(f"--- 【{parsed_date.month}月】{date_text} {kishumei} スクレイピング中 ---")
             except ValueError:
                 logger.warning(f"日付変換エラー: {date_text}")
                 continue
@@ -377,6 +465,11 @@ def _do_scraping(session: requests.Session, start_date: datetime, end_date: date
             if not weekday_match:
                 continue
             weekday_text = weekday_match.group(2)
+
+            # --- 既存データチェック ---
+            if is_data_already_scraped(date_text, kishumei):
+                logger.info(f"  [SKIP] 既にデータが存在します: {date_text} {kishumei}")
+                continue
 
             # BOT検知回避: リクエスト間にランダム遅延
             human_like_delay(2.0, 5.0)
@@ -427,17 +520,19 @@ def scraping_from_minrepo(start_date: str, end_date: str):
     )
     td_text_list = []
 
-    max_restarts = 20
+    max_restarts = 10
     for attempt in range(max_restarts):
         logger.info(f"=== スクレイピング開始 (試行 {attempt+1}/{max_restarts}) ===")
 
         # Docker Desktop & プロキシ起動
+        # 初回以外は強制的にDocker Desktop再起動から試みる（ループ回避）
+        force_reset = (attempt > 0)
         if not ensure_docker_desktop_running():
             logger.error("Docker Desktopが起動できませんでした。15秒後に再試行します。")
             time.sleep(15)
             continue
 
-        if not setup_docker_proxy():
+        if not setup_docker_proxy(force_restart_docker=force_reset):
             logger.error("Dockerプロキシのセットアップに失敗しました。再試行します。")
             continue
 

@@ -11,8 +11,10 @@ slot_data.db に追加・削除するスクリプト。
 
 例:
   python みんレポDB登録_オーギヤ半田.py add scraped_data_20251013_024419.pkl
-  python みんレポDB登録_オーギヤ半田.py delete 2025-10-13
-  python みんレポDB登録_オーギヤ半田.py delete 2025-10-13 2025-10-12
+  python みんレポDB登録_オーギヤ半田.py delete <開始日>~<終了日>
+  python みんレポDB登録_オーギヤ半田.py delete_range <開始日> <終了日>
+  python みんレポDB登録_オーギヤ半田.py delete 2025-10-10~2025-10-13
+  python みんレポDB登録_オーギヤ半田.py delete_range 2025-10-10 2025-10-13
 """
 
 import sys
@@ -303,43 +305,86 @@ def add_records(pickle_path):
 # ---------------------------------------------------------------
 # 削除処理
 # ---------------------------------------------------------------
-def delete_records(dates):
+def delete_records(date_args):
     """
     指定された日付（YYYY-MM-DD）のみんレポデータをDBから削除する。
     みんレポ由来の機種名（MACHINE_NAME_MAP の値）に絞って削除。
     """
+    for arg in date_args:
+        if "~" in arg:
+            # 期間指定: YYYY-MM-DD~YYYY-MM-DD
+            parts = arg.split("~")
+            if len(parts) == 2:
+                delete_records_range(parts[0], parts[1])
+            else:
+                print(f"  [ERROR] 期間指定の形式が不正です（開始日~終了日）: {arg}")
+        else:
+            # 単一日の削除（従来通り）
+            _delete_single_date(arg)
+
+def _delete_single_date(date_str):
+    """単一日の削除処理（内部用）"""
     minrepo_machines = list(MACHINE_NAME_MAP.values())
     placeholders = ",".join(["?"] * len(minrepo_machines))
 
     conn = sqlite3.connect(DB_FILE)
     ensure_table(conn)
 
-    total_deleted = 0
-    for date_str in dates:
-        # 日付フォーマット統一（YYYY/MM/DD → YYYY-MM-DD）
-        date_str = date_str.replace("/", "-")
-        try:
-            datetime.strptime(date_str, "%Y-%m-%d")
-        except ValueError:
-            print(f"  [ERROR] 日付フォーマット不正（YYYY-MM-DD で指定してください）: {date_str}")
-            continue
+    # 日付フォーマット統一（YYYY/MM/DD → YYYY-MM-DD）
+    date_str = date_str.replace("/", "-")
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        print(f"  [ERROR] 日付フォーマット不正（YYYY-MM-DD で指定してください）: {date_str}")
+        conn.close()
+        return
 
-        cur = conn.execute(
-            f"SELECT COUNT(*) FROM slot_data WHERE 日付=? AND 機種名 IN ({placeholders})",
-            [date_str] + minrepo_machines
-        )
-        count = cur.fetchone()[0]
+    cur = conn.execute(
+        f"SELECT COUNT(*) FROM slot_data WHERE 日付=? AND 機種名 IN ({placeholders})",
+        [date_str] + minrepo_machines
+    )
+    count = cur.fetchone()[0]
 
-        conn.execute(
-            f"DELETE FROM slot_data WHERE 日付=? AND 機種名 IN ({placeholders})",
-            [date_str] + minrepo_machines
-        )
-        conn.commit()
-        total_deleted += count
-        print(f"  [DELETE] {date_str}: {count} 件削除")
-
+    conn.execute(
+        f"DELETE FROM slot_data WHERE 日付=? AND 機種名 IN ({placeholders})",
+        [date_str] + minrepo_machines
+    )
+    conn.commit()
     conn.close()
-    print(f"  [完了] 合計 {total_deleted} 件削除しました。")
+    print(f"  [DELETE] {date_str}: {count} 件削除")
+
+
+def delete_records_range(start_date, end_date):
+    """
+    指定された期間（start_date ～ end_date）のみんレポデータをDBから削除する。
+    """
+    minrepo_machines = list(MACHINE_NAME_MAP.values())
+    placeholders = ",".join(["?"] * len(minrepo_machines))
+    conn = sqlite3.connect(DB_FILE)
+    ensure_table(conn)
+    # 日付フォーマット統一
+    start_date = start_date.replace("/", "-")
+    end_date = end_date.replace("/", "-")
+    try:
+        datetime.strptime(start_date, "%Y-%m-%d")
+        datetime.strptime(end_date, "%Y-%m-%d")
+    except ValueError:
+        print(f"  [ERROR] 日付フォーマット不正（YYYY-MM-DD で指定してください）: {start_date}, {end_date}")
+        conn.close()
+        return
+    cur = conn.execute(
+        f"SELECT COUNT(*) FROM slot_data WHERE 日付 BETWEEN ? AND ? AND 機種名 IN ({placeholders})",
+        [start_date, end_date] + minrepo_machines
+    )
+    count = cur.fetchone()[0]
+    conn.execute(
+        f"DELETE FROM slot_data WHERE 日付 BETWEEN ? AND ? AND 機種名 IN ({placeholders})",
+        [start_date, end_date] + minrepo_machines
+    )
+    conn.commit()
+    conn.close()
+    print(f"  [DELETE] {start_date} ～ {end_date}: {count} 件削除")
+    print(f"  [完了] 合計 {count} 件削除しました。")
 
 
 # ---------------------------------------------------------------
@@ -366,9 +411,19 @@ def main():
     elif command == "delete":
         if len(sys.argv) < 3:
             print("使い方: python みんレポDB登録_オーギヤ半田.py delete <YYYY-MM-DD> [<YYYY-MM-DD> ...]")
+            print("        python みんレポDB登録_オーギヤ半田.py delete <開始日>~<終了日>")
             sys.exit(1)
-        dates = sys.argv[2:]
-        delete_records(dates)
+        date_args = sys.argv[2:]
+        delete_records(date_args)
+
+    elif command == "delete_range":
+        if len(sys.argv) < 4:
+            print("使い方: python みんレポDB登録_オーギヤ半田.py delete_range <開始日> <終了日>")
+            sys.exit(1)
+        start_date = sys.argv[2]
+        end_date = sys.argv[3]
+        delete_records_range(start_date, end_date)
+
 
     else:
         print(f"不明なコマンド: {command}")

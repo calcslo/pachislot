@@ -25,3 +25,5 @@ Call log:
 [20260425_051039] 全体処理エラー, エラー原因: Page.evaluate: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_main_20260425_051039.png
 [20260425_051803] 台番号: 1186, エラー原因: Page.go_back: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_machine_1186_20260425_051803.png
 [20260425_051803] 全体処理エラー, エラー原因: Page.go_back: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_main_20260425_051803.png
+[20260428_055226] 台番号: 0987, エラー原因: Detected proxy error code: ERR_PROXY_CONNECTION_FAILED, スクリーンショット: error_slot_site1_machine_0987_20260428_055226.png
+[20260428_055226] 全体処理エラー, エラー原因: Detected proxy error code: ERR_PROXY_CONNECTION_FAILED, スクリーンショット: error_slot_site1_main_20260428_055226.png

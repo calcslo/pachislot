@@ -191,12 +191,48 @@ def ensure_docker_desktop_running():
     return False
 
 def stop_docker_desktop():
+    """Docker Desktopを終了する。"""
     logger.info("Docker Desktopを終了しています...")
     processes = ["Docker Desktop.exe", "com.docker.backend.exe", "com.docker.proxy.exe"]
     for proc in processes:
         subprocess.run(f'taskkill /F /IM "{proc}" /T', shell=True, capture_output=True)
 
+def is_proxy_working() -> bool:
+    """プロキシが正常に動作しているか確認する。"""
+    try:
+        resp = requests.get(
+            "http://httpbin.org/ip",
+            proxies={"http": PROXY_SERVER, "https": PROXY_SERVER},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            logger.info(f"プロキシ動作確認OK: {resp.json().get('origin')}")
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def is_port_in_use(port: int) -> bool:
+    """指定ポートが使用中か確認する。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+
+def is_port_owner_docker(port: int) -> bool:
+    """指定ポートを使用しているのがDockerコンテナか確認する。"""
+    try:
+        res = subprocess.run(
+            ["docker", "ps", "--filter", f"publish={port}", "--format", "{{.ID}}"],
+            capture_output=True, text=True
+        )
+        return bool(res.stdout.strip())
+    except Exception:
+        return False
+
+
 def kill_process_on_port(port: int):
+    """指定ポートを使用しているプロセスを強制終了する。"""
     try:
         result = subprocess.run(
             f'netstat -ano | findstr :{port}',
@@ -215,11 +251,48 @@ def kill_process_on_port(port: int):
     except Exception as e:
         logger.error(f"ポート {port} の解放中にエラー: {e}")
 
-def setup_docker_proxy():
-    max_retries = 20
+
+def restart_proxy() -> bool:
+    """
+    Dockerコンテナを停止→Docker Desktop再起動→コンテナ再起動を行い、
+    プロキシIPを切り替える。
+    """
+    logger.info("=== Docker再起動・プロキシ切替を開始します ===")
+    subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
+    stop_docker_desktop()
+    time.sleep(15)
+
+    if not ensure_docker_desktop_running():
+        logger.error("Docker Desktopを再起動できませんでした。")
+        return False
+
+    return setup_docker_proxy(force_restart_docker=True)
+
+def setup_docker_proxy(force_restart_docker: bool = False) -> bool:
+    """
+    VPN Gate Proxyコンテナを起動し、IPが切り替わったことを確認する。
+    force_restart_docker: Trueの場合、無条件でDocker Desktopの再起動から行う。
+    """
+    if not force_restart_docker:
+        # すでにポートが占有されている場合のチェック
+        if is_port_in_use(8118):
+            if is_port_owner_docker(8118):
+                logger.info("ポート 8118 は既にDockerコンテナによって使用されています。接続確認を行います...")
+                if is_proxy_working():
+                    logger.info("既存のプロキシコンテナが正常に動作しています。")
+                    return True
+                else:
+                    logger.warning("既存のプロキシコンテナが動作していません。フルリセットを行います。")
+                    return restart_proxy()
+            else:
+                logger.warning("ポート 8118 がDocker以外のプロセスによって占有されています。解放を試みます。")
+                kill_process_on_port(8118)
+
+    max_retries = 10
     for attempt in range(max_retries):
         logger.info(f"Dockerコンテナ起動試行中 ({attempt + 1}/{max_retries})...")
-        kill_process_on_port(8118)
+        
+        # コンテナのクリーンアップ
         subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
         
         process = subprocess.Popen(
@@ -277,29 +350,21 @@ def setup_docker_proxy():
                     break
             
             if success:
-                logger.info("localhost:8118 でプロキシの導通確認を行います...")
-                try:
-                    resp = requests.get("http://httpbin.org/ip", 
-                                        proxies={"http": PROXY_SERVER, "https": PROXY_SERVER}, 
-                                        timeout=10)
-                    if resp.status_code == 200:
-                        logger.info(f"プロキシ接続成功: {resp.json().get('origin')}")
-                        return True
-                    else:
-                        logger.warning(f"導通確認失敗 (ステータスコード: {resp.status_code})")
-                except Exception as e:
-                    logger.warning(f"導通確認中にエラー: {e}")
+                if is_proxy_working():
+                    return True
+                else:
+                    logger.warning("コンテナは起動しましたが、プロキシが正常に動作していません。")
             
         except Exception as e:
             logger.error(f"監視中にエラーが発生しました: {e}")
         
-        logger.warning("起動に失敗しました。再起動します。")
+        logger.warning("起動に失敗しました。コンテナを破棄して再試行します。")
         subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
         process.terminate()
         time.sleep(5)
         
-    logger.error("最大試行回数を超えました。")
-    return False
+    logger.error("コンテナ起動の試行回数が上限に達しました。Docker Desktopの再起動を行います。")
+    return restart_proxy()
 
 def human_like_delay(min_sec: float = 1.0, max_sec: float = 3.0):
     delay = random.uniform(min_sec, max_sec)
@@ -818,8 +883,9 @@ def site1_action(page: Page) -> None:
                 if expected_today in completed_dates and expected_day1 in completed_dates and expected_day2 in completed_dates:
                     logger.debug(f"Site 1: 台番号 {machine_num} は本日、1日前、2日前のデータがDBに揃っているためスキップ。")
                     continue
-                # --- 修正箇所: ここまで ---
 
+                # 何月の何の機種かをログに表示
+                logger.info(f"--- 【{now.month}月】{model_name} (台番号: {machine_num}) スクレイピング中 ---")
                 logger.debug(f"Site 1: [{idx+1}/{len(machine_numbers)}] 台番号 {machine_num} のデータ取得を開始")
                 try:
                     num_btn = page.query_selector(f"a.btn-dai:has-text('{machine_num}')")
@@ -945,14 +1011,16 @@ def main():
     migrate_csv_to_db()
     
     # 処理ループ (エラー時のリトライ付き)
-    max_restarts = 20
+    max_restarts = 10
     for attempt in range(max_restarts):
         try:
+            # 初回以外は強制的にDocker Desktop再起動から試みる（ループ回避）
+            force_reset = (attempt > 0)
             if not ensure_docker_desktop_running():
                 logger.error("Docker Desktopが起動できなかったため、処理を中止します。")
                 break
             
-            if not setup_docker_proxy():
+            if not setup_docker_proxy(force_restart_docker=force_reset):
                 logger.error("Dockerプロキシのセットアップに失敗しました。再試行します。")
                 continue
             
@@ -966,9 +1034,9 @@ def main():
             logger.error(f"スクレイピング中に致命的なエラーが発生しました (試行 {attempt+1}/{max_restarts}): {e}")
             if attempt < max_restarts - 1:
                 logger.info("Docker Desktopとコンテナを再起動してリトライします...")
-                subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
-                stop_docker_desktop()
-                time.sleep(15)
+                if not restart_proxy():
+                    logger.warning("プロキシ再起動に失敗。15秒後に再試行します。")
+                    time.sleep(15)
             else:
                 logger.error("最大リトライ回数に達したため、処理を終了します。")
     
