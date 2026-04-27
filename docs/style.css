@@ -306,6 +306,14 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     border-radius: 12px;
 }
 
+.heatmap-inner {
+    display: inline-block;
+    min-width: max-content;
+    transform-origin: 0 0;
+    transition: transform 0.05s linear; /* Subtle smoothing for small updates */
+    will-change: transform;
+}
+
 .heatmap-row {
     display: flex;
     gap: 2px;

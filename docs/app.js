@@ -469,6 +469,8 @@ function updateHeatmapLegends(){
 
 function buildHeatmapGrid(wrapId,cellBuilder){
     const wrap=document.getElementById(wrapId);wrap.innerHTML='';
+    const inner=document.createElement('div');
+    inner.className='heatmap-inner';
     layoutData.forEach((row,rIdx)=>{
         const rowEl=document.createElement('div');rowEl.className='heatmap-row';
         row.forEach((cell,cIdx)=>{
@@ -477,8 +479,9 @@ function buildHeatmapGrid(wrapId,cellBuilder){
             if(!isEmpty){el.textContent=cell;cellBuilder(el,num,rIdx,cIdx);}
             rowEl.appendChild(el);
         });
-        wrap.appendChild(rowEl);
+        inner.appendChild(rowEl);
     });
+    wrap.appendChild(inner);
     return wrap;
 }
 
@@ -549,6 +552,8 @@ function renderHeatmaps(data){
     if(rl) rl.innerHTML = generateLegendHtml(islandThresholds);
 
     const rowWrap=document.getElementById('row-heatmap-wrapper');rowWrap.innerHTML='';
+    const rowInner=document.createElement('div');
+    rowInner.className='heatmap-inner';
     layoutData.forEach(row=>{
         const rowEl=document.createElement('div');rowEl.className='heatmap-row';
         row.forEach(cell=>{
@@ -566,8 +571,9 @@ function renderHeatmaps(data){
             }
             rowEl.appendChild(el);
         });
-        rowWrap.appendChild(rowEl);
+        rowInner.appendChild(rowEl);
     });
+    rowWrap.appendChild(rowInner);
 
     // Bar chart under island heatmap
     const islandArr=Object.entries(islandStats).map(([label,st])=>({label,avg:islandAvgs[label],min:st.min}));
@@ -608,7 +614,7 @@ function renderHeatmaps(data){
 function applyHeatmapCellSizes(){
     if(!layoutData.length)return;
     const numCols=layoutData[0].length;
-    const wrapIds=['diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper'];
+    const wrapIds=['diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper','target-heatmap-wrapper'];
     wrapIds.forEach(id=>{
         const wrap=document.getElementById(id);
         if(!wrap||!wrap.children.length)return;
@@ -631,13 +637,13 @@ function applyHeatmapCellSizes(){
 // ==========================================
 // HEATMAP PINCH ZOOM (mobile)
 // ==========================================
-const _heatmapZoom={}; // id -> {scale, lastDist, originX, originY}
+const _heatmapZoom={}; // id -> {scale, lastDist, ticking, origW, origH}
 
 function enableHeatmapPinchZoom(id){
     const wrap=document.getElementById(id);
     if(!wrap||wrap.dataset.pinchEnabled)return;
     wrap.dataset.pinchEnabled='true';
-    if(!_heatmapZoom[id])_heatmapZoom[id]={scale:1,lastDist:null};
+    if(!_heatmapZoom[id])_heatmapZoom[id]={scale:1,lastDist:null,ticking:false};
     const state=_heatmapZoom[id];
 
     function getDist(touches){
@@ -646,9 +652,30 @@ function enableHeatmapPinchZoom(id){
         return Math.sqrt(dx*dx+dy*dy);
     }
 
+    function updateZoom(){
+        const inner=wrap.querySelector('.heatmap-inner');
+        if(!inner) return;
+        inner.style.transform=`scale(${state.scale})`;
+        
+        // Update margins to ensure parent scrollable area matches visual size
+        if(!state.origW){
+            state.origW = inner.offsetWidth;
+            state.origH = inner.offsetHeight;
+        }
+        inner.style.marginRight = (state.origW * (state.scale - 1)) + 'px';
+        inner.style.marginBottom = (state.origH * (state.scale - 1)) + 'px';
+        
+        state.ticking = false;
+    }
+
     wrap.addEventListener('touchstart',e=>{
         if(e.touches.length===2){
             state.lastDist=getDist(e.touches);
+            const inner=wrap.querySelector('.heatmap-inner');
+            if(inner && (!state.origW || state.origW === 0)){
+                state.origW = inner.offsetWidth;
+                state.origH = inner.offsetHeight;
+            }
         }
     },{passive:true});
 
@@ -659,15 +686,10 @@ function enableHeatmapPinchZoom(id){
             if(state.lastDist&&state.lastDist>0){
                 const delta=dist/state.lastDist;
                 state.scale=Math.min(4,Math.max(0.5,state.scale*delta));
-                const inner=wrap.querySelector('.heatmap-row')?.parentElement||wrap.firstElementChild;
-                // Apply scale to all rows container
-                const rows=wrap.querySelectorAll('.heatmap-row');
-                rows.forEach(row=>{
-                    row.style.transformOrigin='left top';
-                    row.style.transform=`scaleX(${state.scale}) scaleY(${state.scale})`;
-                });
-                // Also update wrapper height to accommodate scaled content
-                wrap.style.height='';
+                if(!state.ticking){
+                    requestAnimationFrame(updateZoom);
+                    state.ticking=true;
+                }
             }
             state.lastDist=dist;
         }
@@ -683,11 +705,19 @@ function enableHeatmapPinchZoom(id){
 function resetHeatmapZoom(id){
     const wrap=document.getElementById(id);
     if(!wrap)return;
-    if(_heatmapZoom[id])_heatmapZoom[id].scale=1;
-    wrap.querySelectorAll('.heatmap-row').forEach(row=>{
-        row.style.transform='';
-        row.style.transformOrigin='';
-    });
+    const state = _heatmapZoom[id];
+    if(state) {
+        state.scale=1;
+        state.lastDist=null;
+        state.origW=0;
+        state.origH=0;
+    }
+    const inner=wrap.querySelector('.heatmap-inner');
+    if(inner){
+        inner.style.transform='';
+        inner.style.marginRight='';
+        inner.style.marginBottom='';
+    }
 }
 
 
@@ -1244,6 +1274,8 @@ function renderDateDetail(date){
 
 function buildModalHeatmap(wrapId,cellBuilder){
     const wrap=document.getElementById(wrapId);if(!wrap)return;wrap.innerHTML='';
+    const inner=document.createElement('div');
+    inner.className='heatmap-inner';
     layoutData.forEach(row=>{
         const rowEl=document.createElement('div');rowEl.className='heatmap-row';
         row.forEach(cell=>{
@@ -1252,8 +1284,11 @@ function buildModalHeatmap(wrapId,cellBuilder){
             if(!isEmpty){el.textContent=cell;cellBuilder(el,normalizeNum(cell));}
             rowEl.appendChild(el);
         });
-        wrap.appendChild(rowEl);
+        inner.appendChild(rowEl);
     });
+    wrap.appendChild(inner);
+    // Modal heatmaps also need zoom
+    enableHeatmapPinchZoom(wrapId);
 }
 
 // ==========================================
@@ -1617,6 +1652,8 @@ function renderTargetSupport(filteredData){
 
     // 10. Render island heatmap
     const wrap=document.getElementById('target-heatmap-wrapper');wrap.innerHTML='';
+    const inner=document.createElement('div');
+    inner.className='heatmap-inner';
     const isMobile=window.innerWidth<768;
 
     layoutData.forEach(row=>{
@@ -1707,8 +1744,10 @@ function renderTargetSupport(filteredData){
             }
             rowEl.appendChild(el);
         });
-        wrap.appendChild(rowEl);
+        inner.appendChild(rowEl);
     });
+    wrap.appendChild(inner);
+    enableHeatmapPinchZoom('target-heatmap-wrapper');
 
     document.getElementById('target-results').style.display='block';
 }
