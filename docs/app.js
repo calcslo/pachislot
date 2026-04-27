@@ -269,6 +269,7 @@ function calculateDynamicThresholds(data){
     diffThresholds.pos2=pos.length?percentile(pos,66):2000;
     diffThresholds.neg1=neg.length?percentile(neg,33):-2000;
     diffThresholds.neg2=neg.length?percentile(neg,66):-1000;
+    updateHeatmapLegends();
 }
 
 function updateDashboard(){
@@ -396,7 +397,6 @@ function buildHeatmapGrid(wrapId,cellBuilder){
 
 function renderHeatmaps(data){
     const activeData=activeDate?data.filter(d=>d['日付']===activeDate):data;
-    updateHeatmapLegends();
 
     const ms={};
     activeData.forEach(row=>{

@@ -374,6 +374,7 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     border: 1px solid var(--glass-border);
     border-radius: 16px;
     padding: 1.25rem;
+    min-width: 0;
 }
 
 .chart-title {
@@ -502,8 +503,27 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     .dashboard-container { padding: 0.5rem; }
     .header { padding: 0.5rem 1rem; }
     .nav-btn { font-size: 0.8rem; padding: 0.5rem 0.25rem; }
-    .chart-grid { grid-template-columns: 1fr; }
-    .heatmap-cell { width: 36px; height: 36px; font-size: 0.75rem; }
+    .chart-grid { grid-template-columns: minmax(0, 1fr); }
+    
+    .heatmap-wrapper { padding: 0.25rem; }
+    .heatmap-row {
+        min-width: 0;
+        width: 100%;
+        gap: 1px;
+        margin-bottom: 1px;
+    }
+    .heatmap-cell { 
+        width: auto; 
+        height: auto; 
+        flex: 1; 
+        min-width: 0;
+        aspect-ratio: 1 / 1; 
+        font-size: clamp(6px, 1.8vw, 11px); 
+        padding: 0;
+    }
+    .heatmap-cell.streak-cell {
+        font-size: clamp(5px, 1.3vw, 9px);
+    }
     .modal-overlay { padding: 0.5rem; }
 }
 
@@ -887,8 +907,8 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 
 /* Responsive for target section */
 @media (max-width: 768px) {
-    .target-conditions-grid { grid-template-columns: 1fr; }
-    .target-priority-section { grid-template-columns: 1fr; }
+    .target-conditions-grid { grid-template-columns: minmax(0, 1fr); }
+    .target-priority-section { grid-template-columns: minmax(0, 1fr); }
 }
 
 
