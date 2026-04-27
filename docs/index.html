@@ -171,8 +171,10 @@
             <section id="machine-section" class="glass-panel" style="display:none;">
                 <h2 class="section-title">台番号別 平均差枚</h2>
                 <p class="section-note">※同一台番号に複数機種がある場合、最新以外は（機種名）で表示</p>
-                <div class="chart-container" id="machine-chart-container">
-                    <canvas id="chart-machine-diff"></canvas>
+                <div class="chart-scroll-wrapper">
+                    <div class="chart-container" id="machine-chart-container">
+                        <canvas id="chart-machine-diff"></canvas>
+                    </div>
                 </div>
             </section>
 
@@ -233,7 +235,11 @@
 
                     <div class="chart-card" style="grid-column: 1 / -1;">
                         <h3 class="chart-title">機種別 平均差枚</h3>
-                        <canvas id="chart-model"></canvas>
+                        <div class="chart-scroll-wrapper">
+                            <div class="chart-container">
+                                <canvas id="chart-model"></canvas>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 日付(1〜31日)ごとの平均差枚・出率 -->
@@ -259,14 +265,18 @@
                         </div>
                         <div style="margin-top:1rem;">
                             <h4 class="chart-subtitle">前日までの月累積差枚別 当日平均差枚（棒グラフ）</h4>
-                            <div class="chart-container" style="margin-top:0.5rem;">
-                                <canvas id="chart-cumul-diff-bar"></canvas>
+                            <div class="chart-scroll-wrapper" style="margin-top:0.5rem;">
+                                <div class="chart-container">
+                                    <canvas id="chart-cumul-diff-bar"></canvas>
+                                </div>
                             </div>
                         </div>
                         <div style="margin-top:1.5rem;">
                             <h4 class="chart-subtitle">前日までの月累積差枚別 当日出率（棒グラフ）</h4>
-                            <div class="chart-container" style="margin-top:0.5rem;">
-                                <canvas id="chart-cumul-payout-bar"></canvas>
+                            <div class="chart-scroll-wrapper" style="margin-top:0.5rem;">
+                                <div class="chart-container">
+                                    <canvas id="chart-cumul-payout-bar"></canvas>
+                                </div>
                             </div>
                         </div>
                         <div style="margin-top:1.5rem;">

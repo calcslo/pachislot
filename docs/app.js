@@ -69,9 +69,12 @@ Chart.defaults.font.size=14;Chart.defaults.font.weight='bold';Chart.defaults.col
 
 async function init(){
     setupTheme();setupEventListeners();
+    window.addEventListener('resize',()=>requestAnimationFrame(applyHeatmapCellSizes));
     try{
         const[dr,lr]=await Promise.all([fetch('data.json'),fetch('layout.json')]);
         rawData=await dr.json();layoutData=await lr.json();
+        const maxCols = layoutData.reduce((max, r) => Math.max(max, r.length), 0);
+        layoutData.forEach(r => { while(r.length < maxCols) r.push(''); });
         buildLayoutLookup();
         populateTargetModelFilter();
         updateDashboard();
@@ -272,6 +275,68 @@ function calculateDynamicThresholds(data){
     updateHeatmapLegends();
 }
 
+function enableChartPan(id, isPayout=false){
+    const canvas = document.getElementById(id);
+    if(!canvas || canvas.dataset.panEnabled) return;
+    canvas.dataset.panEnabled = "true";
+    
+    let isDragging = false, lastX = 0;
+    const getChart = () => Chart.getChart(canvas);
+    
+    const shiftScale = (chart, shiftPixels) => {
+        const scale = chart.scales.x;
+        const range = scale.max - scale.min;
+        const chartAreaWidth = chart.chartArea.right - chart.chartArea.left;
+        if(chartAreaWidth <= 0) return;
+        
+        const valueShift = (shiftPixels / chartAreaWidth) * range;
+        
+        const vals = chart.data.datasets[0].data;
+        const dataMin = vals.reduce((a,b)=>Math.min(a,b), 0);
+        const dataMax = vals.reduce((a,b)=>Math.max(a,b), 0);
+        
+        const boundMin = isPayout ? Math.min(80, dataMin - 5) : Math.min(-2000, dataMin - 500);
+        const boundMax = isPayout ? Math.max(120, dataMax + 5) : Math.max(2000, dataMax + 500);
+
+        let newMin = scale.min - valueShift;
+        let newMax = scale.max - valueShift;
+
+        if(newMin < boundMin) { newMin = boundMin; newMax = boundMin + range; }
+        if(newMax > boundMax) { newMax = boundMax; newMin = boundMax - range; }
+
+        chart.options.scales.x.min = newMin;
+        chart.options.scales.x.max = newMax;
+        chart.update('none');
+    };
+
+    canvas.addEventListener('mousedown', e => { isDragging=true; lastX=e.clientX; canvas.style.cursor='grabbing'; });
+    window.addEventListener('mouseup', () => { isDragging=false; canvas.style.cursor='auto'; });
+    window.addEventListener('mousemove', e => { if(!isDragging)return; shiftScale(getChart(), e.clientX - lastX); lastX=e.clientX; });
+    
+    canvas.addEventListener('wheel', e => {
+        if(Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+            e.preventDefault();
+            shiftScale(getChart(), -e.deltaX);
+        }
+    }, {passive: false});
+
+    let touchX=0, touchY=0, isPanning=false;
+    canvas.addEventListener('touchstart', e => {
+        if(e.touches.length===1){ touchX=e.touches[0].clientX; touchY=e.touches[0].clientY; isPanning=false; }
+    }, {passive: true});
+    canvas.addEventListener('touchmove', e => {
+        if(e.touches.length===1){
+            const dx=e.touches[0].clientX - touchX, dy=e.touches[0].clientY - touchY;
+            if(!isPanning && Math.abs(dx) > Math.abs(dy) + 5) isPanning = true;
+            if(isPanning){
+                e.preventDefault();
+                shiftScale(getChart(), dx);
+                touchX=e.touches[0].clientX; touchY=e.touches[0].clientY;
+            }
+        }
+    }, {passive: false});
+}
+
 function updateDashboard(){
     const f=getFilteredData();calculateDynamicThresholds(f);
     const sec=document.querySelector('.main-nav .nav-btn.active').dataset.section;
@@ -341,7 +406,7 @@ function renderSummary(data){
 
     const ctx=document.getElementById('diff-chart');
     if(charts['daily'])charts['daily'].destroy();
-    const h=Math.max(400,dailyArr.length*45);
+    const h=Math.max(300,dailyArr.length*28);
     ctx.parentElement.style.height=`${h}px`;
     charts['daily']=new Chart(ctx,{
         type:'bar',data:{labels:chartLabels,datasets:[{data:chartData,backgroundColor:chartData.map(v=>v>0?'rgba(59,130,246,0.8)':'rgba(239,68,68,0.8)'),borderRadius:4}]},
@@ -356,19 +421,18 @@ function renderSummary(data){
 // ==========================================
 const SETTING_COLORS={1:'rgba(60,20,180,0.8)',2:'rgba(30,100,230,0.8)',3:'rgba(0,190,255,0.8)',4:'rgba(255,220,0,0.8)',5:'rgba(255,130,0,0.8)',6:'rgba(230,40,40,0.8)'};
 
-function getHeatmapColor(v){
+function getHeatmapColor(v, t=diffThresholds){
     if(v===0)return'transparent';
-    if(v<=diffThresholds.neg1)return'rgba(60,20,180,0.8)';
-    if(v<=diffThresholds.neg2)return'rgba(30,100,230,0.8)';
+    if(v<=t.neg1)return'rgba(60,20,180,0.8)';
+    if(v<=t.neg2)return'rgba(30,100,230,0.8)';
     if(v<0)return'rgba(0,190,255,0.8)';
-    if(v<=diffThresholds.pos1)return'rgba(255,220,0,0.8)';
-    if(v<=diffThresholds.pos2)return'rgba(255,130,0,0.8)';
+    if(v<=t.pos1)return'rgba(255,220,0,0.8)';
+    if(v<=t.pos2)return'rgba(255,130,0,0.8)';
     return'rgba(230,40,40,0.8)';
 }
 
-function updateHeatmapLegends(){
-    const t=diffThresholds;
-    const lHtml=`
+function generateLegendHtml(t){
+    return `
         <div class="legend-item"><span class="color-box" style="background:rgba(60,20,180,0.8)"></span>${Math.round(t.neg1)}以下</div>
         <div class="legend-item"><span class="color-box" style="background:rgba(30,100,230,0.8)"></span>${Math.round(t.neg1)}〜${Math.round(t.neg2)}</div>
         <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.8)"></span>${Math.round(t.neg2)}〜-1</div>
@@ -376,8 +440,11 @@ function updateHeatmapLegends(){
         <div class="legend-item"><span class="color-box" style="background:rgba(255,220,0,0.8)"></span>1〜${Math.round(t.pos1)}</div>
         <div class="legend-item"><span class="color-box" style="background:rgba(255,130,0,0.8)"></span>${Math.round(t.pos1)}〜${Math.round(t.pos2)}</div>
         <div class="legend-item"><span class="color-box" style="background:rgba(230,40,40,0.8)"></span>${Math.round(t.pos2)}以上</div>`;
-    document.getElementById('diff-legend').innerHTML=lHtml;
-    document.getElementById('row-legend').innerHTML=lHtml;
+}
+
+function updateHeatmapLegends(){
+    const lHtml = generateLegendHtml(diffThresholds);
+    const dl = document.getElementById('diff-legend'); if(dl) dl.innerHTML=lHtml;
 }
 
 function buildHeatmapGrid(wrapId,cellBuilder){
@@ -448,6 +515,19 @@ function renderHeatmaps(data){
     const islandAvgs={};
     for(const[iId,st]of Object.entries(islandStats)){islandAvgs[iId]=st.count>0?Math.round(st.total/st.count):0;}
 
+    // Calculate dynamic thresholds for islands based on island averages
+    const iAvgVals = Object.values(islandAvgs).filter(v => v !== 0);
+    const iPos = iAvgVals.filter(v => v > 0);
+    const iNeg = iAvgVals.filter(v => v < 0);
+    const islandThresholds = {
+        pos1: iPos.length ? percentile(iPos, 33) : 200,
+        pos2: iPos.length ? percentile(iPos, 66) : 500,
+        neg1: iNeg.length ? percentile(iNeg, 33) : -500,
+        neg2: iNeg.length ? percentile(iNeg, 66) : -200
+    };
+    const rl = document.getElementById('row-legend');
+    if(rl) rl.innerHTML = generateLegendHtml(islandThresholds);
+
     const rowWrap=document.getElementById('row-heatmap-wrapper');rowWrap.innerHTML='';
     layoutData.forEach(row=>{
         const rowEl=document.createElement('div');rowEl.className='heatmap-row';
@@ -460,7 +540,7 @@ function renderHeatmaps(data){
                 const iId=layoutLookup[num]?layoutLookup[num].islandId:'不明';
                 el.dataset.islandId=iId;
                 const iAvg=islandAvgs[iId]||0;
-                el.style.backgroundColor=getHeatmapColor(iAvg);
+                el.style.backgroundColor=getHeatmapColor(iAvg, islandThresholds);
                 el.addEventListener('mouseenter',()=>{tooltip.innerHTML=`<div class="tooltip-title">${iId}</div><div class="tooltip-body"><div>平均差枚: ${formatVal(iAvg)}</div></div>`;tooltip.classList.add('visible');});
                 el.addEventListener('mouseleave',()=>tooltip.classList.remove('visible'));
             }
@@ -475,7 +555,7 @@ function renderHeatmaps(data){
     const labels=islandArr.map(r=>r.label),vals=islandArr.map(r=>r.avg);
     const cCtx=document.getElementById('chart-row-avg-heatmap');
     if(charts['row-heatmap'])charts['row-heatmap'].destroy();
-    const h=Math.max(400,labels.length*42);
+    const h=Math.max(250,labels.length*26);
     cCtx.parentElement.style.height=`${h}px`;
     charts['row-heatmap']=new Chart(cCtx,{
         type:'bar',
@@ -495,6 +575,34 @@ function renderHeatmaps(data){
                 }
             }
         }
+    });
+    // Apply JS-computed cell sizes on mobile for accurate alignment
+    requestAnimationFrame(applyHeatmapCellSizes);
+}
+
+// ==========================================
+// HEATMAP CELL AUTO-SIZING (mobile)
+// ==========================================
+function applyHeatmapCellSizes(){
+    if(!layoutData.length)return;
+    const numCols=layoutData[0].length;
+    const wrapIds=['diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper'];
+    wrapIds.forEach(id=>{
+        const wrap=document.getElementById(id);
+        if(!wrap||!wrap.children.length)return;
+        // Use actual rendered width of wrapper (works on both PC and mobile)
+        const availW=wrap.clientWidth-8;// minus padding
+        const gap=numCols-1;// 1px gaps
+        const cellSize=Math.max(16,Math.floor((availW-gap)/numCols));
+        // For PC (44px fixed), skip if computed size >= 44
+        if(cellSize>=44)return;
+        // Font size: for 4-digit numbers, factor 0.35 fits comfortably with bold font
+        const fontSize=Math.max(5,Math.floor(cellSize*0.35));
+        wrap.querySelectorAll('.heatmap-cell').forEach(cell=>{
+            cell.style.width=cellSize+'px';
+            cell.style.height=cellSize+'px';
+            cell.style.fontSize=fontSize+'px';
+        });
     });
 }
 
@@ -528,9 +636,11 @@ function renderMachineTab(data){
     items.sort((a,b)=>parseInt(a.num)-parseInt(b.num));
 
     const labels=items.map(i=>i.label),vals=items.map(i=>i.avg);
-    const h=Math.max(600,labels.length*42);
+    const h=Math.max(250,labels.length*16+40);
     const container=document.getElementById('machine-chart-container');
     container.style.height=`${h}px`;
+    container.style.minWidth='0px';
+    
     const ctx=document.getElementById('chart-machine-diff');
     if(charts['machine'])charts['machine'].destroy();
     charts['machine']=new Chart(ctx,{
@@ -538,48 +648,73 @@ function renderMachineTab(data){
         data:{labels,datasets:[{label:'平均差枚',data:vals,backgroundColor:vals.map(v=>v>0?'rgba(59,130,246,0.7)':'rgba(239,68,68,0.7)'),borderRadius:4}]},
         options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
             plugins:{legend:{display:false},datalabels:{display:false}},
-            scales:{x:{grid:{color:'rgba(128,128,128,0.2)'}},y:{grid:{display:false},ticks:{font:{size:14,weight:'bold'},autoSkip:false}}}}
+            scales:{x:{min:-2000,max:2000,grid:{color:'rgba(128,128,128,0.2)'}},y:{grid:{display:false},ticks:{font:{size:12,weight:'bold'},autoSkip:false}}}}
     });
+    enableChartPan('chart-machine-diff', false);
 }
 
 // ==========================================
 // ANALYSIS SECTION
 // ==========================================
-function drawDotChart(id,labels,vals,label){
+function drawDotChart(id,labels,vals,label,extraOpts={}){
     const ctx=document.getElementById(id);if(!ctx)return;
-    const h=Math.max(300,labels.length*35);
+    const h=Math.max(150,labels.length*16+40);
     ctx.style.height=`${h}px`;ctx.parentElement.style.height=`${h}px`;
+    ctx.parentElement.style.minWidth='0px';
+    
     if(charts[id])charts[id].destroy();
-    const maxDev=Math.max(2,...vals.map(v=>Math.abs(v-100)));
+    const maxDev = vals.reduce((max, v) => Math.max(max, Math.abs(v-100)), 2);
+    
+    const scales = {
+        x:{grid:{color:(ctx)=>{if(ctx.tick.value===100)return'rgba(255,255,255,0.3)';return'rgba(128,128,128,0.2)';}},min:100-maxDev,max:100+maxDev,title:{display:true,text:label}},
+        y:{grid:{display:false},ticks:{font:{size:12},autoSkip:false}}
+    };
+    
+    if(extraOpts.dynamicWidth){
+        scales.x.min = 90;
+        scales.x.max = 110;
+    }
+    
     charts[id]=new Chart(ctx,{
         type:'line',
         data:{labels,datasets:[{label,data:vals,backgroundColor:vals.map(v=>v>=100?'rgba(59,130,246,0.9)':'rgba(239,68,68,0.9)'),borderColor:'transparent',pointRadius:6,pointHoverRadius:8,showLine:false}]},
         options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
             plugins:{legend:{display:false},datalabels:{display:false}},
-            scales:{
-                x:{grid:{color:(ctx)=>{if(ctx.tick.value===100)return'rgba(255,255,255,0.3)';return'rgba(128,128,128,0.2)';}},min:100-maxDev,max:100+maxDev,title:{display:true,text:label}},
-                y:{grid:{display:false},ticks:{font:{size:12},autoSkip:false}}
-            }
+            scales: scales
         }
     });
+    if(extraOpts.dynamicWidth) enableChartPan(id, true);
 }
 
 function drawBar(id,labels,vals,label,extraOpts={}){
     const ctx=document.getElementById(id);if(!ctx)return;
-    const h=Math.max(300,labels.length*42);
-    // Set height on the canvas element itself AND its parent to ensure Chart.js respects it
+    const h=Math.max(150,labels.length*16+40);
     ctx.style.height=`${h}px`;
     ctx.parentElement.style.height=`${h}px`;
+    ctx.parentElement.style.minWidth='0px';
+    
     if(charts[id])charts[id].destroy();
+    
+    const scales = {x:{grid:{color:'rgba(128,128,128,0.2)'}},y:{grid:{display:false},ticks:{font:{size:12},autoSkip:false}}};
+    if(extraOpts.dynamicWidth){
+        scales.x.min = -2000;
+        scales.x.max = 2000;
+    }
+    if(extraOpts.optExtras && extraOpts.optExtras.scales) {
+        Object.assign(scales.x, extraOpts.optExtras.scales.x||{});
+        Object.assign(scales.y, extraOpts.optExtras.scales.y||{});
+    }
+
     charts[id]=new Chart(ctx,{
         type:'bar',
         data:{labels,datasets:[{label,data:vals,backgroundColor:vals.map(v=>v>0?'rgba(59,130,246,0.7)':'rgba(239,68,68,0.7)'),borderRadius:4,...(extraOpts.datasetExtras||{})}]},
         options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
             plugins:{legend:{display:false},datalabels:{display:false}},
-            scales:{x:{grid:{color:'rgba(128,128,128,0.2)'}},y:{grid:{display:false},ticks:{font:{size:12},autoSkip:false}}},
+            scales: scales,
             ...(extraOpts.optExtras||{})
         }
     });
+    if(extraOpts.dynamicWidth) enableChartPan(id, false);
 }
 
 function computeCumulDiffByDate(allRawData){
@@ -660,7 +795,7 @@ function renderAnalysis(data){
     const ordW=wdOrder.map(i=>({...wdays[i],name:wdNames[i]}));
     drawBar('chart-weekday',ordW.filter(w=>w.c>0).map(w=>w.name),ordW.filter(w=>w.c>0).map(w=>w.diff/w.c),'平均差枚');
     drawBar('chart-position',buildCD(positions).labels,buildCD(positions).dDiff,'平均差枚');
-    drawBar('chart-model',buildCD(models).labels,buildCD(models).dDiff,'平均差枚');
+    drawBar('chart-model',buildCD(models).labels,buildCD(models).dDiff,'平均差枚',{dynamicWidth:true});
 
     // Day of month (1-31) bar charts
     const domLabels=[],domDiff=[],domPayout=[];
@@ -723,88 +858,116 @@ function renderAnalysis(data){
 // CUMULATIVE MONTHLY ANALYSIS
 // ==========================================
 function renderCumulAnalysis(data){
-    // 1. Build per-machine monthly cumulative diff BEFORE each date
-    const byMachine={};
-    // Use the full rawData for cumulative, but filter by machine/event same as data
-    const machineSet=new Set(data.map(r=>normalizeNum(r['台番号'])+'|'+r['機種名']));
-    rawData.filter(r=>machineSet.has(normalizeNum(r['台番号'])+'|'+r['機種名'])).forEach(row=>{
-        const key=normalizeNum(row['台番号'])+'|'+row['機種名'];
-        if(!byMachine[key])byMachine[key]=[];
-        byMachine[key].push({date:row['日付'],diff:Number(row['最終差枚'])||0,g:Number(row['累計ゲーム'])||0});
+    // 1. Group data by date to get daily total diff and total g
+    const daily = {};
+    data.forEach(row => {
+        const date = row['日付'];
+        const diff = Number(row['最終差枚']) || 0;
+        const g = Number(row['累計ゲーム']) || 0;
+        if (!daily[date]) daily[date] = { date, diff: 0, g: 0, count: 0 };
+        daily[date].diff += diff;
+        daily[date].g += g;
+        daily[date].count += 1;
     });
 
-    // For each (prevCumul bucket → this day diff/g)
-    // buckets: every 10000 coins
-    const cumulPoints=[];// {prevCumul, diff, g, date, week}
-    for(const hist of Object.values(byMachine)){
-        hist.sort((a,b)=>a.date.localeCompare(b.date));
-        let prevMonth=null,runCumul=0;
-        hist.forEach(e=>{
-            const month=e.date.substring(0,7);
-            if(month!==prevMonth){runCumul=0;prevMonth=month;}
-            const dayNum=parseInt(e.date.split('-')[2],10);
-            const week=dayNum<=7?'first':dayNum>=(new Date(e.date.substring(0,7)+'-01'))?'last':'mid';
-            // Determine last week: days >= (last day of month - 6)
-            const lastDayOfMonth=new Date(parseInt(month.split('-')[0]),parseInt(month.split('-')[1]),0).getDate();
-            const isLastWeek=dayNum>=lastDayOfMonth-6;
-            const isFirstWeek=dayNum<=7;
-            cumulPoints.push({prevCumul:runCumul,diff:e.diff,g:e.g,date:e.date,isFirstWeek,isLastWeek,dayNum});
-            runCumul+=e.diff;
+    const dailyDates = Object.keys(daily).sort();
+    
+    // 2. Compute cumulative up to PREVIOUS day for each date
+    const cumulPoints = [];
+    let prevMonth = null;
+    let runCumul = 0;
+
+    dailyDates.forEach(date => {
+        const month = date.substring(0, 7);
+        if (month !== prevMonth) {
+            runCumul = 0; // reset on new month
+            prevMonth = month;
+        }
+        
+        const dayNum = parseInt(date.split('-')[2], 10);
+        const lastDayOfMonth = new Date(parseInt(month.split('-')[0]), parseInt(month.split('-')[1]), 0).getDate();
+        const isFirstWeek = dayNum <= 7;
+        const isLastWeek = dayNum >= lastDayOfMonth - 6;
+
+        cumulPoints.push({
+            date: date,
+            prevCumul: runCumul,
+            diff: daily[date].diff,
+            g: daily[date].g,
+            isFirstWeek,
+            isLastWeek,
+            dayNum
         });
-    }
+
+        // Add this day's diff for the NEXT day's prevCumul
+        runCumul += daily[date].diff;
+    });
 
     // Apply cumul filter
-    let pts=cumulPoints;
-    if(currentCumulFilter==='first_week')pts=pts.filter(p=>p.isFirstWeek);
-    else if(currentCumulFilter==='last_week')pts=pts.filter(p=>p.isLastWeek);
+    let pts = cumulPoints;
+    if (currentCumulFilter === 'first_week') pts = pts.filter(p => p.isFirstWeek);
+    else if (currentCumulFilter === 'last_week') pts = pts.filter(p => p.isLastWeek);
 
     // Bucket by prevCumul (step=20000 coins)
-    const step=20000;
-    const bucketMap={};
-    pts.forEach(p=>{
-        const bMin=Math.floor(p.prevCumul/step)*step;
-        const bKey=`${bMin>=0?'+':''}${(bMin/1000).toFixed(0)}k〜${((bMin+step)/1000).toFixed(0)}k`;
-        if(!bucketMap[bKey])bucketMap[bKey]={diff:0,g:0,c:0,bMin};
-        bucketMap[bKey].diff+=p.diff;bucketMap[bKey].g+=p.g;bucketMap[bKey].c++;
+    const step = 20000;
+    const bucketMap = {};
+    pts.forEach(p => {
+        const bMin = Math.floor(p.prevCumul / step) * step;
+        const bKey = `${bMin >= 0 ? '+' : ''}${(bMin / 1000).toFixed(0)}k〜${((bMin + step) / 1000).toFixed(0)}k`;
+        if (!bucketMap[bKey]) bucketMap[bKey] = { diff: 0, g: 0, c: 0, bMin };
+        bucketMap[bKey].diff += p.diff;
+        bucketMap[bKey].g += p.g;
+        bucketMap[bKey].c++;
     });
-    const bSorted=Object.entries(bucketMap).sort((a,b)=>a[1].bMin-b[1].bMin);
-    const bLabels=bSorted.map(([k])=>k);
-    const bDiff=bSorted.map(([,v])=>v.c?v.diff/v.c:0);
-    const bPayout=bSorted.map(([,v])=>v.c?payout(v.diff,v.g):0);
 
-    drawBar('chart-cumul-diff-bar',bLabels,bDiff,'当日平均差枚');
-    drawDotChart('chart-cumul-payout-bar',bLabels,bPayout,'当日出率(%)');
+    const bSorted = Object.entries(bucketMap).sort((a, b) => a[1].bMin - b[1].bMin);
+    const bLabels = bSorted.map(([k]) => k);
+    const bDiff = bSorted.map(([, v]) => v.c ? v.diff / v.c : 0);
+    const bPayout = bSorted.map(([, v]) => v.c ? payout(v.diff, v.g) : 0);
+
+    drawBar('chart-cumul-diff-bar', bLabels, bDiff, '当日平均差枚',{dynamicWidth:true});
+    drawDotChart('chart-cumul-payout-bar', bLabels, bPayout, '当日出率(%)',{dynamicWidth:true, dynamicWidthMultiplier:20});
 
     // Scatter plot: prevCumul(x) vs diff(y) with regression line
-    const scatterData=pts.map(p=>({x:p.prevCumul,y:p.diff}));
+    const scatterData = pts.map(p => ({ x: p.prevCumul, y: p.diff, date: p.date }));
     // Linear regression
-    const n=pts.length;
-    if(n>1){
-        const sumX=pts.reduce((a,p)=>a+p.prevCumul,0),sumY=pts.reduce((a,p)=>a+p.diff,0);
-        const sumXY=pts.reduce((a,p)=>a+p.prevCumul*p.diff,0),sumX2=pts.reduce((a,p)=>a+p.prevCumul**2,0);
-        const slope=(n*sumXY-sumX*sumY)/(n*sumX2-sumX**2);
-        const intercept=(sumY-slope*sumX)/n;
-        const meanX=sumX/n,meanY=sumY/n;
-        const ssRes=pts.reduce((a,p)=>a+(p.diff-(slope*p.prevCumul+intercept))**2,0);
-        const ssTot=pts.reduce((a,p)=>a+(p.diff-meanY)**2,0);
-        const r2=ssTot>0?1-ssRes/ssTot:0;
-        const r=Math.sign(slope)*Math.sqrt(Math.abs(r2));
-        const xVals=pts.map(p=>p.prevCumul);
-        const xMin=Math.min(...xVals),xMax=Math.max(...xVals);
-        const regLine=[{x:xMin,y:slope*xMin+intercept},{x:xMax,y:slope*xMax+intercept}];
+    const n = pts.length;
+    if (n > 1) {
+        const sumX = pts.reduce((a, p) => a + p.prevCumul, 0), sumY = pts.reduce((a, p) => a + p.diff, 0);
+        const sumXY = pts.reduce((a, p) => a + p.prevCumul * p.diff, 0), sumX2 = pts.reduce((a, p) => a + p.prevCumul ** 2, 0);
+        const denominator = (n * sumX2 - sumX ** 2);
+        const slope = denominator === 0 ? 0 : (n * sumXY - sumX * sumY) / denominator;
+        const intercept = (sumY - slope * sumX) / n;
+        const meanY = sumY / n;
+        const ssRes = pts.reduce((a, p) => a + (p.diff - (slope * p.prevCumul + intercept)) ** 2, 0);
+        const ssTot = pts.reduce((a, p) => a + (p.diff - meanY) ** 2, 0);
+        const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+        const r = Math.sign(slope) * Math.sqrt(Math.abs(r2));
+        const xVals = pts.map(p => p.prevCumul);
+        const xMin = xVals.reduce((a, b) => Math.min(a, b), xVals[0] || 0);
+        const xMax = xVals.reduce((a, b) => Math.max(a, b), xVals[0] || 0);
+        const regLine = [{ x: xMin, y: slope * xMin + intercept }, { x: xMax, y: slope * xMax + intercept }];
 
-        const sCtx=document.getElementById('chart-cumul-scatter');
-        if(charts['cumul-scatter'])charts['cumul-scatter'].destroy();
-        charts['cumul-scatter']=new Chart(sCtx,{
-            data:{datasets:[
-                {type:'scatter',label:'各台・各日',data:scatterData,backgroundColor:'rgba(99,179,237,0.3)',pointRadius:3},
-                {type:'line',label:`回帰直線 (r=${r.toFixed(3)}, slope=${slope.toFixed(4)})`,data:regLine,borderColor:'rgba(248,113,113,0.9)',backgroundColor:'transparent',pointRadius:0,borderWidth:2}
-            ]},
-            options:{responsive:true,maintainAspectRatio:false,
-                plugins:{legend:{display:true,labels:{font:{size:13},color:'#f1f5f9'}},datalabels:{display:false},
-                    tooltip:{callbacks:{label:ctx=>ctx.datasetIndex===0?`累積差枚:${ctx.parsed.x.toLocaleString()} / 差枚:${ctx.parsed.y.toLocaleString()}`:ctx.dataset.label}}},
-                scales:{x:{title:{display:true,text:'前日までの月累積差枚',font:{size:13}},grid:{color:'rgba(128,128,128,0.2)'}},
-                    y:{title:{display:true,text:'当日差枚',font:{size:13}},grid:{color:'rgba(128,128,128,0.2)'}}}}
+        const sCtx = document.getElementById('chart-cumul-scatter');
+        if (charts['cumul-scatter']) charts['cumul-scatter'].destroy();
+        charts['cumul-scatter'] = new Chart(sCtx, {
+            data: {
+                datasets: [
+                    { type: 'scatter', label: '各日', data: scatterData, backgroundColor: 'rgba(99,179,237,0.8)', pointRadius: 5 },
+                    { type: 'line', label: `回帰直線 (r=${r.toFixed(3)}, slope=${slope.toFixed(4)})`, data: regLine, borderColor: 'rgba(248,113,113,0.9)', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, labels: { font: { size: 13 }, color: '#f1f5f9' } }, datalabels: { display: false },
+                    tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? `${ctx.raw.date} | 累積差枚:${ctx.parsed.x.toLocaleString()} / 当日差枚:${ctx.parsed.y.toLocaleString()}` : ctx.dataset.label } }
+                },
+                scales: {
+                    x: { title: { display: true, text: '前日までの月累積差枚', font: { size: 13 } }, grid: { color: 'rgba(128,128,128,0.2)' } },
+                    y: { title: { display: true, text: '当日差枚', font: { size: 13 } }, grid: { color: 'rgba(128,128,128,0.2)' } }
+                }
+            }
         });
     }
 }
