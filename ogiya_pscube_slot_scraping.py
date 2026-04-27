@@ -972,38 +972,27 @@ def main():
             else:
                 logger.error("最大リトライ回数に達したため、処理を終了します。")
     
-    # データのエクスポート処理
-    progress = load_progress()
-    data = progress.get("data", [])
-    if data:
-        save_data_to_db(data)
-        logger.info(f"合計 {len(data)} 件の新規データを DB に保存しました。")
+    # データのエクスポート処理とGitHubへの自動アップロード
+    # （現在は都度DBに保存しているため、無条件でエクスポートとアップロードを実行する）
+    logger.info("docsディレクトリへのJSONデータエクスポートを開始します...")
+    try:
+        subprocess.run([sys.executable, "export_slot_data.py"], check=True)
+        logger.info("JSONデータのエクスポートが完了しました。")
         
-        # pickleをクリア
-        clear_progress()
+        logger.info("GitHub Pagesへのアップロードを開始します...")
+        subprocess.run(["git", "add", "docs/"], check=True)
         
-        # docsディレクトリへのJSON出力とGitHubへの自動アップロード
-        logger.info("docsディレクトリへのJSONデータエクスポートを開始します...")
-        try:
-            subprocess.run([sys.executable, "export_slot_data.py"], check=True)
-            logger.info("JSONデータのエクスポートが完了しました。")
-            
-            logger.info("GitHub Pagesへのアップロードを開始します...")
-            subprocess.run(["git", "add", "docs/"], check=True)
-            
-            commit_res = subprocess.run(
-                ["git", "commit", "-m", f"Auto update slot data {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"],
-                capture_output=True, text=True
-            )
-            if "nothing to commit" in commit_res.stdout or "nothing added to commit" in commit_res.stdout:
-                logger.info("変更がないため、コミット・プッシュはスキップします。")
-            else:
-                subprocess.run(["git", "push"], check=True)
-                logger.info("GitHub Pagesへのアップロードが完了しました。")
-        except Exception as e:
-            logger.error(f"データエクスポートまたはGitHubへのアップロード中にエラーが発生しました: {e}")
-    else:
-        logger.warning("取得データがありませんでした。")
+        commit_res = subprocess.run(
+            ["git", "commit", "-m", f"Auto update slot data {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"],
+            capture_output=True, text=True
+        )
+        if "nothing to commit" in commit_res.stdout or "nothing added to commit" in commit_res.stdout:
+            logger.info("変更がないため、コミット・プッシュはスキップします。")
+        else:
+            subprocess.run(["git", "push"], check=True)
+            logger.info("GitHub Pagesへのアップロードが完了しました。")
+    except Exception as e:
+        logger.error(f"データエクスポートまたはGitHubへのアップロード中にエラーが発生しました: {e}")
     
     logger.info("=== 全処理終了 ===")
 
