@@ -509,11 +509,33 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 
 /* Mobile Adaptations */
 @media (max-width: 768px) {
+    html { font-size: 12px; }
+
     .dashboard-container { padding: 0.5rem; }
     .header { padding: 0.5rem 1rem; }
-    .nav-btn { font-size: 0.8rem; padding: 0.5rem 0.25rem; }
+    .gradient-text { font-size: 1.1rem; }
+    .nav-btn { font-size: 0.75rem; padding: 0.4rem 0.2rem; }
     .chart-grid { grid-template-columns: minmax(0, 1fr); }
-    
+
+    /* Summary / Monthly tables — compact so all columns fit on-screen */
+    #summary-table,
+    #monthly-table {
+        font-size: 0.72rem;
+        min-width: 0;          /* override the 600px desktop min-width */
+        width: 100%;
+    }
+    #summary-table th,
+    #summary-table td,
+    #monthly-table th,
+    #monthly-table td {
+        padding: 0.35rem 0.3rem;
+        font-size: 0.72rem;
+    }
+    /* The container still allows horizontal scroll as a fallback */
+    .table-container {
+        overflow-x: auto;
+    }
+
     .heatmap-wrapper { padding: 0.25rem; overflow-x: auto; }
     .heatmap-row {
         gap: 1px;
@@ -911,6 +933,77 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 @media (max-width: 768px) {
     .target-conditions-grid { grid-template-columns: minmax(0, 1fr); }
     .target-priority-section { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ==============================
+   Header Controls
+   ============================== */
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* 旧データトグルボタン */
+.old-data-btn {
+    background: rgba(100, 100, 120, 0.4);
+    border: 1px solid var(--glass-border);
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 0.35rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: 0.2s;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+
+.old-data-btn:hover {
+    border-color: var(--primary);
+    background: rgba(129, 140, 248, 0.15);
+}
+
+.old-data-btn.active {
+    background: linear-gradient(135deg, rgba(79,70,229,0.8), rgba(236,72,153,0.8));
+    border-color: var(--primary);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(129, 140, 248, 0.4);
+}
+
+/* ズームリセットボタン (ヒートマップ用、スマホのみ表示) */
+.heatmap-zoom-controls {
+    display: none;
+    justify-content: flex-end;
+    margin-bottom: 0.4rem;
+}
+
+.zoom-reset-btn {
+    background: rgba(100, 100, 120, 0.3);
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: 0.15s;
+}
+
+.zoom-reset-btn:hover {
+    border-color: var(--primary);
+    color: var(--text-color);
+}
+
+@media (max-width: 768px) {
+    .heatmap-zoom-controls {
+        display: flex;
+    }
+
+    .old-data-btn {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.5rem;
+    }
 }
 
 

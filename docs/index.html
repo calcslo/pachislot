@@ -21,7 +21,8 @@
         <header class="glass-panel header">
             <h1 class="gradient-text">Pachislot Analysis</h1>
             
-            <div class="theme-toggle">
+            <div class="header-controls">
+                <button id="old-data-toggle" class="old-data-btn">旧データ OFF</button>
                 <button id="theme-btn" class="icon-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path class="sun" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -135,6 +136,9 @@
                     <div class="heatmap-legend" id="diff-legend">
                         <!-- Dynamically injected thresholds -->
                     </div>
+                    <div class="heatmap-zoom-controls">
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('diff-heatmap-wrapper')">🔍 リセット</button>
+                    </div>
                     <div class="heatmap-wrapper" id="diff-heatmap-wrapper"></div>
                 </div>
 
@@ -150,6 +154,9 @@
                         <div class="legend-item"><span class="color-box" style="background-color: rgba(230,40,40,0.8);"></span>設定6</div>
                         <div class="legend-item"><span class="color-box" style="background-color: transparent; border: 1px solid #ccc;"></span>不明/データ不足</div>
                     </div>
+                    <div class="heatmap-zoom-controls">
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('setting-heatmap-wrapper')">🔍 リセット</button>
+                    </div>
                     <div class="heatmap-wrapper" id="setting-heatmap-wrapper"></div>
                 </div>
 
@@ -158,6 +165,9 @@
                     <h2 class="section-title">島平均差枚ヒートマップ</h2>
                     <div class="heatmap-legend" id="row-legend">
                         <!-- Same as diff legend usually -->
+                    </div>
+                    <div class="heatmap-zoom-controls">
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('row-heatmap-wrapper')">🔍 リセット</button>
                     </div>
                     <div class="heatmap-wrapper" id="row-heatmap-wrapper"></div>
                     <!-- Column avg bar chart moved here -->

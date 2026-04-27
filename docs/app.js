@@ -17,6 +17,8 @@ let rawData=[], layoutData=[], layoutLookup={};
 let currentTab='all', currentPeriod='3m', currentEventFilter='none', currentSection='summary-section';
 let charts={}, activeDate=null, currentCumulFilter='all';
 let diffThresholds={neg1:-2000,neg2:-1000,pos1:1000,pos2:2000};
+let includeOldData=false; // 旧データ(2026/4/21以前)を含めるかどうか
+const OLD_DATA_CUTOFF='2026-04-21'; // この日付以前のデータを旧データとして扱う
 
 const tooltip=document.createElement('div');
 tooltip.className='custom-tooltip';
@@ -223,6 +225,20 @@ function setupEventListeners(){
         btn.classList.add('active');currentCumulFilter=btn.dataset.target;
         renderAnalysis(getFilteredData());
     });
+    // 旧データトグルボタン
+    document.getElementById('old-data-toggle').addEventListener('click',()=>{
+        includeOldData=!includeOldData;
+        const btn=document.getElementById('old-data-toggle');
+        if(includeOldData){
+            btn.classList.add('active');
+            btn.textContent='旧データ ON';
+        }else{
+            btn.classList.remove('active');
+            btn.textContent='旧データ OFF';
+        }
+        activeDate=null;
+        updateDashboard();
+    });
 }
 
 function openModal(date){
@@ -238,6 +254,10 @@ function closeModal(){document.getElementById('date-detail-modal').style.display
 function getFilteredData(){
     if(!rawData.length)return[];
     let f=rawData;
+    // 旧データフィルタ: OFFの場合はOLD_DATA_CUTOFF以前のデータを除外
+    if(!includeOldData){
+        f=f.filter(r=>r['日付']>OLD_DATA_CUTOFF);
+    }
     if(currentTab!=='all'){
         const m=currentTab==='hanahana'?MACHINE_GROUPS.hanahana:MACHINE_GROUPS.juggler;
         f=f.filter(r=>m.includes(r['機種名']));
@@ -578,6 +598,8 @@ function renderHeatmaps(data){
     });
     // Apply JS-computed cell sizes on mobile for accurate alignment
     requestAnimationFrame(applyHeatmapCellSizes);
+    // Enable pinch zoom on heatmap wrappers (mobile)
+    ['diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper'].forEach(id=>enableHeatmapPinchZoom(id));
 }
 
 // ==========================================
@@ -605,6 +627,69 @@ function applyHeatmapCellSizes(){
         });
     });
 }
+
+// ==========================================
+// HEATMAP PINCH ZOOM (mobile)
+// ==========================================
+const _heatmapZoom={}; // id -> {scale, lastDist, originX, originY}
+
+function enableHeatmapPinchZoom(id){
+    const wrap=document.getElementById(id);
+    if(!wrap||wrap.dataset.pinchEnabled)return;
+    wrap.dataset.pinchEnabled='true';
+    if(!_heatmapZoom[id])_heatmapZoom[id]={scale:1,lastDist:null};
+    const state=_heatmapZoom[id];
+
+    function getDist(touches){
+        const dx=touches[0].clientX-touches[1].clientX;
+        const dy=touches[0].clientY-touches[1].clientY;
+        return Math.sqrt(dx*dx+dy*dy);
+    }
+
+    wrap.addEventListener('touchstart',e=>{
+        if(e.touches.length===2){
+            state.lastDist=getDist(e.touches);
+        }
+    },{passive:true});
+
+    wrap.addEventListener('touchmove',e=>{
+        if(e.touches.length===2){
+            e.preventDefault();
+            const dist=getDist(e.touches);
+            if(state.lastDist&&state.lastDist>0){
+                const delta=dist/state.lastDist;
+                state.scale=Math.min(4,Math.max(0.5,state.scale*delta));
+                const inner=wrap.querySelector('.heatmap-row')?.parentElement||wrap.firstElementChild;
+                // Apply scale to all rows container
+                const rows=wrap.querySelectorAll('.heatmap-row');
+                rows.forEach(row=>{
+                    row.style.transformOrigin='left top';
+                    row.style.transform=`scaleX(${state.scale}) scaleY(${state.scale})`;
+                });
+                // Also update wrapper height to accommodate scaled content
+                wrap.style.height='';
+            }
+            state.lastDist=dist;
+        }
+    },{passive:false});
+
+    wrap.addEventListener('touchend',e=>{
+        if(e.touches.length<2){
+            state.lastDist=null;
+        }
+    },{passive:true});
+}
+
+function resetHeatmapZoom(id){
+    const wrap=document.getElementById(id);
+    if(!wrap)return;
+    if(_heatmapZoom[id])_heatmapZoom[id].scale=1;
+    wrap.querySelectorAll('.heatmap-row').forEach(row=>{
+        row.style.transform='';
+        row.style.transformOrigin='';
+    });
+}
+
 
 // ==========================================
 // MACHINE TAB (台番号別差枚)
