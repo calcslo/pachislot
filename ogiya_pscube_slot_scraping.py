@@ -508,34 +508,86 @@ def _extract_last_diff_from_active_chart(page: Page, chart_date_id: str) -> int 
                 }
             }
             
-            if (tspans.length === 0) return '解析不能 (ラベル不存在)';
-
-            const labelPoints = [];
-            for (const tspan of tspans) {
-                const textEl = tspan.parentElement;
+            // ---- 1a. Y軸ラベルの数値と大まかな位置（translateY）を収集 ----
+            const labelCandidates = [];
+            for (const textEl of allTextEls) {
+                const tspan = textEl.querySelector('tspan');
+                if (!tspan) continue;
                 const text = tspan.textContent.trim();
-                
                 const rawText = text.replace(/[^-0-9]/g, '');
                 if (!rawText || isNaN(parseInt(rawText, 10))) continue;
-                
                 const val = parseInt(rawText, 10);
-                if (Math.abs(val) > 100000) continue;
-                if (text.includes(':')) continue;
-                
-                // text要素のtransform属性から translateY を取得し、y属性があれば足し合わせる
-                const transform = textEl.getAttribute('transform') || '';
-                let textY = parseFloat(textEl.getAttribute('y') || '0');
-                
-                const tMatch = transform.match(/translate\(([^,\s]+)[,\s]+([^)]+)\)/);
-                if (tMatch) {
-                    textY += parseFloat(tMatch[2]);
+                if (Math.abs(val) > 100000 || text.includes(':')) continue;
+
+                // ラベル要素自身を含む全祖先のtranslateY合計（近傍マッチング用）
+                let labelTransY = 0;
+                let el = textEl;
+                while (el && el !== svg) {
+                    const t = el.getAttribute('transform') || '';
+                    const tm = t.match(/translate\(([^,\s]+)[,\s]+([^)]+)\)/);
+                    if (tm) labelTransY += parseFloat(tm[2]);
+                    el = el.parentElement;
                 }
-                
-                labelPoints.push({ svgY: textY, val: val });
+                labelCandidates.push({ val, labelTransY });
+            }
+            if (labelCandidates.length < 2) return '解析不能 (ラベル不存在)';
+
+            // ---- 1b. Y罫線(amcharts-axis-tick)の正確なSVG Y座標を取得 ----
+            // 罫線の path d="M0.5,285.5 L5.5,285.5" のY値が正確な座標
+            // ラベルのtranslateY(283)より罫線のd属性Y(285.5)の方が精確
+            const tickPaths = Array.from(svg.querySelectorAll('path.amcharts-axis-tick'));
+            const labelPoints = [];
+
+            for (const tick of tickPaths) {
+                const d = tick.getAttribute('d') || '';
+                // "M0.5,285.5 L..." からY座標を抽出
+                const mMatch = d.match(/M\s*[\d.]+\s*,\s*([\d.]+)/);
+                if (!mMatch) continue;
+                const localY = parseFloat(mMatch[1]);
+
+                // 罫線の祖先translateY（通常Y方向のtranslateは0だが念のため加算）
+                let tickAncestorTY = 0;
+                let tel = tick.parentElement;
+                while (tel && tel !== svg) {
+                    const t = tel.getAttribute('transform') || '';
+                    const tm = t.match(/translate\(([^,\s]+)[,\s]+([^)]+)\)/);
+                    if (tm) tickAncestorTY += parseFloat(tm[2]);
+                    tel = tel.parentElement;
+                }
+                const tickSvgY = localY + tickAncestorTY;
+
+                // この罫線Y座標に最も近いラベルを探す（近傍マッチング）
+                let closest = null;
+                let minDist = Infinity;
+                for (const lc of labelCandidates) {
+                    const dist = Math.abs(tickSvgY - lc.labelTransY);
+                    if (dist < minDist) { minDist = dist; closest = lc; }
+                }
+                // 距離が離れすぎ（30px超）の場合は除外
+                if (!closest || minDist > 30) continue;
+
+                // 重複排除（同じval が既にある場合はより近いものを優先）
+                const existing = labelPoints.find(lp => lp.val === closest.val);
+                if (existing) {
+                    if (minDist < existing._dist) {
+                        existing.svgY = tickSvgY;
+                        existing._dist = minDist;
+                    }
+                } else {
+                    labelPoints.push({ svgY: tickSvgY, val: closest.val, _dist: minDist });
+                }
+            }
+
+            // axis-tick が取得できなかった場合は従来のtranslateY方式にフォールバック
+            if (labelPoints.length < 2) {
+                for (const lc of labelCandidates) {
+                    labelPoints.push({ svgY: lc.labelTransY, val: lc.val });
+                }
             }
 
             if (labelPoints.length < 2) return '解析不能 (ラベル点不足)';
             labelPoints.sort((a, b) => a.svgY - b.svgY);
+
 
             // ---- 2. グラフPathの最終点を取得 ----
             // amcharts-graph-smoothedLine または amcharts-graph-line を汎用的に探す
@@ -594,18 +646,10 @@ def _extract_last_diff_from_active_chart(page: Page, chart_date_id: str) -> int 
             }
             const graphSvgY = pathLocalY + translateY;
 
-            const firstTextEl = tspans[0].parentElement;
-            let labelBaseTranslateY = 0;
-            let labelEl = firstTextEl.parentElement;
-            while (labelEl && labelEl !== svg) {
-                const t = labelEl.getAttribute('transform') || '';
-                const tm = t.match(/translate\(([^,\s]+)[,\s]+([^)]+)\)/);
-                if (tm) labelBaseTranslateY += parseFloat(tm[2]);
-                labelEl = labelEl.parentElement;
-            }
-
+            // ---- 修正: labelBaseTranslateYは不要（各ラベルで個別計算済み） ----
+            // labelPointsのsvgYはすでにSVG座標系に変換済み
             const adjustedLabels = labelPoints.map(lp => ({
-                svgY: lp.svgY + labelBaseTranslateY,
+                svgY: lp.svgY,
                 val: lp.val
             }));
             adjustedLabels.sort((a, b) => a.svgY - b.svgY);
@@ -644,7 +688,7 @@ def _extract_last_diff_from_active_chart(page: Page, chart_date_id: str) -> int 
     ''', chart_date_id)
 
     if isinstance(result, str) and "[" in result:
-        logger.debug(f"Graph Debug: {result}")
+        logger.info(f"Graph Debug: {result}")  # オフセット検証のためINFOに昇格
         # 数値だけ抽出
         match = re.search(r'\[(-?\d+)\]', result)
         if match: return int(match.group(1))
@@ -933,14 +977,29 @@ def site1_action(page: Page) -> None:
                                 big = table_data.get(day_label, {}).get("BIG", 0)
                                 reg = table_data.get(day_label, {}).get("REG", 0)
                                 games = table_data.get(day_label, {}).get("累計ゲーム", 0)
-                                
+
+                                games_int = int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0
+
+                                # 累計ゲーム=0の台はグラフが存在しない（未稼働）ため
+                                # SVG補間が誤値（例: 30）を返すケースがある。
+                                # 0ゲームの場合は差枚も必ず0として保存する。
+                                if games_int == 0:
+                                    sasamai_final = 0
+                                    if isinstance(sasamai, (int, float)) and sasamai != 0:
+                                        logger.warning(
+                                            f"Site 1: 台番号 {machine_num} ({actual_date}) "
+                                            f"累計ゲーム=0 のため、グラフ読み取り値 {sasamai} を 0 に補正します。"
+                                        )
+                                else:
+                                    sasamai_final = sasamai if isinstance(sasamai, (int, float)) else 0
+
                                 record_tuple = (
                                     actual_date, model_name, machine_num,
                                     int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
                                     int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
                                     int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
-                                    int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0,
-                                    sasamai if isinstance(sasamai, (int, float)) else 0
+                                    games_int,
+                                    sasamai_final
                                 )
                                 
                                 cursor_local.execute('''

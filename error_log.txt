@@ -47,3 +47,5 @@ Call log:
   - waiting for locator("#CHART-20260427 svg") to be visible
   - waiting for locator("#CHART-20260427 svg")
 , スクリーンショット: error_slot_site1_main_20260428_074822.png
+[20260428_105800] 台番号: 0869, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_machine_0869_20260428_105800.png
+[20260428_105800] 全体処理エラー, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_main_20260428_105800.png

@@ -1,0 +1,17 @@
+﻿サイトにアクセス中...
+機種ボタン発見: LBﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV
+台番号 0845 をクリック
+SVG座標を調査中...
+
+=== SVG調査結果 ===
+チャートID: None
+
+--- Y軸ラベル ---
+
+--- グラフパス ---
+  最終座標: None
+  パス translateY合計: None
+  effectiveSvgY: None
+  SVGサイズ: NonexNone
+  総座標数: None
+  最後3点: None
