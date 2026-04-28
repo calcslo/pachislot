@@ -643,13 +643,13 @@ function applyHeatmapCellSizes(){
 // ==========================================
 // HEATMAP PINCH ZOOM (mobile)
 // ==========================================
-const _heatmapZoom={}; // id -> {scale, lastDist, ticking, origW, origH, originX, originY}
+const _heatmapZoom={}; // id -> {scale, lastDist, ticking, origW, origH, originX, originY, targetScrollX, targetScrollY}
 
 function enableHeatmapPinchZoom(id){
     const wrap=document.getElementById(id);
     if(!wrap||wrap.dataset.pinchEnabled)return;
     wrap.dataset.pinchEnabled='true';
-    if(!_heatmapZoom[id])_heatmapZoom[id]={scale:1,lastDist:null,ticking:false,origW:0,origH:0,originX:0,originY:0};
+    if(!_heatmapZoom[id])_heatmapZoom[id]={scale:1,lastDist:null,ticking:false,origW:0,origH:0,originX:0,originY:0,targetScrollX:0,targetScrollY:0};
     const state=_heatmapZoom[id];
 
     function getDist(touches){
@@ -658,27 +658,32 @@ function enableHeatmapPinchZoom(id){
         return Math.sqrt(dx*dx+dy*dy);
     }
 
-    // ピンチ中心点をwrapper相対座標で取得
+    // ピンチ中心点をwrapper画面上の相対座標で取得
     function getMidPoint(touches){
         const rect=wrap.getBoundingClientRect();
         const mx=(touches[0].clientX+touches[1].clientX)/2;
         const my=(touches[0].clientY+touches[1].clientY)/2;
-        return {x:mx-rect.left+wrap.scrollLeft, y:my-rect.top+wrap.scrollTop};
+        return {x:mx-rect.left, y:my-rect.top};
     }
 
     function updateZoom(){
         const inner=wrap.querySelector('.heatmap-inner');
         if(!inner) return;
-        // transform-originをピンチ中心に設定することで、ピンチした位置を中心に拡大
-        inner.style.transformOrigin=`${state.originX}px ${state.originY}px`;
+        // 常に左上を基準に拡大することで、端が見えなくなる問題と余白問題を解決
+        inner.style.transformOrigin=`0 0`;
         inner.style.transform=`scale(${state.scale})`;
-        // スクロール可能領域をスケールに合わせて拡張（scale>=1のみなので常に正値）
+        // スクロール可能領域をスケールに合わせて拡張
         if(!state.origW){
             state.origW=inner.offsetWidth;
             state.origH=inner.offsetHeight;
         }
         inner.style.marginRight=(state.origW*(state.scale-1))+'px';
         inner.style.marginBottom=(state.origH*(state.scale-1))+'px';
+        
+        // margin反映後にスクロール位置を調整
+        wrap.scrollLeft = state.targetScrollX;
+        wrap.scrollTop = state.targetScrollY;
+        
         state.ticking=false;
     }
 
@@ -691,10 +696,10 @@ function enableHeatmapPinchZoom(id){
                     state.origW=inner.offsetWidth;
                     state.origH=inner.offsetHeight;
                 }
-                // ピンチ開始時の中心点を記録
                 const mid=getMidPoint(e.touches);
-                state.originX=mid.x;
-                state.originY=mid.y;
+                // ピンチ中心の、オリジナルの(scale=1)時のinner上の座標を記録
+                state.originX = (mid.x + wrap.scrollLeft) / state.scale;
+                state.originY = (mid.y + wrap.scrollTop) / state.scale;
             }
         }
     },{passive:true});
@@ -707,6 +712,11 @@ function enableHeatmapPinchZoom(id){
                 const delta=dist/state.lastDist;
                 // 最小scale=1（applyHeatmapCellSizesがfit-to-widthを保証）
                 state.scale=Math.min(4,Math.max(1,state.scale*delta));
+                
+                const mid=getMidPoint(e.touches);
+                state.targetScrollX = state.originX * state.scale - mid.x;
+                state.targetScrollY = state.originY * state.scale - mid.y;
+                
                 if(!state.ticking){
                     requestAnimationFrame(updateZoom);
                     state.ticking=true;
@@ -730,6 +740,8 @@ function resetHeatmapZoom(id){
         state.lastDist=null;
         state.origW=0;
         state.origH=0;
+        state.targetScrollX=0;
+        state.targetScrollY=0;
     }
     const inner=wrap.querySelector('.heatmap-inner');
     if(inner){
