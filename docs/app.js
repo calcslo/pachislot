@@ -616,7 +616,11 @@ function renderHeatmaps(data){
 function applyHeatmapCellSizes(){
     if(!layoutData.length)return;
     const numCols=layoutData[0].length;
-    const wrapIds=['diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper','target-heatmap-wrapper'];
+    // メインヒートマップ + モーダルヒートマップ
+    const wrapIds=[
+        'diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper','target-heatmap-wrapper',
+        'modal-diff-hm','modal-set-hm','modal-streak-hm'
+    ];
     wrapIds.forEach(id=>{
         const wrap=document.getElementById(id);
         if(!wrap||!wrap.children.length)return;
@@ -1275,7 +1279,7 @@ function renderDateDetail(date){
         });
         items.sort((a,b)=>parseInt(a.num)-parseInt(b.num));
         const labels=items.map(i=>`[ ${i.num} ] ${i.label}`);
-        const h=Math.max(400,items.length*38);
+        const h=Math.max(250,items.length*16);
         chartDiv.style.height=`${h}px`;
         if(charts['modal-machine'])charts['modal-machine'].destroy();
         charts['modal-machine']=new Chart(cvs,{
@@ -1303,8 +1307,18 @@ function buildModalHeatmap(wrapId,cellBuilder){
         inner.appendChild(rowEl);
     });
     wrap.appendChild(inner);
-    // Modal heatmaps also need zoom
-    enableHeatmapPinchZoom(wrapId);
+    // セルサイズをモバイルに合わせて自動調整してからピンチズーム有効化
+    requestAnimationFrame(()=>{
+        applyHeatmapCellSizes();
+        // pinchEnabledをリセットして再初期化可能にする
+        delete wrap.dataset.pinchEnabled;
+        if(_heatmapZoom[wrapId]){
+            _heatmapZoom[wrapId].scale=1;
+            _heatmapZoom[wrapId].origW=0;
+            _heatmapZoom[wrapId].origH=0;
+        }
+        enableHeatmapPinchZoom(wrapId);
+    });
 }
 
 // ==========================================
