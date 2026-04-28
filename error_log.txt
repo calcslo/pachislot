@@ -27,3 +27,23 @@ Call log:
 [20260425_051803] 全体処理エラー, エラー原因: Page.go_back: Target page, context or browser has been closed, スクリーンショット: error_slot_site1_main_20260425_051803.png
 [20260428_055226] 台番号: 0987, エラー原因: Detected proxy error code: ERR_PROXY_CONNECTION_FAILED, スクリーンショット: error_slot_site1_machine_0987_20260428_055226.png
 [20260428_055226] 全体処理エラー, エラー原因: Detected proxy error code: ERR_PROXY_CONNECTION_FAILED, スクリーンショット: error_slot_site1_main_20260428_055226.png
+[20260428_064035] 台番号: 1381, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator("#CHART-20260427 svg") to be visible
+  - waiting for locator("#CHART-20260427 svg")
+, スクリーンショット: error_slot_site1_machine_1381_20260428_064035.png
+[20260428_064035] 全体処理エラー, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator("#CHART-20260427 svg") to be visible
+  - waiting for locator("#CHART-20260427 svg")
+, スクリーンショット: error_slot_site1_main_20260428_064035.png
+[20260428_074822] 台番号: 1092, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator("#CHART-20260427 svg") to be visible
+  - waiting for locator("#CHART-20260427 svg")
+, スクリーンショット: error_slot_site1_machine_1092_20260428_074822.png
+[20260428_074822] 全体処理エラー, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator("#CHART-20260427 svg") to be visible
+  - waiting for locator("#CHART-20260427 svg")
+, スクリーンショット: error_slot_site1_main_20260428_074822.png

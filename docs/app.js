@@ -605,7 +605,9 @@ function renderHeatmaps(data){
     // Apply JS-computed cell sizes on mobile for accurate alignment
     requestAnimationFrame(applyHeatmapCellSizes);
     // Enable pinch zoom on heatmap wrappers (mobile)
-    ['diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper'].forEach(id=>enableHeatmapPinchZoom(id));
+    ['diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper'].forEach(id=>{
+        enableHeatmapPinchZoom(id);
+    });
 }
 
 // ==========================================
@@ -637,13 +639,13 @@ function applyHeatmapCellSizes(){
 // ==========================================
 // HEATMAP PINCH ZOOM (mobile)
 // ==========================================
-const _heatmapZoom={}; // id -> {scale, lastDist, ticking, origW, origH}
+const _heatmapZoom={}; // id -> {scale, lastDist, ticking, origW, origH, originX, originY}
 
 function enableHeatmapPinchZoom(id){
     const wrap=document.getElementById(id);
     if(!wrap||wrap.dataset.pinchEnabled)return;
     wrap.dataset.pinchEnabled='true';
-    if(!_heatmapZoom[id])_heatmapZoom[id]={scale:1,lastDist:null,ticking:false};
+    if(!_heatmapZoom[id])_heatmapZoom[id]={scale:1,lastDist:null,ticking:false,origW:0,origH:0,originX:0,originY:0};
     const state=_heatmapZoom[id];
 
     function getDist(touches){
@@ -652,29 +654,43 @@ function enableHeatmapPinchZoom(id){
         return Math.sqrt(dx*dx+dy*dy);
     }
 
+    // ピンチ中心点をwrapper相対座標で取得
+    function getMidPoint(touches){
+        const rect=wrap.getBoundingClientRect();
+        const mx=(touches[0].clientX+touches[1].clientX)/2;
+        const my=(touches[0].clientY+touches[1].clientY)/2;
+        return {x:mx-rect.left+wrap.scrollLeft, y:my-rect.top+wrap.scrollTop};
+    }
+
     function updateZoom(){
         const inner=wrap.querySelector('.heatmap-inner');
         if(!inner) return;
+        // transform-originをピンチ中心に設定することで、ピンチした位置を中心に拡大
+        inner.style.transformOrigin=`${state.originX}px ${state.originY}px`;
         inner.style.transform=`scale(${state.scale})`;
-        
-        // Update margins to ensure parent scrollable area matches visual size
+        // スクロール可能領域をスケールに合わせて拡張（scale>=1のみなので常に正値）
         if(!state.origW){
-            state.origW = inner.offsetWidth;
-            state.origH = inner.offsetHeight;
+            state.origW=inner.offsetWidth;
+            state.origH=inner.offsetHeight;
         }
-        inner.style.marginRight = (state.origW * (state.scale - 1)) + 'px';
-        inner.style.marginBottom = (state.origH * (state.scale - 1)) + 'px';
-        
-        state.ticking = false;
+        inner.style.marginRight=(state.origW*(state.scale-1))+'px';
+        inner.style.marginBottom=(state.origH*(state.scale-1))+'px';
+        state.ticking=false;
     }
 
     wrap.addEventListener('touchstart',e=>{
         if(e.touches.length===2){
             state.lastDist=getDist(e.touches);
             const inner=wrap.querySelector('.heatmap-inner');
-            if(inner && (!state.origW || state.origW === 0)){
-                state.origW = inner.offsetWidth;
-                state.origH = inner.offsetHeight;
+            if(inner){
+                if(!state.origW||state.origW===0){
+                    state.origW=inner.offsetWidth;
+                    state.origH=inner.offsetHeight;
+                }
+                // ピンチ開始時の中心点を記録
+                const mid=getMidPoint(e.touches);
+                state.originX=mid.x;
+                state.originY=mid.y;
             }
         }
     },{passive:true});
@@ -685,7 +701,8 @@ function enableHeatmapPinchZoom(id){
             const dist=getDist(e.touches);
             if(state.lastDist&&state.lastDist>0){
                 const delta=dist/state.lastDist;
-                state.scale=Math.min(4,Math.max(0.5,state.scale*delta));
+                // 最小scale=1（applyHeatmapCellSizesがfit-to-widthを保証）
+                state.scale=Math.min(4,Math.max(1,state.scale*delta));
                 if(!state.ticking){
                     requestAnimationFrame(updateZoom);
                     state.ticking=true;
@@ -696,17 +713,15 @@ function enableHeatmapPinchZoom(id){
     },{passive:false});
 
     wrap.addEventListener('touchend',e=>{
-        if(e.touches.length<2){
-            state.lastDist=null;
-        }
+        if(e.touches.length<2) state.lastDist=null;
     },{passive:true});
 }
 
 function resetHeatmapZoom(id){
     const wrap=document.getElementById(id);
     if(!wrap)return;
-    const state = _heatmapZoom[id];
-    if(state) {
+    const state=_heatmapZoom[id];
+    if(state){
         state.scale=1;
         state.lastDist=null;
         state.origW=0;
@@ -715,6 +730,7 @@ function resetHeatmapZoom(id){
     const inner=wrap.querySelector('.heatmap-inner');
     if(inner){
         inner.style.transform='';
+        inner.style.transformOrigin='';
         inner.style.marginRight='';
         inner.style.marginBottom='';
     }

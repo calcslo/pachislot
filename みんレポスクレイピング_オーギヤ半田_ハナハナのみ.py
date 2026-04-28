@@ -11,6 +11,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
 from urllib.parse import unquote
+from playwright.sync_api import sync_playwright, Page
+from scrapling.fetchers import StealthyFetcher
 
 # ==========================================
 # ログ設定
@@ -271,29 +273,7 @@ def restart_proxy() -> bool:
 # BOT検知回避 ユーティリティ
 # ==========================================
 
-def make_session(use_proxy: bool = True) -> requests.Session:
-    """
-    ランダムなUser-Agentを持つ新規セッションを生成する。
-    プロキシを使用する場合はlocalhost:8118経由にする。
-    """
-    session = requests.Session()
-    ua = random.choice(USER_AGENTS)
-    session.headers.update({
-        'User-Agent': ua,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Referer': 'https://www.google.co.jp/',
-        'DNT': '1',
-    })
-    if use_proxy:
-        session.proxies = {
-            "http": PROXY_SERVER,
-            "https": PROXY_SERVER,
-        }
-    return session
+
 
 
 def human_like_delay(min_sec: float = 1.5, max_sec: float = 4.0):
@@ -303,20 +283,38 @@ def human_like_delay(min_sec: float = 1.5, max_sec: float = 4.0):
     time.sleep(delay)
 
 
-def fetch_with_retry(session: requests.Session, url: str, timeout: int = 20,
-                     max_retries: int = 3) -> requests.Response:
+def fetch_with_retry(page: Page, url: str, timeout: int = 30,
+                     max_retries: int = 3):
     """
     リクエストを最大 max_retries 回試みる。
-    失敗時は例外を再スロー。
     """
     for attempt in range(max_retries):
         try:
-            response = session.get(url, timeout=timeout)
-            response.raise_for_status()
-            response.encoding = response.apparent_encoding
-            return response
+            response = page.goto(url, timeout=timeout * 1000)
+            page.wait_for_load_state('domcontentloaded')
+            page.wait_for_timeout(2500) # JSのレンダリングやCloudflare解除待ち
+            
+            content = page.content()
+            
+            # Cloudflare 等の待機画面チェック
+            if "Just a moment..." in content or "Please wait..." in content:
+                logger.warning("Cloudflareの待機画面（チャレンジ）を検知。解決を待ちます...")
+                page.wait_for_timeout(8000)
+                content = page.content()
+            
+            human_like_delay(1.0, 2.5)
+            status = response.status if response else 200
+            
+            # 真っ白なページ・ブロックされたページ対策
+            if len(content) < 500:
+                logger.warning(f"取得したコンテンツが極端に短いです（サイズ: {len(content)}バイト）。真っ白なページやIPブロックの可能性あり。")
+                raise Exception("Page content is abnormally short (Blank page suspected).")
+
+            if status >= 400:
+                raise Exception(f"HTTP Error: {status}")
+            return content.encode('utf-8')
         except Exception as e:
-            logger.warning(f"リクエスト失敗 ({attempt+1}/{max_retries}) - {url}: {e}")
+            logger.error(f"【スクレイピング失敗】致命的なエラーが発生しました (試行 {attempt+1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 human_like_delay(3.0, 7.0)
             else:
@@ -372,16 +370,29 @@ def is_data_already_scraped(date_str: str, machine_name: str) -> bool:
 # メインスクレイピングロジック（1回分）
 # ==========================================
 
-def _do_scraping(session: requests.Session, start_date: datetime, end_date: datetime,
+def _do_scraping(page: Page, start_date: datetime, end_date: datetime,
                  pickle_file_path: str, td_text_list: list) -> list:
     """
     実際のスクレイピング処理。
-    セッション・pickle保存先・途中結果リストを引数に取る。
     例外発生時は呼び出し元でリトライを判断する。
     """
     url = BASE_URL
-    response = fetch_with_retry(session, url)
-    soup = BeautifulSoup(response.text, 'html.parser')
+    body = fetch_with_retry(page, url)
+    soup = BeautifulSoup(body, 'html.parser')
+
+    # ページの健全性チェック（TOP/一覧ページでのIPブロック検知）
+    # min-repo.com の現在の構造（div#content）が存在するか確認する
+    if not soup.find('div', id='content') and not soup.find('h1'):
+        logger.error("【スクレイピング失敗】TOPページの構造が異常です。IPブロックの可能性があります。")
+        try:
+            with open("error_page.html", "w", encoding="utf-8") as f:
+                f.write(body.decode("utf-8", errors="ignore"))
+            page.screenshot(path="error_page.png")
+            logger.info("エラー時のHTMLソースとスクリーンショットを保存しました（error_page.html / error_page.png）")
+        except Exception as e:
+            logger.error(f"エラーページの保存に失敗しました: {e}")
+        
+        raise Exception("Detected structural mismatch on TOP page (potential IP block)")
 
     today = datetime.today()
     valid_links = []
@@ -474,10 +485,17 @@ def _do_scraping(session: requests.Session, start_date: datetime, end_date: date
             # BOT検知回避: リクエスト間にランダム遅延
             human_like_delay(2.0, 5.0)
 
-            response = fetch_with_retry(session, detail_link)
-            soup = BeautifulSoup(response.text, 'html.parser')
+            body = fetch_with_retry(page, detail_link)
+            soup = BeautifulSoup(body, 'html.parser')
 
+            # ページの健全性チェック（構造チェックによるIPブロック検知）
+            if not soup.find('div', id='content') and not soup.find('div', class_='tab_content'):
+                logger.error(f"【スクレイピング失敗】期待されるページ構造（content等）が見つかりません。IPブロックの可能性があります。")
+                raise Exception("Detected structural mismatch (potential IP block)")
+
+            found_data_for_this_kishu = False
             target_divs = soup.find_all('div', class_='tab_content')
+            
             for div in target_divs:
                 if div.find_all(class_='slump_list'):
                     logger.debug("slump_listがありました（スキップ）")
@@ -485,20 +503,31 @@ def _do_scraping(session: requests.Session, start_date: datetime, end_date: date
                 if not div.find_all(class_='table_wrap'):
                     logger.debug("table_wrapがありません（スキップ）")
                     continue
+                
                 trs = div.find_all('tr')
                 trs = [tr for tr in trs if tr.find_all('td')]
                 for tr in trs:
                     class_list_tr = tr.get('class', [])
                     if 'avg_row' in class_list_tr:
                         continue
+                    
+                    found_data_for_this_kishu = True
                     td_text_list.append(date_text)
                     td_text_list.append(weekday_text)
                     td_text_list.append(kishumei)
                     tds = tr.find_all('td')
                     for td in tds:
                         text = td.get_text(strip=True)
-                        if text:
-                            td_text_list.append(text)
+                        td_text_list.append(text)
+
+            if not found_data_for_this_kishu:
+                # 特定の文言（例：「データがありません」）があれば正常終了だが、
+                # それ以外でデータが0件なのはIPブロックやDOM変更の疑い
+                if "データがありません" in soup.get_text():
+                    logger.info(f"  {kishumei} のデータはありませんでした（正常）")
+                else:
+                    logger.error(f"スクレイピング失敗: {kishumei} のデータが見つかりませんでした。IPブロックの可能性があります。")
+                    raise Exception("Scraped 0 records for kishu (potential IP block)")
 
             save_to_pickle(td_text_list, pickle_file_path)
             logger.debug(f"中間保存完了: {len(td_text_list)} 件")
@@ -536,16 +565,43 @@ def scraping_from_minrepo(start_date: str, end_date: str):
             logger.error("Dockerプロキシのセットアップに失敗しました。再試行します。")
             continue
 
-        # 新しいセッション（新プロキシIP + ランダムUA）でリクエスト
-        session = make_session(use_proxy=True)
-
+        # scrapling (StealthyFetcher) を使用したリクエスト
         try:
-            td_text_list = _do_scraping(session, start_dt, end_dt, pickle_file_path, td_text_list)
+            error_occurred = None
+            
+            def action_wrapper(page: Page):
+                nonlocal td_text_list, error_occurred
+                try:
+                    # ウィンドウサイズの設定や最初の待機などをここで行うことも可能
+                    page.set_viewport_size({"width": 1280, "height": 800})
+                    td_text_list = _do_scraping(page, start_dt, end_dt, pickle_file_path, td_text_list)
+                except Exception as e:
+                    error_occurred = e
+            
+            logger.info("scrapling (StealthyFetcher) を使用して実行します")
+            StealthyFetcher.fetch(
+                BASE_URL,
+                page_action=action_wrapper,
+                headless=False,
+                proxy=PROXY_SERVER,
+                locale="ja-JP",
+                solve_cloudflare=True,
+                real_chrome=True,
+                hide_canvas=True,
+                block_webrtc=True,
+                network_idle=True,
+                extra_flags=['--disable-blink-features=AutomationControlled'],
+                timezone_id="Asia/Tokyo"
+            )
+            
+            if error_occurred:
+                raise error_occurred
+            
             logger.info("=== スクレイピング正常完了 ===")
             break
 
         except Exception as e:
-            logger.error(f"スクレイピング中にエラーが発生しました: {e}")
+            logger.error(f"【スクレイピング失敗】エラーが発生しました: {e}")
             logger.info("中間データを保存します...")
             save_to_pickle(td_text_list, pickle_file_path)
 
