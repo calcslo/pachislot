@@ -134,7 +134,8 @@ JS_EXTRACT = r'''
             if (tm) transY += parseFloat(tm[2]);
             el2 = el2.parentElement;
         }
-        const graphSvgY = last.y + transY;
+        // 0.5px補正: axis-tick(半ピクセル)とgraphPath(整数)の座標系差を補正
+        const graphSvgY = last.y + transY + 0.5;
 
         const labels = [...labelPoints].sort((a,b) => a.svgY - b.svgY);
 

@@ -644,7 +644,11 @@ def _extract_last_diff_from_active_chart(page: Page, chart_date_id: str) -> int 
                 if (tm) translateY += parseFloat(tm[2]);
                 el = el.parentElement;
             }
-            const graphSvgY = pathLocalY + translateY;
+            // ---- 0.5px補正 ----
+            // amchartsのaxis-tickは半ピクセル座標(427.5等)で描画されるが、
+            // グラフパスの座標は整数(427等)のため常に0.5px上にずれる。
+            // +0.5でaxis-tick座標系と一致させ、値=0のときに0枚と読める。
+            const graphSvgY = pathLocalY + translateY + 0.5;
 
             // ---- 修正: labelBaseTranslateYは不要（各ラベルで個別計算済み） ----
             // labelPointsのsvgYはすでにSVG座標系に変換済み

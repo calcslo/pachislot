@@ -1,0 +1,11 @@
+-- database: ./slot_data.db
+SELECT
+    *
+FROM
+    slot_data
+ORDER BY
+    `最終差枚` DESC;
+
+DELETE FROM slot_data
+WHERE
+    `日付` = '2026-04-28';
