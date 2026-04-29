@@ -654,13 +654,15 @@ function applyHeatmapCellSizes(){
         if(!wrap||!wrap.children.length)return;
         const availW=wrap.clientWidth-8;
         const gap=numCols-1;
-        const cellSize=Math.max(16,Math.floor((availW-gap)/numCols));
-        if(cellSize>=44){
+        const minCell = 24; // At least 24px so that 8px font (x 4 digits) can fit physically
+        const cellSize = Math.max(minCell, Math.floor((availW - gap) / numCols));
+        if(cellSize >= 44){
             wrap.style.setProperty('--cell-size', '44px');
-            wrap.style.setProperty('--cell-font-size', '12px');
+            wrap.style.setProperty('--cell-font-size', '14px');
             return;
         }
-        const fontSize=Math.max(8,Math.floor(cellSize*0.32));
+        // 2.4 * fontSize <= cellSize. Max multiplier is around 0.4.
+        const fontSize = Math.max(8, Math.floor(cellSize * 0.4));
         wrap.style.setProperty('--cell-size', cellSize+'px');
         wrap.style.setProperty('--cell-font-size', fontSize+'px');
     });

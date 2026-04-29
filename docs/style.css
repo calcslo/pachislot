@@ -443,7 +443,7 @@ tbody tr.clickable td:first-child {
 .heatmap-cell {
     width: var(--cell-size, 44px);
     height: var(--cell-size, 44px);
-    font-size: var(--cell-font-size, 12px);
+    font-size: var(--cell-font-size, 14px);
     flex-shrink: 0;
     display: flex;
     align-items: center;
