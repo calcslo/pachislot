@@ -619,7 +619,7 @@ function applyHeatmapCellSizes(){
     // メインヒートマップ + モーダルヒートマップ
     const wrapIds=[
         'diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper','target-heatmap-wrapper',
-        'modal-diff-hm','modal-set-hm','modal-streak-hm'
+        'modal-diff-hm','modal-set-hm','modal-streak-hm','modal-island-hm'
     ];
     wrapIds.forEach(id=>{
         const wrap=document.getElementById(id);
@@ -760,13 +760,14 @@ function resetHeatmapZoom(id){
 // 除外する機種名
 const EXCLUDED_MODELS = ['ｽﾏｰﾄ沖ｽﾛ+ﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV'];
 
-function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, opts={}){
+function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, opts={}, chartKey='machine'){
     const step = opts.step || 500;
     const initRange = opts.initRange || 4000;
     const rowH = opts.rowH || 18;
     const fontSize = opts.fontSize || 11;
-    const labelWidthMax = opts.labelWidthMax || 240;
+    const labelRatio = 0.4;
 
+    if(!items.length) return;
     const vals = items.map(i=>i.avg);
     const dataMax = vals.reduce((a,b)=>Math.max(a,b), 0);
     const dataMin = vals.reduce((a,b)=>Math.min(a,b), 0);
@@ -774,78 +775,85 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
     const axisMin = Math.min(-initRange, -Math.ceil(Math.abs(dataMin)/step)*step);
 
     const n = items.length;
-    const h = Math.max(250, n * rowH + 60);
+    const h = Math.max(200, n * rowH + 50);
 
-    // --- Label canvas (fixed left) ---
     const labelCvs = document.getElementById(labelCanvasId);
     if(!labelCvs) return;
+    const labelPane = labelCvs.parentElement;
 
-    // Measure max label width
-    const tmpCtx = labelCvs.getContext('2d');
+    const tmpCtx = labelCvs.getContext("2d");
     tmpCtx.font = `bold ${fontSize}px Inter, Noto Sans JP, sans-serif`;
-    let maxLW = 0;
+    let maxLW = 80;
     items.forEach(i=>{ const w=tmpCtx.measureText(i.label).width; if(w>maxLW)maxLW=w; });
-    const labelW = Math.min(labelWidthMax, Math.ceil(maxLW) + 16);
+    const labelCvsW = Math.ceil(maxLW) + 24;
 
-    labelCvs.width = labelW;
+    labelCvs.width = labelCvsW;
     labelCvs.height = h;
-    labelCvs.style.width = labelW + 'px';
-    labelCvs.style.height = h + 'px';
+    labelCvs.style.width = labelCvsW + "px";
+    labelCvs.style.height = h + "px";
 
-    // Set label panel width (only when wrapper container exists)
-    const labelPanel = labelCvs.parentElement;
-    labelPanel.style.width = labelW + 'px';
+    const wrapper = splitWrapperId ? document.getElementById(splitWrapperId) : labelPane.parentElement;
+    const totalW = wrapper ? (wrapper.clientWidth || 600) : 600;
+    const labelPaneW = Math.floor(totalW * labelRatio);
+    const barPaneW = totalW - labelPaneW;
 
-    // --- Bar canvas ---
+    labelPane.style.width = labelPaneW + "px";
+    labelPane.style.flexShrink = "0";
+    labelPane.style.overflowX = "auto";
+    labelPane.style.overflowY = "hidden";
+    labelPane.style.height = h + "px";
+
     const barCvs = document.getElementById(barCanvasId);
     if(!barCvs) return;
+    const barPane = barCvs.parentElement;
+    barPane.style.overflowX = "auto";
+    barPane.style.overflowY = "hidden";
+    barPane.style.height = h + "px";
 
-    const barContainer = barCvs.parentElement;
-    barContainer.style.height = h + 'px';
-    barCvs.style.height = h + 'px';
+    const totalRange = axisMax - axisMin;
+    const initTotalRange = initRange * 2;
+    const scaleFactor = Math.max(1, totalRange / initTotalRange);
+    const barCvsW = Math.max(barPaneW, Math.round(barPaneW * scaleFactor));
+    barCvs.style.width = barCvsW + "px";
+    barCvs.style.height = h + "px";
 
-    if(charts['machine'])charts['machine'].destroy();
-    if(charts['machine-labels'])charts['machine-labels'].destroy();
+    const keyL = chartKey+"-labels", keyB = chartKey;
+    if(charts[keyL])charts[keyL].destroy();
+    if(charts[keyB])charts[keyB].destroy();
 
-    // Build gridline colors for 500-step
     const gridColorFn = (ctx2) => {
-        const v = ctx2.tick ? ctx2.tick.value : ctx2;
-        return (v === 0) ? 'rgba(255,255,255,0.35)' : 'rgba(128,128,128,0.18)';
+        const v = ctx2.tick ? ctx2.tick.value : (ctx2.value ?? 0);
+        return (v === 0) ? "rgba(255,255,255,0.4)" : "rgba(128,128,128,0.15)";
     };
 
-    // Labels chart (Y-axis only, no data)
-    charts['machine-labels'] = new Chart(labelCvs, {
-        type: 'bar',
-        data: { labels: items.map(i=>i.label), datasets: [{ data: vals, backgroundColor: 'transparent', borderColor: 'transparent' }] },
+    charts[keyL] = new Chart(labelCvs, {
+        type: "bar",
+        data: { labels: items.map(i=>i.label), datasets: [{ data: vals, backgroundColor:'transparent', borderColor:'transparent' }] },
         options: {
-            indexAxis: 'y', responsive: false, maintainAspectRatio: false,
-            animation: false,
-            plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { enabled: false } },
+            indexAxis:'y', responsive:false, maintainAspectRatio:false, animation:false,
+            plugins: { legend:{display:false}, datalabels:{display:false}, tooltip:{enabled:false} },
             scales: {
-                x: { display: false, min: axisMin, max: axisMax },
-                y: { position: 'right', grid: { display: false },
-                     ticks: { font: { size: fontSize, weight: 'bold' }, autoSkip: false, maxRotation: 0, color: Chart.defaults.color },
-                     afterFit(scale){ scale.width = labelW; } }
+                x: { display:false, min:axisMin, max:axisMax },
+                y: { position:'right', grid:{display:false},
+                     ticks:{ font:{size:fontSize,weight:'bold'}, autoSkip:false, maxRotation:0, color:Chart.defaults.color },
+                     afterFit(scale){ scale.width = labelCvsW; } }
             },
-            layout: { padding: { top: 0, bottom: 30 } }
+            layout: { padding:{ top:0, bottom:30 } }
         }
     });
 
-    // Bars chart (X-axis + bars, no Y labels)
-    charts['machine'] = new Chart(barCvs, {
-        type: 'bar',
-        data: { labels: items.map(i=>i.label), datasets: [{ label: '平均差枚', data: vals,
-            backgroundColor: vals.map(v=>v>0?'rgba(78,143,224,0.75)':'rgba(224,92,92,0.75)'), borderRadius: 3 }] },
-        options: {
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, datalabels: { display: false } },
-            scales: {
-                x: { min: axisMin, max: axisMax,
-                     ticks: { stepSize: step, font: { size: 10 } },
-                     grid: { color: gridColorFn } },
-                y: { display: false, grid: { display: false }, ticks: { autoSkip: false } }
+    charts[keyB] = new Chart(barCvs, {
+        type:'bar',
+        data:{ labels:items.map(i=>i.label), datasets:[{ label:'差枚', data:vals,
+            backgroundColor:vals.map(v=>v>0?'rgba(78,143,224,0.78)':'rgba(224,92,92,0.78)'), borderRadius:3 }] },
+        options:{
+            indexAxis:'y', responsive:false, maintainAspectRatio:false,
+            plugins:{ legend:{display:false}, datalabels:{display:false} },
+            scales:{
+                x:{ min:axisMin, max:axisMax, ticks:{stepSize:step,font:{size:10}}, grid:{color:gridColorFn} },
+                y:{ display:false, grid:{display:false}, ticks:{autoSkip:false} }
             },
-            layout: { padding: { top: 0, bottom: 0 } }
+            layout:{ padding:{ top:0, bottom:0 } }
         }
     });
 }
