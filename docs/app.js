@@ -756,11 +756,107 @@ function resetHeatmapZoom(id){
 // ==========================================
 // MACHINE TAB (台番号別差枚)
 // ==========================================
+
+// 除外する機種名
+const EXCLUDED_MODELS = ['ｽﾏｰﾄ沖ｽﾛ+ﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV'];
+
+function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, opts={}){
+    const step = opts.step || 500;
+    const initRange = opts.initRange || 4000;
+    const rowH = opts.rowH || 18;
+    const fontSize = opts.fontSize || 11;
+    const labelWidthMax = opts.labelWidthMax || 240;
+
+    const vals = items.map(i=>i.avg);
+    const dataMax = vals.reduce((a,b)=>Math.max(a,b), 0);
+    const dataMin = vals.reduce((a,b)=>Math.min(a,b), 0);
+    const axisMax = Math.max(initRange, Math.ceil(Math.abs(dataMax)/step)*step);
+    const axisMin = Math.min(-initRange, -Math.ceil(Math.abs(dataMin)/step)*step);
+
+    const n = items.length;
+    const h = Math.max(250, n * rowH + 60);
+
+    // --- Label canvas (fixed left) ---
+    const labelCvs = document.getElementById(labelCanvasId);
+    if(!labelCvs) return;
+
+    // Measure max label width
+    const tmpCtx = labelCvs.getContext('2d');
+    tmpCtx.font = `bold ${fontSize}px Inter, Noto Sans JP, sans-serif`;
+    let maxLW = 0;
+    items.forEach(i=>{ const w=tmpCtx.measureText(i.label).width; if(w>maxLW)maxLW=w; });
+    const labelW = Math.min(labelWidthMax, Math.ceil(maxLW) + 16);
+
+    labelCvs.width = labelW;
+    labelCvs.height = h;
+    labelCvs.style.width = labelW + 'px';
+    labelCvs.style.height = h + 'px';
+
+    // Set label panel width (only when wrapper container exists)
+    const labelPanel = labelCvs.parentElement;
+    labelPanel.style.width = labelW + 'px';
+
+    // --- Bar canvas ---
+    const barCvs = document.getElementById(barCanvasId);
+    if(!barCvs) return;
+
+    const barContainer = barCvs.parentElement;
+    barContainer.style.height = h + 'px';
+    barCvs.style.height = h + 'px';
+
+    if(charts['machine'])charts['machine'].destroy();
+    if(charts['machine-labels'])charts['machine-labels'].destroy();
+
+    // Build gridline colors for 500-step
+    const gridColorFn = (ctx2) => {
+        const v = ctx2.tick ? ctx2.tick.value : ctx2;
+        return (v === 0) ? 'rgba(255,255,255,0.35)' : 'rgba(128,128,128,0.18)';
+    };
+
+    // Labels chart (Y-axis only, no data)
+    charts['machine-labels'] = new Chart(labelCvs, {
+        type: 'bar',
+        data: { labels: items.map(i=>i.label), datasets: [{ data: vals, backgroundColor: 'transparent', borderColor: 'transparent' }] },
+        options: {
+            indexAxis: 'y', responsive: false, maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: { enabled: false } },
+            scales: {
+                x: { display: false, min: axisMin, max: axisMax },
+                y: { position: 'right', grid: { display: false },
+                     ticks: { font: { size: fontSize, weight: 'bold' }, autoSkip: false, maxRotation: 0, color: Chart.defaults.color },
+                     afterFit(scale){ scale.width = labelW; } }
+            },
+            layout: { padding: { top: 0, bottom: 30 } }
+        }
+    });
+
+    // Bars chart (X-axis + bars, no Y labels)
+    charts['machine'] = new Chart(barCvs, {
+        type: 'bar',
+        data: { labels: items.map(i=>i.label), datasets: [{ label: '平均差枚', data: vals,
+            backgroundColor: vals.map(v=>v>0?'rgba(78,143,224,0.75)':'rgba(224,92,92,0.75)'), borderRadius: 3 }] },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, datalabels: { display: false } },
+            scales: {
+                x: { min: axisMin, max: axisMax,
+                     ticks: { stepSize: step, font: { size: 10 } },
+                     grid: { color: gridColorFn } },
+                y: { display: false, grid: { display: false }, ticks: { autoSkip: false } }
+            },
+            layout: { padding: { top: 0, bottom: 0 } }
+        }
+    });
+}
+
 function renderMachineTab(data){
     // Build per-machine history to find latest model per machine number
     const machineModels={};
     data.forEach(row=>{
         const num=normalizeNum(row['台番号']),model=row['機種名'],date=row['日付'];
+        // 除外機種をスキップ
+        if(EXCLUDED_MODELS.includes(model)) return;
         if(!machineModels[num])machineModels[num]={latestDate:'',latestModel:'',entries:{}};
         if(date>machineModels[num].latestDate){machineModels[num].latestDate=date;machineModels[num].latestModel=model;}
         const key=model;
@@ -782,22 +878,8 @@ function renderMachineTab(data){
     }
     items.sort((a,b)=>parseInt(a.num)-parseInt(b.num));
 
-    const labels=items.map(i=>i.label),vals=items.map(i=>i.avg);
-    const h=Math.max(250,labels.length*16+40);
-    const container=document.getElementById('machine-chart-container');
-    container.style.height=`${h}px`;
-    container.style.minWidth='0px';
-    
-    const ctx=document.getElementById('chart-machine-diff');
-    if(charts['machine'])charts['machine'].destroy();
-    charts['machine']=new Chart(ctx,{
-        type:'bar',
-        data:{labels,datasets:[{label:'平均差枚',data:vals,backgroundColor:vals.map(v=>v>0?'rgba(59,130,246,0.7)':'rgba(239,68,68,0.7)'),borderRadius:4}]},
-        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{display:false},datalabels:{display:false}},
-            scales:{x:{min:-2000,max:2000,grid:{color:'rgba(128,128,128,0.2)'}},y:{grid:{display:false},ticks:{font:{size:12,weight:'bold'},autoSkip:false}}}}
-    });
-    enableChartPan('chart-machine-diff', false);
+    renderSplitBarChart('machine-split-wrapper','machine-labels-canvas','chart-machine-diff', items,
+        { step: 500, initRange: 4000, rowH: 18, fontSize: 11, labelWidthMax: 260 });
 }
 
 // ==========================================
@@ -1055,25 +1137,7 @@ function renderCumulAnalysis(data){
     if (currentCumulFilter === 'first_week') pts = pts.filter(p => p.isFirstWeek);
     else if (currentCumulFilter === 'last_week') pts = pts.filter(p => p.isLastWeek);
 
-    // Bucket by prevCumul (step=20000 coins)
-    const step = 20000;
-    const bucketMap = {};
-    pts.forEach(p => {
-        const bMin = Math.floor(p.prevCumul / step) * step;
-        const bKey = `${bMin >= 0 ? '+' : ''}${(bMin / 1000).toFixed(0)}k〜${((bMin + step) / 1000).toFixed(0)}k`;
-        if (!bucketMap[bKey]) bucketMap[bKey] = { diff: 0, g: 0, c: 0, bMin };
-        bucketMap[bKey].diff += p.diff;
-        bucketMap[bKey].g += p.g;
-        bucketMap[bKey].c++;
-    });
-
-    const bSorted = Object.entries(bucketMap).sort((a, b) => a[1].bMin - b[1].bMin);
-    const bLabels = bSorted.map(([k]) => k);
-    const bDiff = bSorted.map(([, v]) => v.c ? v.diff / v.c : 0);
-    const bPayout = bSorted.map(([, v]) => v.c ? payout(v.diff, v.g) : 0);
-
-    drawBar('chart-cumul-diff-bar', bLabels, bDiff, '当日平均差枚',{dynamicWidth:true});
-    drawDotChart('chart-cumul-payout-bar', bLabels, bPayout, '当日出率(%)',{dynamicWidth:true, dynamicWidthMultiplier:20});
+    // (棒グラフ削除済み — 散布図のみ残す)
 
     // Scatter plot: prevCumul(x) vs diff(y) with regression line
     const scatterData = pts.map(p => ({ x: p.prevCumul, y: p.diff, date: p.date }));
@@ -1160,25 +1224,26 @@ function renderDateDetail(date){
     });
 
     // Diff heatmap for this date
-    const diffWrapId='modal-diff-hm',setWrapId='modal-set-hm',streakWrapId='modal-streak-hm';
+    const diffWrapId='modal-diff-hm',setWrapId='modal-set-hm',streakWrapId='modal-streak-hm',islandWrapId='modal-island-hm';
     hmSec.innerHTML+=`
         <div style="margin-bottom:0.5rem"><strong>差枚ヒートマップ</strong></div>
-        <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem">
-            ${document.getElementById('diff-legend')?document.getElementById('diff-legend').innerHTML:''}
-        </div>
+        <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem" id="modal-diff-legend"></div>
         <div class="heatmap-wrapper" id="${diffWrapId}" style="margin-bottom:1rem"></div>
         <div style="margin-bottom:0.5rem"><strong>推定設定ヒートマップ</strong></div>
         <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem">
-            <div class="legend-item"><span class="color-box" style="background-color: rgba(60,20,180,0.8);"></span>設定1</div>
-            <div class="legend-item"><span class="color-box" style="background-color: rgba(30,100,230,0.8);"></span>設定2</div>
-            <div class="legend-item"><span class="color-box" style="background-color: rgba(0,190,255,0.8);"></span>設定3</div>
-            <div class="legend-item"><span class="color-box" style="background-color: rgba(255,220,0,0.8);"></span>設定4</div>
-            <div class="legend-item"><span class="color-box" style="background-color: rgba(255,130,0,0.8);"></span>設定5</div>
-            <div class="legend-item"><span class="color-box" style="background-color: rgba(230,40,40,0.8);"></span>設定6</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(60,20,180,0.8)"></span>設定1</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(30,100,230,0.8)"></span>設定2</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.8)"></span>設定3</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(255,220,0,0.8)"></span>設定4</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(255,130,0,0.8)"></span>設定5</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(230,40,40,0.8)"></span>設定6</div>
         </div>
         <div class="heatmap-wrapper" id="${setWrapId}" style="margin-bottom:1rem"></div>
+        <div style="margin-bottom:0.5rem"><strong>島平均差枚ヒートマップ</strong></div>
+        <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem" id="modal-island-legend"></div>
+        <div class="heatmap-wrapper" id="${islandWrapId}" style="margin-bottom:1rem"></div>
         <div style="margin-bottom:0.5rem"><strong>連続凹み・凸日数ヒートマップ</strong>
-          <span style="font-size:0.8rem;color:var(--text-muted);margin-left:0.5rem">（青=凹み継続、赤=凸継続、数字=連続日数）</span>
+          <span style="font-size:0.8rem;color:var(--text-muted);margin-left:0.5rem">（青=凹み継続、赤=凸継続）</span>
         </div>
         <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem">
           <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.5)"></span>凹み1日</div>
@@ -1193,11 +1258,22 @@ function renderDateDetail(date){
 
     // Build heatmaps after injecting HTML
     setTimeout(()=>{
+        // Dynamic thresholds from today's data
+        const dayDiffs=Object.values(ms).map(s=>Math.round(s.diff/s.count));
+        const dayPos=dayDiffs.filter(v=>v>0),dayNeg=dayDiffs.filter(v=>v<0);
+        const localT={
+            pos1:dayPos.length?percentile(dayPos,33):1000,
+            pos2:dayPos.length?percentile(dayPos,66):2000,
+            neg1:dayNeg.length?percentile(dayNeg,33):-2000,
+            neg2:dayNeg.length?percentile(dayNeg,66):-1000
+        };
+        const lEl=document.getElementById('modal-diff-legend');
+        if(lEl)lEl.innerHTML=generateLegendHtml(localT);
         // Diff heatmap
         buildModalHeatmap(diffWrapId,(el,num)=>{
             if(!ms[num]){el.style.background='transparent';el.style.border='1px solid rgba(128,128,128,0.2)';return;}
             const st=ms[num],avg=Math.round(st.diff/st.count);
-            el.style.backgroundColor=getHeatmapColor(avg);
+            el.style.backgroundColor=getHeatmapColor(avg,localT);
             const t=`<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>機種: ${st.model}</div><div>位置: ${getPosLabel(num)}</div><div>差枚: ${formatVal(avg)}</div></div>`;
             el.addEventListener('mouseenter',()=>{tooltip.innerHTML=t;tooltip.classList.add('visible');});
             el.addEventListener('mouseleave',()=>tooltip.classList.remove('visible'));
@@ -1205,8 +1281,7 @@ function renderDateDetail(date){
         // Setting heatmap
         buildModalHeatmap(setWrapId,(el,num)=>{
             if(!ms[num]){el.style.background='transparent';el.style.border='1px solid rgba(128,128,128,0.2)';return;}
-            const st=ms[num];
-            let sText='';
+            const st=ms[num];let sText='';
             if(MACHINE_GROUPS.hanahana.includes(st.model)||MACHINE_GROUPS.juggler.includes(st.model)){
                 const est=estimateSetting(st.model,st.g,st.big,st.reg);
                 if(est){el.style.backgroundColor=SETTING_COLORS[est.setting];sText=`推定設定:${est.setting}(${(est.prob*100).toFixed(1)}%)`;}
@@ -1215,20 +1290,37 @@ function renderDateDetail(date){
             el.addEventListener('mouseenter',()=>{tooltip.innerHTML=t;tooltip.classList.add('visible');});
             el.addEventListener('mouseleave',()=>tooltip.classList.remove('visible'));
         });
+        // Island avg heatmap
+        const iSt2={};
+        layoutData.forEach(row=>row.forEach(cell=>{
+            const num=normalizeNum(cell);
+            if(cell!==''&&ms[num]&&layoutLookup[num]){
+                const iId=layoutLookup[num].islandId;
+                if(!iSt2[iId])iSt2[iId]={total:0,count:0};
+                iSt2[iId].total+=Math.round(ms[num].diff/ms[num].count);iSt2[iId].count++;
+            }
+        }));
+        const iAvg2={};
+        for(const[k,v] of Object.entries(iSt2))iAvg2[k]=v.count>0?Math.round(v.total/v.count):0;
+        const iVals=Object.values(iAvg2).filter(v=>v!==0);
+        const iP=iVals.filter(v=>v>0),iN=iVals.filter(v=>v<0);
+        const iT2={pos1:iP.length?percentile(iP,33):200,pos2:iP.length?percentile(iP,66):500,neg1:iN.length?percentile(iN,33):-500,neg2:iN.length?percentile(iN,66):-200};
+        const ilEl=document.getElementById('modal-island-legend');
+        if(ilEl)ilEl.innerHTML=generateLegendHtml(iT2);
+        buildModalHeatmap(islandWrapId,(el,num)=>{
+            const iId=layoutLookup[num]?layoutLookup[num].islandId:null;
+            const ia=iId?(iAvg2[iId]||0):0;
+            el.style.backgroundColor=getHeatmapColor(ia,iT2);
+            const t=`<div class="tooltip-title">${iId||num}</div><div class="tooltip-body"><div>島平均差枚: ${formatVal(ia)}</div></div>`;
+            el.addEventListener('mouseenter',()=>{tooltip.innerHTML=t;tooltip.classList.add('visible');});
+            el.addEventListener('mouseleave',()=>tooltip.classList.remove('visible'));
+        });
         // Streak heatmap
         buildModalHeatmap(streakWrapId,(el,num)=>{
             const sk=streakMap[num]||{neg:0,pos:0};
-            el.classList.add('streak-cell');
-            let streakText='';
-            if(sk.neg>0){
-                const lvl=sk.neg>=3?3:sk.neg;
-                const cols=['','rgba(0,190,255,0.5)','rgba(30,100,230,0.7)','rgba(60,20,180,0.85)'];
-                el.style.backgroundColor=cols[lvl];streakText=`凹${sk.neg}日`;
-            }else if(sk.pos>0){
-                const lvl=sk.pos>=3?3:sk.pos;
-                const cols=['','rgba(255,220,0,0.5)','rgba(255,130,0,0.7)','rgba(230,40,40,0.85)'];
-                el.style.backgroundColor=cols[lvl];streakText=`凸${sk.pos}日`;
-            }
+            el.classList.add('streak-cell');let streakText='';
+            if(sk.neg>0){const lvl=sk.neg>=3?3:sk.neg;el.style.backgroundColor=['','rgba(0,190,255,0.5)','rgba(30,100,230,0.7)','rgba(60,20,180,0.85)'][lvl];streakText=`凹${sk.neg}日`;}
+            else if(sk.pos>0){const lvl=sk.pos>=3?3:sk.pos;el.style.backgroundColor=['','rgba(255,220,0,0.5)','rgba(255,130,0,0.7)','rgba(230,40,40,0.85)'][lvl];streakText=`凸${sk.pos}日`;}
             if(streakText){
                 el.textContent=`${num}\n${streakText}`;
                 const m=ms[num]?ms[num].model:'不明';
@@ -1249,7 +1341,7 @@ function renderDateDetail(date){
         modelStats[m].diff+=diff;modelStats[m].g+=g;modelStats[m].c++;
         if(diff>0)modelStats[m].win++;
     });
-    let mHtml='<div class="table-container"><table><thead><tr><th>機種名</th><th>台数</th><th>平均差枚</th><th>平均G数</th><th>勝率</th></tr></thead><tbody>';
+    let mHtml='<div class="table-container"><table class="modal-compact-table"><thead><tr><th>機種名</th><th>台数</th><th>平均差枚</th><th>平均G数</th><th>勝率</th></tr></thead><tbody>';
     Object.entries(modelStats).sort((a,b)=>b[1].diff/b[1].c-a[1].diff/a[1].c).forEach(([m,st])=>{
         const avg=Math.round(st.diff/st.c),avgG=Math.round(st.g/st.c);
         mHtml+=`<tr><td style="text-align:left">${m}</td><td>${st.c}</td><td>${formatVal(avg)}</td><td>${avgG.toLocaleString()}</td><td>${(st.win/st.c*100).toFixed(1)}%</td></tr>`;
@@ -1267,7 +1359,7 @@ function renderDateDetail(date){
         const diff=Number(row['最終差枚'])||0,g=Number(row['累計ゲーム'])||0;
         digitStats[d].diff+=diff;digitStats[d].g+=g;digitStats[d].c++;if(diff>0)digitStats[d].win++;
     });
-    let dHtml='<div class="table-container"><table><thead><tr><th>末尾</th><th>台数</th><th>平均差枚</th><th>平均G数</th><th>出率</th><th>勝率</th></tr></thead><tbody>';
+    let dHtml='<div class="table-container"><table class="modal-compact-table"><thead><tr><th>末尾</th><th>台数</th><th>平均差枚</th><th>平均G数</th><th>出率</th><th>勝率</th></tr></thead><tbody>';
     digitStats.forEach((st,i)=>{
         if(st.c===0)return;
         const avg=Math.round(st.diff/st.c),avgG=Math.round(st.g/st.c);
@@ -1276,31 +1368,29 @@ function renderDateDetail(date){
     dHtml+='</tbody></table></div>';
     dSec.innerHTML+=dHtml;body.appendChild(dSec);
 
-    // ---- Section: Per-machine bar chart ----
+    // ---- Section: Per-machine bar chart (split: labels fixed, bars scroll) ----
     const cSec=document.createElement('div');cSec.className='modal-section';
     cSec.innerHTML='<h3>台番号別 差枚棒グラフ</h3>';
-    const chartDiv=document.createElement('div');chartDiv.className='chart-container';
-    const cvs=document.createElement('canvas');cvs.id='modal-machine-chart';
-    chartDiv.appendChild(cvs);cSec.appendChild(chartDiv);body.appendChild(cSec);
+    const splitW=document.createElement('div');splitW.className='split-chart-wrapper';
+    const lblDiv=document.createElement('div');lblDiv.className='split-chart-labels';
+    const barDiv=document.createElement('div');barDiv.className='split-chart-bars';
+    const lblCvs=document.createElement('canvas');lblCvs.id='modal-machine-labels';
+    const barCvs=document.createElement('canvas');barCvs.id='modal-machine-chart';
+    lblDiv.appendChild(lblCvs);barDiv.appendChild(barCvs);
+    splitW.appendChild(lblDiv);splitW.appendChild(barDiv);
+    cSec.appendChild(splitW);body.appendChild(cSec);
 
     setTimeout(()=>{
         const items=[];
         dayData.forEach(row=>{
             const num=normalizeNum(row['台番号']),diff=Number(row['最終差枚'])||0;
-            items.push({label:`${row['機種名']}`,diff,num});
+            items.push({label:`[ ${num} ] ${row['機種名']}`,avg:diff,num});
         });
         items.sort((a,b)=>parseInt(a.num)-parseInt(b.num));
-        const labels=items.map(i=>`[ ${i.num} ] ${i.label}`);
-        const h=Math.max(250,items.length*16);
-        chartDiv.style.height=`${h}px`;
         if(charts['modal-machine'])charts['modal-machine'].destroy();
-        charts['modal-machine']=new Chart(cvs,{
-            type:'bar',
-            data:{labels:labels,datasets:[{data:items.map(i=>i.diff),backgroundColor:items.map(i=>i.diff>0?'rgba(59,130,246,0.7)':'rgba(239,68,68,0.7)'),borderRadius:4}]},
-            options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-                plugins:{legend:{display:false},datalabels:{display:false}},
-                scales:{x:{grid:{color:'rgba(128,128,128,0.2)'}},y:{grid:{display:false},ticks:{font:{size:14,weight:'bold'},autoSkip:false}}}}
-        });
+        if(charts['modal-machine-labels'])charts['modal-machine-labels'].destroy();
+        renderSplitBarChart('','modal-machine-labels','modal-machine-chart',items,
+            {step:2000,initRange:4000,rowH:20,fontSize:11,labelWidthMax:280});
     },100);
 }
 
