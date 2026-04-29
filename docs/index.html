@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>オーギヤタウン半田店スロット差枚データ</title>
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <!-- ChartJS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 </head>
-<body class="dark-theme">
+
+<body>
     <div class="glass-background"></div>
     <div class="glow-orb top-left"></div>
     <div class="glow-orb bottom-right"></div>
@@ -19,13 +23,17 @@
     <div class="dashboard-container">
         <!-- Header -->
         <header class="glass-panel header">
-            <h1 class="gradient-text">オーギヤタウン半田店スロット差枚データ</h1>
-            
+            <h1 class="site-title">
+                <span class="main-title">オーギヤタウン半田店</span>
+                <span class="sub-title">SLOT DATA DASHBOARD</span>
+            </h1>
+
             <div class="header-controls">
                 <button id="old-data-toggle" class="old-data-btn">旧データ OFF</button>
                 <button id="theme-btn" class="icon-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path class="sun" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        <path class="sun"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                 </button>
             </div>
@@ -72,12 +80,12 @@
             <button class="nav-btn" data-section="heatmap-section">ヒートマップ</button>
             <button class="nav-btn" data-section="machine-section">台番号別差枚</button>
             <button class="nav-btn" data-section="analysis-section">詳細分析</button>
-            <button class="nav-btn" data-section="target-section">🎯 狙い台</button>
+            <button class="nav-btn" data-section="target-section">狙い台</button>
         </div>
 
         <!-- Main Content Grid -->
         <div class="content-grid">
-            
+
             <!-- 1. Summary Section -->
             <section id="summary-section" class="data-section glass-panel active-section">
                 <h2 class="section-title">月別集計 (Monthly Summary)</h2>
@@ -111,13 +119,13 @@
                                     <th>平均G数</th>
                                     <th>総G数</th>
                                     <th>出率(%)</th>
-                                    <th>末尾寄せ</th>
+                                    <th>末尾</th>
                                 </tr>
                             </thead>
                             <tbody id="summary-tbody"></tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Chart -->
                     <div class="chart-container" style="height: 500px;">
                         <canvas id="diff-chart"></canvas>
@@ -137,7 +145,8 @@
                         <!-- Dynamically injected thresholds -->
                     </div>
                     <div class="heatmap-zoom-controls">
-                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('diff-heatmap-wrapper')">🔍 リセット</button>
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('diff-heatmap-wrapper')">🔍
+                            リセット</button>
                     </div>
                     <div class="heatmap-wrapper" id="diff-heatmap-wrapper"></div>
                 </div>
@@ -146,16 +155,24 @@
                 <div class="heatmap-block">
                     <h2 class="section-title">推定設定ヒートマップ (ハナハナ・ジャグラー限定)</h2>
                     <div class="heatmap-legend">
-                        <div class="legend-item"><span class="color-box" style="background-color: rgba(60,20,180,0.8);"></span>設定1</div>
-                        <div class="legend-item"><span class="color-box" style="background-color: rgba(30,100,230,0.8);"></span>設定2</div>
-                        <div class="legend-item"><span class="color-box" style="background-color: rgba(0,190,255,0.8);"></span>設定3</div>
-                        <div class="legend-item"><span class="color-box" style="background-color: rgba(255,220,0,0.8);"></span>設定4</div>
-                        <div class="legend-item"><span class="color-box" style="background-color: rgba(255,130,0,0.8);"></span>設定5</div>
-                        <div class="legend-item"><span class="color-box" style="background-color: rgba(230,40,40,0.8);"></span>設定6</div>
-                        <div class="legend-item"><span class="color-box" style="background-color: transparent; border: 1px solid #ccc;"></span>不明/データ不足</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(60,20,180,0.8);"></span>設定1</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(30,100,230,0.8);"></span>設定2</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(0,190,255,0.8);"></span>設定3</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(255,220,0,0.8);"></span>設定4</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(255,130,0,0.8);"></span>設定5</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(230,40,40,0.8);"></span>設定6</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: transparent; border: 1px solid #ccc;"></span>不明/データ不足</div>
                     </div>
                     <div class="heatmap-zoom-controls">
-                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('setting-heatmap-wrapper')">🔍 リセット</button>
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('setting-heatmap-wrapper')">🔍
+                            リセット</button>
                     </div>
                     <div class="heatmap-wrapper" id="setting-heatmap-wrapper"></div>
                 </div>
@@ -167,7 +184,8 @@
                         <!-- Same as diff legend usually -->
                     </div>
                     <div class="heatmap-zoom-controls">
-                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('row-heatmap-wrapper')">🔍 リセット</button>
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('row-heatmap-wrapper')">🔍
+                            リセット</button>
                     </div>
                     <div class="heatmap-wrapper" id="row-heatmap-wrapper"></div>
                     <!-- Column avg bar chart moved here -->
@@ -193,14 +211,14 @@
 
             <!-- 4. Analysis Section -->
             <section id="analysis-section" class="analysis-section glass-panel" style="display:none;">
-                
+
                 <div class="chart-grid">
                     <!-- Column 1 -->
                     <div class="chart-card">
                         <h3 class="chart-title">台番号末尾別 平均差枚</h3>
                         <canvas id="chart-digit"></canvas>
                     </div>
-                    
+
                     <div class="chart-card">
                         <h3 class="chart-title">nの付く日別 平均差枚</h3>
                         <canvas id="chart-nday"></canvas>
@@ -247,6 +265,26 @@
                     </div>
 
                     <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">ゲーム数別 平均差枚</h3>
+                        <p class="section-note">過去数日間の平均ゲーム数（500G刻み）に対して、最新日の平均差枚がどうなったかを集計します。</p>
+                        <div class="analysis-controls" style="margin-bottom:1rem;">
+                            <div class="tabs" id="game-count-period-tabs">
+                                <button class="tab-btn active" data-period="1">前日</button>
+                                <button class="tab-btn" data-period="2">過去2日</button>
+                                <button class="tab-btn" data-period="3">過去3日</button>
+                                <button class="tab-btn" data-period="4">過去4日</button>
+                                <button class="tab-btn" data-period="5">過去5日</button>
+                                <button class="tab-btn" data-period="6">過去6日</button>
+                                <button class="tab-btn" data-period="7">過去7日</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-game-count-diff"></canvas>
+                        </div>
+                    </div>
+
+
+                    <div class="chart-card" style="grid-column: 1 / -1;">
                         <h3 class="chart-title">機種別 平均差枚</h3>
                         <div class="chart-scroll-wrapper">
                             <div class="chart-container">
@@ -289,8 +327,9 @@
 
             <!-- 5. Target Support Section -->
             <section id="target-section" class="glass-panel" style="display:none;">
-                <h2 class="section-title">🎯 狙い台サポートツール</h2>
-                <p class="section-note">条件を設定して翌日の狙い台を絞り込みます。差枚・島平均はページ上部の期間・特定日フィルタを反映。連続凹み/凸は最新日時点（フィルタ無視）。フィルタ変更時は自動再計算。</p>
+                <h2 class="section-title">狙い台サポートツール</h2>
+                <p class="section-note">
+                    条件を設定して翌日の狙い台を絞り込みます。差枚・島平均はページ上部の期間・特定日フィルタを反映。連続凹み/凸は最新日時点（フィルタ無視）。フィルタ変更時は自動再計算。</p>
 
                 <!-- Condition Settings Panel -->
                 <div class="target-conditions-panel glass-panel">
@@ -299,7 +338,7 @@
                     <!-- Machine model filter -->
                     <div class="target-model-filter">
                         <div class="cond-header" style="margin-bottom:0.5rem;">
-                            <span class="cond-label">🎰 機種フィルタ</span>
+                            <span class="cond-label">機種フィルタ</span>
                             <span style="font-size:0.8rem;color:var(--text-muted);">（未選択 = すべて対象）</span>
                         </div>
                         <div class="cond-checkboxes" id="target-model-filter-list">
@@ -327,7 +366,8 @@
                                 <label><input type="checkbox" class="cons-neg-chk" value="6"> 6日</label>
                                 <label><input type="checkbox" class="cons-neg-chk" value="7"> 7日以上</label>
                             </div>
-                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">最新日時点・期間フィルタ無視</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">最新日時点・期間フィルタ無視
+                            </div>
                         </div>
 
                         <!-- Consecutive positive streak -->
@@ -348,7 +388,8 @@
                                 <label><input type="checkbox" class="cons-pos-chk" value="6"> 6日</label>
                                 <label><input type="checkbox" class="cons-pos-chk" value="7"> 7日以上</label>
                             </div>
-                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">最新日時点・期間フィルタ無視</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">最新日時点・期間フィルタ無視
+                            </div>
                         </div>
 
                         <!-- Position from corner -->
@@ -440,13 +481,14 @@
                             <h4 class="priority-title">差枚ランキング優先順位</h4>
                             <p class="priority-hint">差枚系条件が有効な場合の1次ソートキー</p>
                             <div class="priority-radios">
-                                <label><input type="radio" name="diff-priority" value="machine" checked> 台の平均差枚を優先</label>
+                                <label><input type="radio" name="diff-priority" value="machine" checked>
+                                    台の平均差枚を優先</label>
                                 <label><input type="radio" name="diff-priority" value="island"> 島平均差枚を優先</label>
                             </div>
                         </div>
                     </div>
 
-                    <button class="target-search-btn" id="target-search-btn">🔍 検索して島図を表示</button>
+                    <button class="target-search-btn" id="target-search-btn">検索して島図を表示</button>
                 </div><!-- /.target-conditions-panel -->
 
                 <!-- Results Area -->
@@ -499,4 +541,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

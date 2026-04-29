@@ -176,12 +176,31 @@ function buildLayoutLookup(){
 // Theme & Events
 // ==========================================
 function setupTheme(){
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(prefersDark){
+        document.body.classList.add('dark-theme');
+    }else{
+        document.body.classList.remove('dark-theme');
+    }
+
     const btn=document.getElementById('theme-btn');
-    updateThemeIcon(document.body.classList.contains('dark-theme'));
+    const isDark = document.body.classList.contains('dark-theme');
+    updateThemeIcon(isDark);
+    Chart.defaults.color = isDark ? '#94a3b8' : '#666';
+
     btn.addEventListener('click',()=>{
         const d=document.body.classList.toggle('dark-theme');
         updateThemeIcon(d);Chart.defaults.color=d?'#94a3b8':'#666';updateDashboard();
     });
+
+    if(window.matchMedia){
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if(e.matches) document.body.classList.add('dark-theme');
+            else document.body.classList.remove('dark-theme');
+            const d=document.body.classList.contains('dark-theme');
+            updateThemeIcon(d);Chart.defaults.color=d?'#94a3b8':'#666';updateDashboard();
+        });
+    }
 }
 function updateThemeIcon(isDark){
     const svg=document.querySelector('#theme-btn svg');
@@ -471,7 +490,10 @@ function buildHeatmapGrid(wrapId,cellBuilder){
     const wrap=document.getElementById(wrapId);wrap.innerHTML='';
     const inner=document.createElement('div');
     inner.className='heatmap-inner';
-    layoutData.forEach((row,rIdx)=>{
+    // 末尾の全空行を除去して縦の空白を解消
+    const trimmedData = [...layoutData];
+    while(trimmedData.length > 0 && trimmedData[trimmedData.length-1].every(c => c === '')) trimmedData.pop();
+    trimmedData.forEach((row,rIdx)=>{
         const rowEl=document.createElement('div');rowEl.className='heatmap-row';
         row.forEach((cell,cIdx)=>{
             const num=normalizeNum(cell),isEmpty=cell==='';
@@ -554,7 +576,14 @@ function renderHeatmaps(data){
     const rowWrap=document.getElementById('row-heatmap-wrapper');rowWrap.innerHTML='';
     const rowInner=document.createElement('div');
     rowInner.className='heatmap-inner';
-    layoutData.forEach(row=>{
+    
+    // 末尾の空行を削除して縦方向の不自然な空白を解消
+    const trimmedLayout = [...layoutData];
+    while(trimmedLayout.length > 0 && trimmedLayout[trimmedLayout.length-1].every(c => c === '')) {
+        trimmedLayout.pop();
+    }
+    
+    trimmedLayout.forEach(row=>{
         const rowEl=document.createElement('div');rowEl.className='heatmap-row';
         row.forEach(cell=>{
             const isEmpty=cell==='';
@@ -616,7 +645,6 @@ function renderHeatmaps(data){
 function applyHeatmapCellSizes(){
     if(!layoutData.length)return;
     const numCols=layoutData[0].length;
-    // メインヒートマップ + モーダルヒートマップ
     const wrapIds=[
         'diff-heatmap-wrapper','setting-heatmap-wrapper','row-heatmap-wrapper','target-heatmap-wrapper',
         'modal-diff-hm','modal-set-hm','modal-streak-hm','modal-island-hm'
@@ -624,19 +652,17 @@ function applyHeatmapCellSizes(){
     wrapIds.forEach(id=>{
         const wrap=document.getElementById(id);
         if(!wrap||!wrap.children.length)return;
-        // Use actual rendered width of wrapper (works on both PC and mobile)
-        const availW=wrap.clientWidth-8;// minus padding
-        const gap=numCols-1;// 1px gaps
+        const availW=wrap.clientWidth-8;
+        const gap=numCols-1;
         const cellSize=Math.max(16,Math.floor((availW-gap)/numCols));
-        // For PC (44px fixed), skip if computed size >= 44
-        if(cellSize>=44)return;
-        // Font size: for 4-digit numbers, factor 0.35 fits comfortably with bold font
-        const fontSize=Math.max(5,Math.floor(cellSize*0.35));
-        wrap.querySelectorAll('.heatmap-cell').forEach(cell=>{
-            cell.style.width=cellSize+'px';
-            cell.style.height=cellSize+'px';
-            cell.style.fontSize=fontSize+'px';
-        });
+        if(cellSize>=44){
+            wrap.style.setProperty('--cell-size', '44px');
+            wrap.style.setProperty('--cell-font-size', '20px');
+            return;
+        }
+        const fontSize=Math.max(8,Math.floor(cellSize*0.55));
+        wrap.style.setProperty('--cell-size', cellSize+'px');
+        wrap.style.setProperty('--cell-font-size', fontSize+'px');
     });
 }
 
@@ -763,7 +789,7 @@ const EXCLUDED_MODELS = ['ｽﾏｰﾄ沖ｽﾛ+ﾆｭｰｷﾝｸﾞﾊﾅﾊ�
 function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, opts={}, chartKey='machine'){
     const step = opts.step || 500;
     const initRange = opts.initRange || 4000;
-    const rowH = opts.rowH || 18;
+    const rowH = opts.rowH || 22; // 少し広げて視認性を向上
     const fontSize = opts.fontSize || 11;
     const labelRatio = 0.4;
 
@@ -771,11 +797,19 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
     const vals = items.map(i=>i.avg);
     const dataMax = vals.reduce((a,b)=>Math.max(a,b), 0);
     const dataMin = vals.reduce((a,b)=>Math.min(a,b), 0);
-    const axisMax = Math.max(initRange, Math.ceil(Math.abs(dataMax)/step)*step);
-    const axisMin = Math.min(-initRange, -Math.ceil(Math.abs(dataMin)/step)*step);
+    
+    // 0点を中心（センター）にするための軸計算
+    const rawMax = Math.max(initRange, Math.ceil(Math.abs(dataMax)/step)*step);
+    const rawMin = Math.max(initRange, Math.ceil(Math.abs(dataMin)/step)*step);
+    const absMax = Math.max(rawMax, rawMin);
+    const axisMax = absMax;
+    const axisMin = -absMax;
 
     const n = items.length;
-    const h = Math.max(200, n * rowH + 50);
+    // 上部余白を5pxに設定
+    const topPad = 5;
+    const bottomPad = 10;
+    const h = n * rowH + topPad + bottomPad;
 
     const labelCvs = document.getElementById(labelCanvasId);
     if(!labelCvs) return;
@@ -793,6 +827,10 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
     labelCvs.style.height = h + "px";
 
     const wrapper = splitWrapperId ? document.getElementById(splitWrapperId) : labelPane.parentElement;
+    if(wrapper) {
+        wrapper.style.setProperty('--row-h', rowH + 'px');
+        wrapper.style.setProperty('--top-pad', topPad + 'px');
+    }
     const totalW = wrapper ? (wrapper.clientWidth || 600) : 600;
     const labelPaneW = Math.floor(totalW * labelRatio);
     const barPaneW = totalW - labelPaneW;
@@ -814,6 +852,8 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
     const initTotalRange = initRange * 2;
     const scaleFactor = Math.max(1, totalRange / initTotalRange);
     const barCvsW = Math.max(barPaneW, Math.round(barPaneW * scaleFactor));
+    barCvs.width = barCvsW;
+    barCvs.height = h;
     barCvs.style.width = barCvsW + "px";
     barCvs.style.height = h + "px";
 
@@ -823,37 +863,50 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
 
     const gridColorFn = (ctx2) => {
         const v = ctx2.tick ? ctx2.tick.value : (ctx2.value ?? 0);
-        return (v === 0) ? "rgba(255,255,255,0.4)" : "rgba(128,128,128,0.15)";
+        return (v === 0) ? "rgba(255,255,255,0.4)" : "rgba(128,128,128,0.12)";
+    };
+
+    const commonOpts = {
+        indexAxis: 'y', responsive: false, maintainAspectRatio: false,
+        animation: false,
+        layout: { padding: { top: topPad, bottom: bottomPad } },
+        plugins: { legend: { display: false }, datalabels: { display: false } }
     };
 
     charts[keyL] = new Chart(labelCvs, {
         type: "bar",
-        data: { labels: items.map(i=>i.label), datasets: [{ data: vals, backgroundColor:'transparent', borderColor:'transparent' }] },
+        data: { labels: items.map(i=>i.label), datasets: [{ data: vals, backgroundColor: 'transparent' }] },
         options: {
-            indexAxis:'y', responsive:false, maintainAspectRatio:false, animation:false,
-            plugins: { legend:{display:false}, datalabels:{display:false}, tooltip:{enabled:false} },
+            ...commonOpts,
+            plugins: { ...commonOpts.plugins, tooltip: { enabled: false } },
             scales: {
-                x: { display:false, min:axisMin, max:axisMax },
-                y: { position:'right', grid:{display:false},
-                     ticks:{ font:{size:fontSize,weight:'bold'}, autoSkip:false, maxRotation:0, color:Chart.defaults.color },
+                x: { display: true, min: axisMin, max: axisMax, ticks: { stepSize: step, font: { size: 9 }, color: 'transparent' }, grid: { display: false }, border: { display: false } },
+                y: { position: 'right', grid: { display: false },
+                     ticks: { font: { size: fontSize, weight: 'bold' }, autoSkip: false, color: '#94a3b8', padding: 8 },
                      afterFit(scale){ scale.width = labelCvsW; } }
-            },
-            layout: { padding:{ top:0, bottom:30 } }
+            }
         }
     });
 
     charts[keyB] = new Chart(barCvs, {
-        type:'bar',
-        data:{ labels:items.map(i=>i.label), datasets:[{ label:'差枚', data:vals,
-            backgroundColor:vals.map(v=>v>0?'rgba(78,143,224,0.78)':'rgba(224,92,92,0.78)'), borderRadius:3 }] },
-        options:{
-            indexAxis:'y', responsive:false, maintainAspectRatio:false,
-            plugins:{ legend:{display:false}, datalabels:{display:false} },
-            scales:{
-                x:{ min:axisMin, max:axisMax, ticks:{stepSize:step,font:{size:10}}, grid:{color:gridColorFn} },
-                y:{ display:false, grid:{display:false}, ticks:{autoSkip:false} }
+        type: 'bar',
+        data: { labels: items.map(i=>i.label), datasets: [{ label: '差枚', data: vals,
+            backgroundColor: vals.map(v=>v>0?'rgba(59,130,246,0.8)':'rgba(239,68,68,0.8)'), borderRadius: 2 }] },
+        options: {
+            ...commonOpts,
+            interaction: { mode: 'nearest', axis: 'y', intersect: false },
+            plugins: {
+                ...commonOpts.plugins,
+                tooltip: {
+                    enabled: true, animation: false,
+                    position: 'nearest',
+                    callbacks: { label: (ctx) => `[${items[ctx.dataIndex].num}] ${ctx.raw.toLocaleString()}枚` }
+                }
             },
-            layout:{ padding:{ top:0, bottom:0 } }
+            scales: {
+                x: { min: axisMin, max: axisMax, ticks: { stepSize: step, font: { size: 9 }, color: '#64748b' }, grid: { color: gridColorFn } },
+                y: { display: false, grid: { display: false }, ticks: { autoSkip: false } }
+            }
         }
     });
 }
@@ -1189,6 +1242,7 @@ function renderCumulAnalysis(data){
             }
         });
     }
+    renderGameCountAnalysis();
 }
 
 // ==========================================
@@ -1920,5 +1974,91 @@ function setupTargetSection(){
     setupMobilePopupClose();
 }
 
-document.addEventListener('DOMContentLoaded',()=>{init();setupTargetSection();});
+document.addEventListener('DOMContentLoaded',()=>{
+    init();
+    setupTargetSection();
+    setupGameCountPeriodTabs();
+});
+
+function setupGameCountPeriodTabs(){
+    document.getElementById('game-count-period-tabs')?.addEventListener('click', e => {
+        if(e.target.classList.contains('tab-btn')){
+            document.querySelectorAll('#game-count-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            renderGameCountAnalysis();
+        }
+    });
+}
+
+function renderGameCountAnalysis(){
+    const periodBtn = document.querySelector('#game-count-period-tabs .tab-btn.active');
+    const period = parseInt(periodBtn ? periodBtn.dataset.period : '1');
+    
+    const dates = [...new Set(rawData.map(r=>r['日付']))].sort();
+    if(dates.length < 2) return;
+    
+    const dateIndices = {};
+    dates.forEach((d, i) => dateIndices[d] = i);
+    
+    const mHist = {};
+    rawData.forEach(row => {
+        const num = normalizeNum(row['台番号']);
+        const date = row['日付'];
+        if(!mHist[num]) mHist[num] = {};
+        mHist[num][date] = {
+            g: Number(row['累計ゲーム']) || 0,
+            diff: Number(row['最終差枚']) || 0
+        };
+    });
+
+    const fd = getFilteredData();
+    const buckets = {};
+    
+    fd.forEach(row => {
+        const num = normalizeNum(row['台番号']);
+        const date = row['日付'];
+        const targetDiff = Number(row['最終差枚']) || 0;
+        
+        const dateIdx = dateIndices[date];
+        if(dateIdx === undefined) return;
+        
+        let sumG = 0;
+        let countG = 0;
+        
+        for(let i = 1; i <= period; i++){
+            const prevDateIdx = dateIdx - i;
+            if(prevDateIdx >= 0){
+                const prevDate = dates[prevDateIdx];
+                const prevData = mHist[num][prevDate];
+                if(prevData){
+                    sumG += prevData.g;
+                    countG++;
+                }
+            }
+        }
+        
+        if(countG > 0){
+            const avgG = sumG / countG;
+            const bucketIdx = Math.floor(avgG / 500);
+            if(!buckets[bucketIdx]) buckets[bucketIdx] = { diffSum: 0, count: 0 };
+            buckets[bucketIdx].diffSum += targetDiff;
+            buckets[bucketIdx].count++;
+        }
+    });
+
+    const labels = [], values = [];
+    Object.keys(buckets).sort((a,b)=>a-b).forEach(idx => {
+        const b = buckets[idx];
+        if(b.count < 1) return;
+        labels.push(`${idx*500}-${(parseInt(idx)+1)*500}G`);
+        values.push(Math.round(b.diffSum / b.count));
+    });
+
+    drawBar('chart-game-count-diff', labels, values, '平均差枚', {
+        datasetExtras: {
+            backgroundColor: values.map(v => v > 0 ? 'rgba(59,130,246,0.8)' : 'rgba(239,68,68,0.8)')
+        }
+    });
+}
+
 

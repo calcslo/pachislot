@@ -54,7 +54,10 @@ def export_data():
                     else:
                         r.append(str(val))
                 layout.append(r)
-            print(f"Extracted layout with {len(layout)} rows.")
+            # 末尾の全空行を除去（layout.jsonの縦の空白問題を防止）
+            while layout and all(c == '' for c in layout[-1]):
+                layout.pop()
+            print(f"Extracted layout with {len(layout)} rows (after trimming empty rows).")
             with open(os.path.join(DOCS_DIR, 'layout.json'), 'w', encoding='utf-8') as f:
                 json.dump(layout, f, ensure_ascii=False)
             print("Saved layout.json")

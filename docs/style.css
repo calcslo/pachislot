@@ -65,6 +65,7 @@ body {
     z-index: -2;
     background: linear-gradient(160deg, #f4f6f9 0%, #e8eef7 100%);
 }
+
 .dark-theme .glass-background {
     background: linear-gradient(160deg, #0d1b2e 0%, #0a1220 100%);
 }
@@ -81,12 +82,26 @@ body {
     pointer-events: none;
 }
 
-.glow-orb.top-left { top: -150px; left: -150px; background: var(--primary); }
-.glow-orb.bottom-right { bottom: -150px; right: -150px; background: var(--secondary); }
+.glow-orb.top-left {
+    top: -150px;
+    left: -150px;
+    background: var(--primary);
+}
+
+.glow-orb.bottom-right {
+    bottom: -150px;
+    right: -150px;
+    background: var(--secondary);
+}
 
 @keyframes float {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(30px, 40px) scale(1.1); }
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+        transform: translate(30px, 40px) scale(1.1);
+    }
 }
 
 .dashboard-container {
@@ -104,7 +119,7 @@ body {
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--glass-border);
     border-radius: 12px;
-    padding: 1.25rem;
+    padding: 0.75rem 1.25rem;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
 }
 
@@ -114,32 +129,50 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1.5rem;
-    background: var(--header-bg) !important;
-    border-color: transparent !important;
+    background: var(--glass-bg) !important;
+    border: 1px solid var(--glass-border) !important;
     border-radius: 10px;
 }
 
-/* グラデーションテキスト廃止 — 単色クリーン */
-.gradient-text {
-    color: var(--header-text);
-    font-size: 1.4rem;
-    font-weight: 800;
-    letter-spacing: -0.01em;
+/* サイトタイトル — 折り返しとフォントの強調 */
+/* プレミアム・サイトタイトル — モダンなネオングロー/ガラススタイル */
+.site-title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.5rem 0;
 }
 
-.header .icon-btn {
-    background: rgba(255,255,255,0.12);
-    border-color: rgba(255,255,255,0.2);
-    color: #fff;
+.main-title {
+    color: var(--primary);
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
 }
+
+.sub-title {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
 .header .old-data-btn {
-    background: rgba(255,255,255,0.12);
-    border-color: rgba(255,255,255,0.2);
-    color: #fff;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-color);
+    padding: 0 10px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
 }
+
 .header .old-data-btn.active {
-    background: rgba(78,143,224,0.7);
-    border-color: rgba(78,143,224,0.9);
+    background: var(--primary);
+    border-color: var(--primary);
     color: #fff;
 }
 
@@ -180,7 +213,10 @@ body {
     padding: 0.25rem;
     border-radius: 12px;
 }
-.dark-theme .tabs { background: rgba(255, 255, 255, 0.05); }
+
+.dark-theme .tabs {
+    background: rgba(255, 255, 255, 0.05);
+}
 
 .tab-btn {
     flex: 1;
@@ -199,7 +235,7 @@ body {
 .tab-btn.active {
     background: var(--glass-bg);
     color: var(--text-color);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .styled-select {
@@ -237,7 +273,9 @@ body {
     font-size: 0.9rem;
 }
 
-.nav-btn:hover { color: var(--primary); }
+.nav-btn:hover {
+    color: var(--primary);
+}
 
 .nav-btn.active {
     color: var(--primary);
@@ -249,6 +287,7 @@ body {
 section {
     display: none;
 }
+
 section.active-section {
     display: block;
 }
@@ -262,9 +301,10 @@ section.active-section {
 /* Tables */
 .table-container {
     overflow-x: auto;
-    border-radius: 12px;
+    border-radius: 5px;
     border: 1px solid var(--glass-border);
     margin-bottom: 1rem;
+    padding: 0.2rem;
 }
 
 table {
@@ -274,8 +314,9 @@ table {
     min-width: 600px;
 }
 
-th, td {
-    padding: 0.55rem 0.65rem;
+th,
+td {
+    padding: 0.55rem 0.4rem;
     text-align: right;
     border-bottom: 1px solid var(--glass-border);
     white-space: nowrap;
@@ -290,14 +331,33 @@ th {
     top: 0;
     letter-spacing: 0.02em;
 }
-.dark-theme th { background: rgba(78, 143, 224, 0.08); }
 
-tbody tr:hover { background: var(--table-hover); }
-tbody tr.selected { background: var(--positive-bg); border-left: 4px solid var(--primary); }
-tbody tr.clickable { cursor: pointer; }
-tbody tr.clickable td:first-child { color: var(--primary); text-decoration: underline; text-align: left; }
+.dark-theme th {
+    background: rgba(78, 143, 224, 0.08);
+}
 
-.mb-4 { margin-bottom: 1.5rem; }
+tbody tr:hover {
+    background: var(--table-hover);
+}
+
+tbody tr.selected {
+    background: var(--positive-bg);
+    border-left: 4px solid var(--primary);
+}
+
+tbody tr.clickable {
+    cursor: pointer;
+}
+
+tbody tr.clickable td:first-child {
+    color: var(--primary);
+    text-decoration: underline;
+    text-align: left;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
 
 /* Heatmaps */
 .heatmap-block {
@@ -324,30 +384,50 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     flex-wrap: wrap;
     gap: 0.75rem;
     margin-bottom: 1rem;
-    font-size: 0.95rem;   /* enlarged from 0.7rem */
-    background: rgba(0,0,0,0.02);
+    font-size: 0.95rem;
+    /* enlarged from 0.7rem */
+    background: rgba(0, 0, 0, 0.02);
     padding: 0.75rem 1rem;
     border-radius: 10px;
 }
-.dark-theme .heatmap-legend { background: rgba(255,255,255,0.02); }
 
-.legend-item { display: flex; align-items: center; gap: 0.4rem; font-weight: 600; }
-.color-box { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; } /* enlarged from 14px */
+.dark-theme .heatmap-legend {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.color-box {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+/* enlarged from 14px */
 
 /* Heatmap grid — all wrappers share a single horizontal scroll via the block */
 .heatmap-wrapper {
     overflow: auto;
-    max-height: 70vh;
-    padding: 0.5rem;
+    height: fit-content;
+    max-height: 85vh;
+    padding: 0.25rem;
     border: 1px solid var(--glass-border);
     border-radius: 12px;
+    background: rgba(0,0,0,0.05);
 }
 
 .heatmap-inner {
     display: inline-block;
     min-width: max-content;
     transform-origin: 0 0;
-    transition: transform 0.05s linear; /* Subtle smoothing for small updates */
+    transition: transform 0.05s linear;
+    /* Subtle smoothing for small updates */
     will-change: transform;
 }
 
@@ -355,23 +435,25 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     display: flex;
     gap: 2px;
     margin-bottom: 2px;
-    min-width: max-content; /* cells decide their own width, no forced 800px */
-    align-items: stretch; /* 縦方向の同期 */
+    min-width: max-content;
+    /* cells decide their own width, no forced 800px */
+    align-items: stretch;
+    /* 縦方向の同期 */
 }
 
 .heatmap-cell {
-    width: 44px;     /* fixed width instead of flex:1 to stop vertical drift */
-    height: 44px;
+    width: var(--cell-size, 44px);
+    height: var(--cell-size, 44px);
+    font-size: var(--cell-font-size, 0.72rem);
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.72rem;
     font-weight: 800;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
-    transition: 0.1s;
-    border: 1px solid rgba(0,0,0,0.05);
+    transition: transform 0.1s;
+    border: 1px solid rgba(0, 0, 0, 0.05);
     padding: 0;
     overflow: hidden;
     white-space: nowrap;
@@ -382,25 +464,62 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 .heatmap-cell:hover {
     transform: scale(1.2);
     z-index: 10;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes pulseHighlight {
-    0% { border-color: transparent; box-shadow: none; transform: scale(1); }
-    10% { border-color: #38bdf8; box-shadow: 0 0 15px rgba(56,189,248,0.8); transform: scale(1.02); z-index: 10; }
-    100% { border-color: transparent; box-shadow: none; transform: scale(1); z-index: 10; }
+    0% {
+        border-color: transparent;
+        box-shadow: none;
+        transform: scale(1);
+    }
+
+    10% {
+        border-color: #38bdf8;
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.8);
+        transform: scale(1.02);
+        z-index: 10;
+    }
+
+    100% {
+        border-color: transparent;
+        box-shadow: none;
+        transform: scale(1);
+        z-index: 10;
+    }
 }
+
 @keyframes pulseHighlightWhite {
-    0% { box-shadow: none; filter: brightness(1); transform: scale(1); }
-    10% { box-shadow: 0 0 20px rgba(255,255,255,1); filter: brightness(1.5); transform: scale(1.1); z-index: 50; border-color: white; }
-    100% { box-shadow: none; filter: brightness(1); transform: scale(1); z-index: 50; border-color: transparent; }
+    0% {
+        box-shadow: none;
+        filter: brightness(1);
+        transform: scale(1);
+    }
+
+    10% {
+        box-shadow: 0 0 20px rgba(255, 255, 255, 1);
+        filter: brightness(1.5);
+        transform: scale(1.1);
+        z-index: 50;
+        border-color: white;
+    }
+
+    100% {
+        box-shadow: none;
+        filter: brightness(1);
+        transform: scale(1);
+        z-index: 50;
+        border-color: transparent;
+    }
 }
+
 .highlight-row {
     animation: pulseHighlight 2s ease-out;
     border: 2px solid transparent;
     border-radius: 4px;
     position: relative;
 }
+
 .highlight-island {
     animation: pulseHighlightWhite 2s ease-out;
     border: 2px solid transparent;
@@ -408,9 +527,21 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     z-index: 50;
 }
 
-.heatmap-cell.empty { border: none; cursor: default; background: transparent !important; }
-.heatmap-cell.empty:hover { transform: none; }
-.heatmap-cell.streak-cell { font-size: 0.75rem; line-height: 1.1; white-space: pre-line; }
+.heatmap-cell.empty {
+    border: none;
+    cursor: default;
+    background: transparent !important;
+}
+
+.heatmap-cell.empty:hover {
+    transform: none;
+}
+
+.heatmap-cell.streak-cell {
+    font-size: calc(var(--cell-font-size, 0.72rem) * 0.75) !important;
+    line-height: 1;
+    white-space: pre-line;
+}
 
 /* Analysis Chart Grid */
 .chart-grid {
@@ -435,6 +566,7 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     padding-bottom: 0.4rem;
     border-bottom: 2px solid var(--glass-border);
 }
+
 .chart-subtitle {
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
@@ -460,30 +592,68 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     overflow: hidden;
     border: 1px solid var(--glass-border);
     border-radius: 8px;
+    position: relative;
+    background: repeating-linear-gradient(transparent,
+            transparent 0px,
+            transparent var(--top-pad, 40px),
+            rgba(255, 255, 255, 0.02) var(--top-pad, 40px),
+            rgba(255, 255, 255, 0.02) calc(var(--top-pad, 40px) + var(--row-h, 22px)),
+            transparent calc(var(--top-pad, 40px) + var(--row-h, 22px)),
+            transparent calc(var(--top-pad, 40px) + var(--row-h, 22px) * 2));
+    /* JSから動的に縞々の位置を調整するため、実際にはより複雑な背景設定が必要ですが
+       ここではベースラインとして定義。正確にはCSS変数を活用。 */
+}
+
+.split-chart-wrapper::before {
+    content: '';
+    position: absolute;
+    top: var(--top-pad, 40px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(transparent,
+            transparent 0,
+            transparent var(--row-h, 22px),
+            rgba(255, 255, 255, 0.04) var(--row-h, 22px),
+            rgba(255, 255, 255, 0.04) calc(var(--row-h, 22px) * 2));
+    z-index: 0;
+}
+
+.split-chart-labels,
+.split-chart-bars {
+    position: relative;
+    z-index: 1;
 }
 
 .split-chart-labels {
     flex-shrink: 0;
-    overflow: hidden;
-    position: relative;
-    /* width set by JS */
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 1px solid var(--glass-border);
 }
 
 .split-chart-bars {
     flex: 1;
     overflow-x: auto;
     overflow-y: hidden;
-    position: relative;
 }
 
-.split-chart-bars::-webkit-scrollbar { height: 6px; }
-.split-chart-bars::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 6px; }
+.split-chart-bars::-webkit-scrollbar {
+    height: 6px;
+}
+
+.split-chart-bars::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 6px;
+}
 
 /* Compact table for modal */
 .modal-compact-table {
     font-size: 0.88rem;
     min-width: 0 !important;
 }
+
 .modal-compact-table th,
 .modal-compact-table td {
     padding: 0.3rem 0.5rem;
@@ -516,9 +686,11 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
     white-space: nowrap;
 }
+
 .custom-tooltip.visible {
     opacity: 1;
 }
+
 .tooltip-title {
     font-size: 1.1rem;
     font-weight: 700;
@@ -527,6 +699,7 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 4px;
 }
+
 .tooltip-body div {
     margin: 4px 0;
 }
@@ -537,7 +710,7 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0, 0, 0, 0.7);
     z-index: 1000;
     display: flex;
     align-items: flex-start;
@@ -586,31 +759,70 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 }
 
 /* Consecutive streak heatmap cells */
-.heatmap-cell.streak-neg-0 { background-color: transparent !important; }
-.heatmap-cell.streak-neg-1 { background-color: rgba(0,190,255,0.5) !important; }
-.heatmap-cell.streak-neg-2 { background-color: rgba(30,100,230,0.7) !important; }
-.heatmap-cell.streak-neg-3 { background-color: rgba(60,20,180,0.85) !important; }
-.heatmap-cell.streak-pos-1 { background-color: rgba(255,220,0,0.5) !important; }
-.heatmap-cell.streak-pos-2 { background-color: rgba(255,130,0,0.7) !important; }
-.heatmap-cell.streak-pos-3 { background-color: rgba(230,40,40,0.85) !important; }
+.heatmap-cell.streak-neg-0 {
+    background-color: transparent !important;
+}
+
+.heatmap-cell.streak-neg-1 {
+    background-color: rgba(0, 190, 255, 0.5) !important;
+}
+
+.heatmap-cell.streak-neg-2 {
+    background-color: rgba(30, 100, 230, 0.7) !important;
+}
+
+.heatmap-cell.streak-neg-3 {
+    background-color: rgba(60, 20, 180, 0.85) !important;
+}
+
+.heatmap-cell.streak-pos-1 {
+    background-color: rgba(255, 220, 0, 0.5) !important;
+}
+
+.heatmap-cell.streak-pos-2 {
+    background-color: rgba(255, 130, 0, 0.7) !important;
+}
+
+.heatmap-cell.streak-pos-3 {
+    background-color: rgba(230, 40, 40, 0.85) !important;
+}
 
 /* Mobile Adaptations */
 @media (max-width: 768px) {
-    html { font-size: 12px; }
+    html {
+        font-size: 12px;
+    }
 
-    .dashboard-container { padding: 0.5rem; }
-    .header { padding: 0.5rem 1rem; }
-    .gradient-text { font-size: 1.1rem; }
-    .nav-btn { font-size: 0.75rem; padding: 0.4rem 0.2rem; }
-    .chart-grid { grid-template-columns: minmax(0, 1fr); }
+    .dashboard-container {
+        padding: 0.5rem;
+    }
+
+    .header {
+        padding: 0.5rem 1rem;
+    }
+
+    .gradient-text {
+        font-size: 1.1rem;
+    }
+
+    .nav-btn {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.2rem;
+    }
+
+    .chart-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 
     /* Summary / Monthly tables — compact so all columns fit on-screen */
     #summary-table,
     #monthly-table {
         font-size: 0.72rem;
-        min-width: 0;          /* override the 600px desktop min-width */
+        min-width: 0;
+        /* override the 600px desktop min-width */
         width: 100%;
     }
+
     #summary-table th,
     #summary-table td,
     #monthly-table th,
@@ -618,28 +830,45 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
         padding: 0.35rem 0.3rem;
         font-size: 0.72rem;
     }
+
     /* The container still allows horizontal scroll as a fallback */
     .table-container {
         overflow-x: auto;
     }
 
-    .heatmap-wrapper { padding: 0.25rem; overflow: auto; max-height: 70vh; }
+    .heatmap-wrapper {
+        padding: 0.25rem;
+        overflow: auto;
+        max-height: fit-content;
+    }
+
     .heatmap-row {
         gap: 1px;
         margin-bottom: 1px;
         min-width: max-content;
     }
+
     .heatmap-cell {
         flex: none;
         white-space: nowrap;
         overflow: hidden;
         padding: 0;
     }
-    .modal-overlay { padding: 0.5rem; }
+
+    .modal-overlay {
+        padding: 0.5rem;
+    }
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 10px;
+}
 
 /* ==============================
    TARGET SUPPORT TOOL
@@ -832,8 +1061,13 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     transition: 0.15s;
 }
 
-.priority-checkboxes label:hover { border-color: var(--primary); }
-.priority-checkboxes input[type="checkbox"] { accent-color: var(--secondary); }
+.priority-checkboxes label:hover {
+    border-color: var(--primary);
+}
+
+.priority-checkboxes input[type="checkbox"] {
+    accent-color: var(--secondary);
+}
 
 .priority-radios {
     display: flex;
@@ -850,7 +1084,9 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     font-weight: 600;
 }
 
-.priority-radios input[type="radio"] { accent-color: var(--primary); }
+.priority-radios input[type="radio"] {
+    accent-color: var(--primary);
+}
 
 /* Search button */
 .target-search-btn {
@@ -886,11 +1122,14 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     flex-wrap: wrap;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background: rgba(0,0,0,0.02);
+    background: rgba(0, 0, 0, 0.02);
     border-radius: 10px;
     border: 1px solid var(--glass-border);
 }
-.dark-theme .target-legend { background: rgba(255,255,255,0.02); }
+
+.dark-theme .target-legend {
+    background: rgba(255, 255, 255, 0.02);
+}
 
 .target-ranking-list {
     overflow-x: auto;
@@ -910,7 +1149,7 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 .target-mobile-popup {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.75);
+    background: rgba(0, 0, 0, 0.75);
     z-index: 2000;
     display: flex;
     align-items: flex-end;
@@ -935,7 +1174,7 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     position: absolute;
     top: 0.75rem;
     right: 0.75rem;
-    background: rgba(100,100,120,0.4);
+    background: rgba(100, 100, 120, 0.4);
     border: none;
     border-radius: 50%;
     width: 32px;
@@ -1005,7 +1244,9 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     transition: 0.2s;
 }
 
-.target-mobile-data-btn:hover { opacity: 0.9; }
+.target-mobile-data-btn:hover {
+    opacity: 0.9;
+}
 
 /* Model filter */
 .target-model-filter {
@@ -1018,8 +1259,13 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 
 /* Responsive for target section */
 @media (max-width: 768px) {
-    .target-conditions-grid { grid-template-columns: minmax(0, 1fr); }
-    .target-priority-section { grid-template-columns: minmax(0, 1fr); }
+    .target-conditions-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .target-priority-section {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 /* ==============================
@@ -1052,7 +1298,7 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
 }
 
 .old-data-btn.active {
-    background: linear-gradient(135deg, rgba(79,70,229,0.8), rgba(236,72,153,0.8));
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.8), rgba(236, 72, 153, 0.8));
     border-color: var(--primary);
     color: #fff;
     box-shadow: 0 0 12px rgba(129, 140, 248, 0.4);
@@ -1093,4 +1339,87 @@ tbody tr.clickable td:first-child { color: var(--primary); text-decoration: unde
     }
 }
 
+/* Typography & Titles */
+.section-title {
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: var(--primary);
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 0.3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 1.2rem;
+    background: var(--primary);
+    border-radius: 2px;
+}
 
+.summary-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-color);
+    margin: 0.5rem 0 0.5rem;
+}
+
+/* Mobile Optimization */
+@media (max-width: 600px) {
+    .dashboard-container {
+        padding: 0.3rem;
+    }
+
+    table {
+        font-size: 0.65rem;
+        table-layout: auto;
+        min-width: 0;
+    }
+
+    th,
+    td {
+        padding: 0.2rem 0.05rem !important;
+        white-space: normal;
+        word-break: break-all;
+        line-height: 1.05;
+        font-variant-numeric: tabular-nums;
+    }
+
+    th {
+        text-align: center;
+
+    }
+
+    /* 日付列だけは絶対に折り返さない */
+    td:first-child,
+    th:first-child {
+        white-space: nowrap !important;
+        padding-right: 0.2rem !important;
+    }
+
+    .site-title {
+        font-size: 1.15rem !important;
+    }
+}
+
+@media (max-width: 400px) {
+    table {
+        font-size: 0.62rem;
+    }
+
+    .glass-panel {
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+/* Zebra Stripes background adjustment */
+.split-chart-wrapper::before {
+    background: repeating-linear-gradient(transparent,
+            transparent 0,
+            transparent var(--row-h, 22px),
+            rgba(255, 255, 255, 0.035) var(--row-h, 22px),
+            rgba(255, 255, 255, 0.035) calc(var(--row-h, 22px) * 2)) !important;
+}
