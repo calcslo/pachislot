@@ -1,0 +1,20 @@
+NAME: 'Pｽｰﾊﾟｰ海物語IN沖縄6 LTP' | HEX: 50efbdbdefbdb0efbe8aefbe9fefbdb0e6b5b7e789a9e8aa9e494ee6b296e7b88436204c5450
+NAME: 'e新世紀ｴｳﾞｧ17はじまりR' | HEX: 65e696b0e4b896e7b480efbdb4efbdb3efbe9eefbda73137e381afe38198e381bee3828a52
+NAME: 'e東京喰種W' | HEX: 65e69db1e4baace596b0e7a8ae57
+NAME: 'e魔法少女まどかﾏｷﾞｶ3LPM1' | HEX: 65e9ad94e6b395e5b091e5a5b3e381bee381a9e3818befbe8fefbdb7efbe9eefbdb6334c504d31
+NAME: 'eF.ｷﾝ肉ﾏﾝ' | HEX: 65462eefbdb7efbe9de88289efbe8fefbe9d
+NAME: 'e北斗の拳11暴凶星SHEF' | HEX: 65e58c97e69697e381aee68bb33131e69ab4e587b6e6989f53484546
+NAME: 'PA大海物語5 ARBC' | HEX: 5041e5a4a7e6b5b7e789a9e8aa9e352041524243
+NAME: 'eF.ﾌﾞﾙｰﾛｯｸMZ' | HEX: 65462eefbe8cefbe9eefbe99efbdb0efbe9befbdafefbdb84d5a
+NAME: 'e甲鉄城のｶﾊﾞﾈﾘ2 GFEA' | HEX: 65e794b2e98984e59f8ee381aeefbdb6efbe8aefbe9eefbe88efbe98322047464541
+NAME: 'eﾘｺﾘｽ･ﾘｺｲﾙM3' | HEX: 65efbe98efbdbaefbe98efbdbdefbda5efbe98efbdbaefbdb2efbe994d33
+NAME: 'P新世ｴｳﾞｧ15未来への咆哮' | HEX: 50e696b0e4b896efbdb4efbdb3efbe9eefbda73135e69caae69da5e381b8e381aee59286e593ae
+NAME: 'e牙狼12 XX-MJ' | HEX: 65e78999e78bbc31322058582d4d4a
+NAME: 'eﾘﾝｸﾞ最恐領域RHA' | HEX: 65efbe98efbe9defbdb8efbe9ee69c80e68190e9a098e59f9f524841
+NAME: 'PA海物語極ｼﾞｬﾊﾟﾝHBD' | HEX: 5041e6b5b7e789a9e8aa9ee6a5b5efbdbcefbe9eefbdacefbe8aefbe9fefbe9d484244
+NAME: 'PA大海物語5 HLD' | HEX: 5041e5a4a7e6b5b7e789a9e8aa9e3520484c44
+NAME: 'eF.からくりｻｰｶｽ2 R' | HEX: 65462ee3818be38289e3818fe3828aefbdbbefbdb0efbdb6efbdbd322052
+NAME: 'e Re:ｾﾞﾛ season2 M13' | HEX: 652052653aefbdbeefbe9eefbe9b20736561736f6e32204d3133
+NAME: 'e／押忍番長漢の頂／L09' | HEX: 65efbc8fe68abce5bf8de795aae995b7e6bca2e381aee9a082efbc8f4c3039
+NAME: 'eｱｽﾞｰﾙﾚｰﾝ2 K6' | HEX: 65efbdb1efbdbdefbe9eefbdb0efbe99efbe9aefbdb0efbe9d32204b36
+NAME: 'e/吉宗極乗3000ver/L06' | HEX: 652fe59089e5ae97e6a5b5e4b997333030307665722f4c3036

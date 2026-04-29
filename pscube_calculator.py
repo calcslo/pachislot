@@ -6,7 +6,6 @@ logger = logging.getLogger(__name__)
 
 # 機種ごとのボーダー値
 BORDER_DICT = {
-    "e新世紀ｴｳﾞｧ17はじまりR": 17.8,
     "eF戦姫絶唱シンフォギア4 キャロルver.": 17.8,
     "e ソードアート・オンライン 閃光の軌跡": 16.5,
     "P にゃんこ大戦争 多様性のネコ": 17.5,
@@ -89,9 +88,9 @@ ST_CONFIG = {
         "max": {"big": 0, "special": 130},
     },
     "e魔法少女まどかﾏｷﾞｶ3LPM1": {
-        "med": {"big_low": 70, "big_high": 130, "special": 130, "big_dedama": 1000},
-        "min": {"big_low": 100, "big_high": 130, "special": 130, "big_dedama": 1000},
-        "max": {"big_low": 0, "big_high": 130, "special": 130, "big_dedama": 1000},
+        "med": {"big_low": 70, "big_high": 130, "special": 130, "big_dedama": 600},
+        "min": {"big_low": 100, "big_high": 130, "special": 130, "big_dedama": 600},
+        "max": {"big_low": 0, "big_high": 130, "special": 130, "big_dedama": 600},
     },
     "eF.ｷﾝ肉ﾏﾝ": {
         "med": {"big": 73, "special": 145},
@@ -141,7 +140,7 @@ ST_CONFIG = {
 def get_machine_config(machine_name):
     """機種名から設定を取得する"""
     for key, config in ST_CONFIG.items():
-        if key in machine_name:
+        if key == machine_name:
             return config
     return None
 
@@ -177,6 +176,18 @@ def calculate_decrease_start_core(df, final_start, machine_name, mode):
                     st_val = m_config["big"] if current_dedama >= m_config["big_dedama"] else 0
             else:
                 st_val = m_config.get("big", 0)
+                
+            if machine_name == "Pｽｰﾊﾟｰ海物語IN沖縄6 LTP" and current_dedama <= 100:
+                has_large_start = True
+                st_val = 200
+            elif machine_name == "e Re:ｾﾞﾛ season2 M13":
+                next_shubetu = df.loc[i+1, "種別"] if i+1 < len(df) else "大当"
+                if next_shubetu != "確変":
+                    st_val = 0
+            elif machine_name in ["e東京喰種W", "e北斗の拳11暴凶星SHEF"] and current_dedama <= 300:
+                next_shubetu = df.loc[i+1, "種別"] if i+1 < len(df) else "大当"
+                if next_shubetu != "確変":
+                    st_val = 0
         elif current_shubetu == "確変":
             # 確変の場合
             if "special_high" in m_config:
@@ -184,8 +195,13 @@ def calculate_decrease_start_core(df, final_start, machine_name, mode):
                 # インターバルのスタートが special_low を超えていて、かつその当たりが「確変」であれば
                 # 既に上位ST (special_high) に滞在していると判定できる。
                 next_shubetu = df.loc[i+1, "種別"] if i+1 < len(df) else "大当"
-                if m_config["special_low"] < current_start <= m_config["special_high"] and next_shubetu == "確変":
-                    has_large_start = True
+                
+                if machine_name == "Pｽｰﾊﾟｰ海物語IN沖縄6 LTP":
+                    if current_dedama <= 100:
+                        has_large_start = True
+                else:
+                    if m_config["special_low"] < current_start <= m_config["special_high"] and next_shubetu == "確変":
+                        has_large_start = True
                 
                 st_val = m_config["special_high"] if has_large_start else m_config["special_low"]
             else:
@@ -200,7 +216,7 @@ def calculate_decrease_start_core(df, final_start, machine_name, mode):
 
     return decrease_start
 
-def calculate_decrease_start_agnes(df, final_start):
+def calculate_decrease_start_agnes(df, final_start, mode):
     """PA大海物語5 アグネス専用の減算計算"""
     is_happiness = False
     decrease_start = 0
@@ -213,13 +229,18 @@ def calculate_decrease_start_agnes(df, final_start):
         if is_happiness:
             st_val = 120
         else:
-            if current_dedama >= 600: # 10R想定
+            if current_dedama >= 900: # 10R想定
                 is_happiness = True
                 st_val = 120
-            elif current_dedama >= 400: # 6R想定
+            elif current_dedama >= 500: # 6R想定
                 st_val = 50
             else: # 4R想定
-                st_val = 25
+                if mode == "med":
+                    st_val = 29
+                elif mode == "min":
+                    st_val = 50
+                else: # max
+                    st_val = 25
         
         # 2. 電サポ分を減算
         decrease_start += min(next_start, st_val)
@@ -266,8 +287,8 @@ def calculate_expected_value(start, dedama, shubetu, final_start, machine_name, 
         cleaned_dedama = []
         cleaned_shubetu = []
         for i in range(len(start)):
-            s = str(start[i]).replace("-", "0").replace(",", "")
-            d = str(dedama[i]).replace("-", "0").replace(",", "")
+            s = str(start[i]).replace("-", "0").replace(",", "").strip()
+            d = str(dedama[i]).replace("-", "0").replace(",", "").strip()
             t = str(shubetu[i]).replace(" ", "").replace("　", "").strip()
             
             cleaned_start.append(int(s) if s.isdigit() else 0)
@@ -290,8 +311,8 @@ def calculate_expected_value(start, dedama, shubetu, final_start, machine_name, 
                 special_start = 0
                 dedama_sum = 0
             else:
-                if "PA大海物語5 ARBC" in machine_name:
-                    decrease_start = calculate_decrease_start_agnes(df, final_start)
+                if machine_name == "PA大海物語5 ARBC":
+                    decrease_start = calculate_decrease_start_agnes(df, final_start, mode)
                 else:
                     decrease_start = calculate_decrease_start_core(df, final_start, machine_name, mode)
                 
