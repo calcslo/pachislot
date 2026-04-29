@@ -657,10 +657,10 @@ function applyHeatmapCellSizes(){
         const cellSize=Math.max(16,Math.floor((availW-gap)/numCols));
         if(cellSize>=44){
             wrap.style.setProperty('--cell-size', '44px');
-            wrap.style.setProperty('--cell-font-size', '20px');
+            wrap.style.setProperty('--cell-font-size', '12px');
             return;
         }
-        const fontSize=Math.max(8,Math.floor(cellSize*0.55));
+        const fontSize=Math.max(8,Math.floor(cellSize*0.32));
         wrap.style.setProperty('--cell-size', cellSize+'px');
         wrap.style.setProperty('--cell-font-size', fontSize+'px');
     });
@@ -821,8 +821,9 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
     items.forEach(i=>{ const w=tmpCtx.measureText(i.label).width; if(w>maxLW)maxLW=w; });
     const labelCvsW = Math.ceil(maxLW) + 24;
 
-    labelCvs.width = labelCvsW;
-    labelCvs.height = h;
+    const dpr = window.devicePixelRatio || 1;
+    labelCvs.width = labelCvsW * dpr;
+    labelCvs.height = h * dpr;
     labelCvs.style.width = labelCvsW + "px";
     labelCvs.style.height = h + "px";
 
@@ -863,7 +864,8 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
 
     const gridColorFn = (ctx2) => {
         const v = ctx2.tick ? ctx2.tick.value : (ctx2.value ?? 0);
-        return (v === 0) ? "rgba(255,255,255,0.4)" : "rgba(128,128,128,0.12)";
+        const isDk = document.body.classList.contains('dark-theme');
+        return (v === 0) ? (isDk ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)') : 'rgba(128,128,128,0.12)';
     };
 
     const commonOpts = {
@@ -873,25 +875,82 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
         plugins: { legend: { display: false }, datalabels: { display: false } }
     };
 
-    charts[keyL] = new Chart(labelCvs, {
-        type: "bar",
-        data: { labels: items.map(i=>i.label), datasets: [{ data: vals, backgroundColor: 'transparent' }] },
-        options: {
-            ...commonOpts,
-            plugins: { ...commonOpts.plugins, tooltip: { enabled: false } },
-            scales: {
-                x: { display: true, min: axisMin, max: axisMax, ticks: { stepSize: step, font: { size: 9 }, color: 'transparent' }, grid: { display: false }, border: { display: false } },
-                y: { position: 'right', grid: { display: false },
-                     ticks: { font: { size: fontSize, weight: 'bold' }, autoSkip: false, color: '#94a3b8', padding: 8 },
-                     afterFit(scale){ scale.width = labelCvsW; } }
+    const isDark = document.body.classList.contains('dark-theme');
+    const labelColor = isDark ? '#e5e7eb' : '#1a1a1a';
+    const stripePlugin = {
+        id: 'stripePlugin',
+        beforeDraw(chart) {
+            const { ctx, chartArea, scales: { y } } = chart;
+            if(!chartArea || !y || y.ticks.length === 0) return;
+            const tickCount = y.ticks.length;
+            const rowH2 = (chartArea.bottom - chartArea.top) / tickCount;
+            ctx.save();
+            ctx.fillStyle = document.body.classList.contains('dark-theme') ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+            for (let i = 0; i < tickCount; i++) {
+                if (i % 2 === 1) {
+                    ctx.fillRect(chartArea.left, chartArea.top + i * rowH2, chartArea.right - chartArea.left, rowH2);
+                }
             }
+            ctx.restore();
         }
-    });
+    };
+
+    // --- Label canvas setup ---
+    if(charts[keyL]){ charts[keyL].destroy(); delete charts[keyL]; }
+    // --- Bar chart ---
+    if(charts[keyB]) charts[keyB].destroy();
+    
+    const syncPlugin = {
+        id: 'syncPlugin',
+        afterLayout(chart) {
+            const { top, bottom } = chart.chartArea;
+            if(!top || !bottom) return;
+            const actualRowH = (bottom - top) / n;
+            
+            const lCtx = labelCvs.getContext('2d');
+            lCtx.save();
+            lCtx.scale(dpr, dpr);
+            lCtx.clearRect(0, 0, labelCvsW, h);
+            const stripeColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+            lCtx.font = `bold ${fontSize}px Inter, "Noto Sans JP", sans-serif`;
+            lCtx.textBaseline = 'middle';
+            lCtx.textAlign = 'right';
+            
+            for(let i = 0; i < n; i++) {
+                const y = top + i * actualRowH;
+                if(i % 2 === 1) {
+                    lCtx.fillStyle = stripeColor;
+                    lCtx.fillRect(0, y, labelCvsW, actualRowH);
+                }
+                lCtx.fillStyle = labelColor;
+                lCtx.fillText(items[i].label, labelCvsW - 8, y + actualRowH / 2);
+            }
+            lCtx.restore();
+        },
+        beforeDraw(chart) {
+            const { ctx, chartArea } = chart;
+            if(!chartArea) return;
+            const actualRowH = (chartArea.bottom - chartArea.top) / n;
+            ctx.save();
+            const stripeColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+            for (let i = 0; i < n; i++) {
+                if (i % 2 === 1) {
+                    ctx.fillStyle = stripeColor;
+                    ctx.fillRect(chartArea.left, chartArea.top + i * actualRowH, chartArea.right - chartArea.left, actualRowH);
+                }
+            }
+            ctx.restore();
+        }
+    };
+
+    // Blue for positive, red for negative
+    const posColor = 'rgba(59,130,246,0.85)';
+    const negColor = 'rgba(239,68,68,0.8)';
 
     charts[keyB] = new Chart(barCvs, {
         type: 'bar',
         data: { labels: items.map(i=>i.label), datasets: [{ label: '差枚', data: vals,
-            backgroundColor: vals.map(v=>v>0?'rgba(59,130,246,0.8)':'rgba(239,68,68,0.8)'), borderRadius: 2 }] },
+            backgroundColor: vals.map(v=>v>0?posColor:negColor), borderRadius: 2 }] },
         options: {
             ...commonOpts,
             interaction: { mode: 'nearest', axis: 'y', intersect: false },
@@ -904,10 +963,20 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, items, 
                 }
             },
             scales: {
-                x: { min: axisMin, max: axisMax, ticks: { stepSize: step, font: { size: 9 }, color: '#64748b' }, grid: { color: gridColorFn } },
+                x: { display: true, min: axisMin, max: axisMax,
+                     ticks: { stepSize: step, font: { size: 9 }, color: isDark ? '#9ca3af' : '#6b7280' },
+                     grid: { color: gridColorFn } },
                 y: { display: false, grid: { display: false }, ticks: { autoSkip: false } }
             }
-        }
+        },
+        plugins: [syncPlugin]
+    });
+
+    // Scroll bar pane so that 0 is horizontally centered
+    requestAnimationFrame(() => {
+        const zeroRatio = (0 - axisMin) / (axisMax - axisMin);
+        const zeroX = zeroRatio * barCvsW;
+        barPane.scrollLeft = Math.max(0, zeroX - barPane.clientWidth / 2);
     });
 }
 
@@ -1994,44 +2063,40 @@ function renderGameCountAnalysis(){
     const periodBtn = document.querySelector('#game-count-period-tabs .tab-btn.active');
     const period = parseInt(periodBtn ? periodBtn.dataset.period : '1');
     
-    const dates = [...new Set(rawData.map(r=>r['日付']))].sort();
-    if(dates.length < 2) return;
+    const allDates = [...new Set(rawData.map(r=>r['日付']))].sort();
+    if(allDates.length < 2) return;
     
-    const dateIndices = {};
-    dates.forEach((d, i) => dateIndices[d] = i);
+    const dateIdxMap = {};
+    allDates.forEach((d, i) => dateIdxMap[d] = i);
     
     const mHist = {};
     rawData.forEach(row => {
         const num = normalizeNum(row['台番号']);
-        const date = row['日付'];
         if(!mHist[num]) mHist[num] = {};
-        mHist[num][date] = {
-            g: Number(row['累計ゲーム']) || 0,
-            diff: Number(row['最終差枚']) || 0
-        };
+        mHist[num][row['日付']] = Number(row['累計ゲーム']) || 0;
     });
 
-    const fd = getFilteredData();
+    const targetData = getFilteredData();
     const buckets = {};
     
-    fd.forEach(row => {
+    targetData.forEach(row => {
         const num = normalizeNum(row['台番号']);
-        const date = row['日付'];
+        const targetDate = row['日付'];
         const targetDiff = Number(row['最終差枚']) || 0;
         
-        const dateIdx = dateIndices[date];
-        if(dateIdx === undefined) return;
+        const currentIdx = dateIdxMap[targetDate];
+        if(currentIdx === undefined) return;
         
         let sumG = 0;
         let countG = 0;
         
         for(let i = 1; i <= period; i++){
-            const prevDateIdx = dateIdx - i;
-            if(prevDateIdx >= 0){
-                const prevDate = dates[prevDateIdx];
-                const prevData = mHist[num][prevDate];
-                if(prevData){
-                    sumG += prevData.g;
+            const prevIdx = currentIdx - i;
+            if(prevIdx >= 0){
+                const prevDate = allDates[prevIdx];
+                const g = mHist[num][prevDate];
+                if(g !== undefined){
+                    sumG += g;
                     countG++;
                 }
             }
@@ -2039,7 +2104,7 @@ function renderGameCountAnalysis(){
         
         if(countG > 0){
             const avgG = sumG / countG;
-            const bucketIdx = Math.floor(avgG / 500);
+            const bucketIdx = Math.floor(avgG / 1000);
             if(!buckets[bucketIdx]) buckets[bucketIdx] = { diffSum: 0, count: 0 };
             buckets[bucketIdx].diffSum += targetDiff;
             buckets[bucketIdx].count++;
@@ -2047,16 +2112,19 @@ function renderGameCountAnalysis(){
     });
 
     const labels = [], values = [];
-    Object.keys(buckets).sort((a,b)=>a-b).forEach(idx => {
+    Object.keys(buckets).sort((a,b)=>parseInt(a)-parseInt(b)).forEach(idx => {
         const b = buckets[idx];
         if(b.count < 1) return;
-        labels.push(`${idx*500}-${(parseInt(idx)+1)*500}G`);
+        labels.push(`${idx*1000}-${(parseInt(idx)+1)*1000}G`);
         values.push(Math.round(b.diffSum / b.count));
     });
 
+    const posColor = 'rgba(59,130,246,0.8)';
+    const negColor = 'rgba(239,68,68,0.8)';
+
     drawBar('chart-game-count-diff', labels, values, '平均差枚', {
         datasetExtras: {
-            backgroundColor: values.map(v => v > 0 ? 'rgba(59,130,246,0.8)' : 'rgba(239,68,68,0.8)')
+            backgroundColor: values.map(v => v > 0 ? posColor : negColor)
         }
     });
 }
