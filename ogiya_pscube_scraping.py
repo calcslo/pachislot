@@ -296,7 +296,10 @@ def extract_pscube_graph_data(page: Page) -> float | str:
             const lastPointLocal = path.getPointAtLength(totalLength);
             const matrix = path.getScreenCTM();
             const lastPointScreen = lastPointLocal.matrixTransform(matrix);
-            const lastY = lastPointScreen.y;
+            // ---- 0.5px補正 ----
+            // axis-tickは半ピクセル座標で描画されるが、グラフパスは整数座標のため
+            // 常に0.5px上にずれる。+0.5でaxis-tick座標系と一致させる。
+            const lastY = lastPointScreen.y + 0.5;
 
             // 線形補間
             let p1, p2;
@@ -313,29 +316,17 @@ def extract_pscube_graph_data(page: Page) -> float | str:
                 else { p1 = points[points.length - 2]; p2 = points[points.length - 1]; }
             }
 
+            if (p1.y === p2.y) return p1.val;
             const value = p1.val + (lastY - p1.y) * (p2.val - p1.val) / (p2.y - p1.y);
-
-            // デバッグ視覚化：計算地点に赤いドット、使用ラベルに黄色の枠
-            const marker = document.createElement('div');
-            marker.className = 'debug-marker';
-            Object.assign(marker.style, {
-                position: 'fixed', left: (lastPointScreen.x - 5) + 'px', top: (lastPointScreen.y - 5) + 'px',
-                width: '10px', height: '10px', backgroundColor: 'red', borderRadius: '50%',
-                zIndex: '10000', pointerEvents: 'none', border: '1px solid white'
-            });
-            document.body.appendChild(marker);
-            
-            labels.forEach(l => l.style.outline = '2px solid yellow');
-
             return Math.round(value);
         }''')
+        
+        if isinstance(result, str) and "解析不能" in result:
+            logger.warning(f"Graph解析エラー: {result}")
+            
         return result
     except Exception as e:
         return f"解析エラー: {e}"
-
-# ==========================================
-# スクレイピング ロジック (scrapling StealthyFetcher を利用)
-# ==========================================
 
 def site1_action(page: Page, target_models: list = None, specific_machines: list = None, result_queue: queue.Queue = None) -> dict:
     """Site1 の具体的なページ操作ロジック"""

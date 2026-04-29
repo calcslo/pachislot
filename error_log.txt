@@ -57,3 +57,13 @@ Call log:
     at eval (eval at evaluate (:290:30), <anonymous>:206:108)
     at UtilityScript.evaluate (<anonymous>:297:18)
     at UtilityScript.<anonymous> (<anonymous>:1:44), スクリーンショット: error_slot_site1_main_20260428_132954.png
+[20260429_053126] 台番号: 0968, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator("#CHART-20260428 svg") to be visible
+  - waiting for locator("#CHART-20260428 svg")
+, スクリーンショット: error_slot_site1_machine_0968_20260429_053126.png
+[20260429_053126] 全体処理エラー, エラー原因: SVG待機タイムアウト: Page.wait_for_selector: Timeout 8000ms exceeded.
+Call log:
+  - waiting for locator("#CHART-20260428 svg") to be visible
+  - waiting for locator("#CHART-20260428 svg")
+, スクリーンショット: error_slot_site1_main_20260429_053126.png

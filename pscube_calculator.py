@@ -10,13 +10,13 @@ BORDER_DICT = {
     "eF戦姫絶唱シンフォギア4 キャロルver.": 17.8,
     "e ソードアート・オンライン 閃光の軌跡": 16.5,
     "P にゃんこ大戦争 多様性のネコ": 17.5,
-    "e Re:ゼロから始める異世界生活 season2": 16.6,
+    "e Re:ｾﾞﾛ season2 M13": 16.6,
     "P大海物語5": 17.7,
     "P新世ｴｳﾞｧ15未来への咆哮": 17.8,
-    "eFからくりサーカス2 魔王ver.": 18.1,
+    "eF.からくりｻｰｶｽ2 R": 18.1,
     "P 魔法少女まどか☆マギカ3": 17.1,
     "eぱちんこ押忍!番長 漢の頂": 17.1,
-    "PA大海物語5 With ｱｸﾞﾈｽ･ﾗﾑ": 18.3,
+    "PA大海物語5 ARBC": 18.3,
     "Pｽｰﾊﾟｰ海物語IN沖縄6 LTP": 17.6,
     "e新世紀ｴｳﾞｧ17はじまりR": 16.7,
     "e東京喰種W": 16.7,
@@ -49,7 +49,7 @@ ST_CONFIG = {
     "にゃんこ大戦争": {
         "all": {"special": 155}
     },
-    "e Re:ゼロから始める異世界生活 season2": {
+    "e Re:ｾﾞﾛ season2 M13": {
         "all": {"big": 145, "special": 145}
     },
     "P大海物語5": {
@@ -60,7 +60,7 @@ ST_CONFIG = {
         "min": {"big": 163, "special": 163},
         "max": {"big": 100, "special": 163},
     },
-    "からくりサーカス2": {
+    "eF.からくりｻｰｶｽ2 R": {
         "med": {"big": 70, "special": 135},
         "min": {"big": 135, "special": 135},
         "max": {"big": 0, "special": 135},
@@ -290,7 +290,7 @@ def calculate_expected_value(start, dedama, shubetu, final_start, machine_name, 
                 special_start = 0
                 dedama_sum = 0
             else:
-                if "PA大海物語5 With ｱｸﾞﾈｽ･ﾗﾑ" in machine_name:
+                if "PA大海物語5 ARBC" in machine_name:
                     decrease_start = calculate_decrease_start_agnes(df, final_start)
                 else:
                     decrease_start = calculate_decrease_start_core(df, final_start, machine_name, mode)
