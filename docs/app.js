@@ -1,10 +1,31 @@
 // ==========================================
 // Configuration
 // ==========================================
-const MACHINE_GROUPS = {
-    hanahana: ['LBﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV'],
-    juggler: ['ｺﾞｰｺﾞｰｼﾞｬｸﾞﾗｰ3', 'ｳﾙﾄﾗﾐﾗｸﾙｼﾞｬｸﾞﾗｰ', 'ｼﾞｬｸﾞﾗｰｶﾞｰﾙｽﾞSS', 'ﾐｽﾀｰｼﾞｬｸﾞﾗｰ']
+// Keywords for dynamic grouping
+const MACHINE_KEYWORDS = {
+    hanahana: 'ﾊﾅﾊﾅ',
+    juggler: 'ｼﾞｬｸﾞﾗｰ'
 };
+
+let MACHINE_GROUPS = {
+    hanahana: [],
+    juggler: []
+};
+
+function updateMachineGroups(data) {
+    const hanahanaSet = new Set();
+    const jugglerSet = new Set();
+    data.forEach(row => {
+        const model = row['機種名'];
+        if (!model) return;
+        if (model.includes(MACHINE_KEYWORDS.hanahana)) hanahanaSet.add(model);
+        if (model.includes(MACHINE_KEYWORDS.juggler)) jugglerSet.add(model);
+    });
+    MACHINE_GROUPS.hanahana = Array.from(hanahanaSet);
+    MACHINE_GROUPS.juggler = Array.from(jugglerSet);
+    console.log('Dynamic MACHINE_GROUPS:', MACHINE_GROUPS);
+}
+
 const MACHINE_PROBS = {
     'LBﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV': { 1: { big: 299, reg: 496 }, 2: { big: 291, reg: 471 }, 3: { big: 281, reg: 442 }, 4: { big: 268, reg: 409 }, 5: { big: 253, reg: 372 } },
     'ｺﾞｰｺﾞｰｼﾞｬｸﾞﾗｰ3': { 1: { big: 259, reg: 354.2 }, 2: { big: 258, reg: 332.7 }, 3: { big: 257, reg: 306.2 }, 4: { big: 254, reg: 268.6 }, 5: { big: 247.3, reg: 247.3 }, 6: { big: 234.9, reg: 234.9 } },
@@ -75,11 +96,13 @@ async function init() {
     try {
         const [dr, lr] = await Promise.all([fetch('data.json'), fetch('layout.json')]);
         rawData = await dr.json(); layoutData = await lr.json();
+        updateMachineGroups(rawData); // Build groups dynamically from data
         const maxCols = layoutData.reduce((max, r) => Math.max(max, r.length), 0);
         layoutData.forEach(r => { while (r.length < maxCols) r.push(''); });
         buildLayoutLookup();
         populateTargetModelFilter();
         updateDashboard();
+
     } catch (err) { console.error(err); }
 }
 
@@ -282,11 +305,8 @@ function getFilteredData() {
         f = f.filter(r => r['日付'] > OLD_DATA_CUTOFF);
     }
     if (currentTab !== 'all') {
-        if (currentTab === 'hanahana') {
-            f = f.filter(r => r['機種名'].includes('ﾊﾅﾊﾅ') || r['機種名'].includes('ハナハナ'));
-        } else if (currentTab === 'juggler') {
-            f = f.filter(r => r['機種名'].includes('ｼﾞｬｸﾞﾗｰ') || r['機種名'].includes('ジャグラー'));
-        }
+        const m = currentTab === 'hanahana' ? MACHINE_GROUPS.hanahana : MACHINE_GROUPS.juggler;
+        f = f.filter(r => m.includes(r['機種名']));
     }
     if (f.length) {
         const dates = rawData.map(r => r['日付']).sort();
