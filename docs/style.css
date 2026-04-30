@@ -55,6 +55,10 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+body.modal-open {
+    overflow: hidden;
+}
+
 /* Background Effects — シンプルな薄いグラデーション背景 */
 .glass-background {
     position: fixed;
@@ -587,16 +591,39 @@ tbody tr.clickable td:first-child {
    ============================== */
 .split-chart-wrapper {
     display: flex;
+    flex-direction: column;
     width: 100%;
-    overflow: hidden;
     border: 1px solid var(--glass-border);
     border-radius: 8px;
     position: relative;
+    background: var(--glass-bg);
+}
+
+.split-chart-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+    display: flex;
+    background: transparent;
+    width: 100%;
+    pointer-events: none;
+}
+
+.split-chart-label-spacer {
+    flex-shrink: 0;
+    border-right: 1px solid var(--glass-border);
     background: transparent;
 }
 
-.split-chart-wrapper::before {
-    display: none;
+.split-chart-axis-pane {
+    flex: 1;
+    overflow: hidden;
+    background: transparent;
+}
+
+.split-chart-body {
+    display: flex;
+    width: 100%;
 }
 
 .split-chart-labels,
@@ -893,8 +920,7 @@ tbody tr.clickable td:first-child {
 }
 
 .modal-body {
-    overflow-y: auto;
-    max-height: 80vh;
+    /* removed internal scroll to allow overlay scroll */
 }
 
 .modal-section {
@@ -1196,9 +1222,13 @@ tbody tr.clickable td:first-child {
     background: rgba(0, 0, 0, 0.75);
     z-index: 2000;
     display: flex;
-    align-items: flex-end;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     padding: 0.5rem;
+    overflow-y: auto;
+    padding-top: 15vh;
+    /* space at top for background scroll */
 }
 
 .target-mobile-popup-inner {
@@ -1210,8 +1240,8 @@ tbody tr.clickable td:first-child {
     width: 100%;
     max-width: 480px;
     position: relative;
-    max-height: 85vh;
-    overflow-y: auto;
+    margin-top: auto;
+    /* keep at bottom if short */
 }
 
 .target-mobile-close {

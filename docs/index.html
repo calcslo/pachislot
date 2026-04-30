@@ -200,11 +200,19 @@
                 <h2 class="section-title">台番号別 平均差枚</h2>
                 <p class="section-note">※同一台番号に複数機種がある場合、最新以外は（機種名）で表示</p>
                 <div id="machine-split-wrapper" class="split-chart-wrapper">
-                    <div class="split-chart-labels">
-                        <canvas id="machine-labels-canvas"></canvas>
+                    <div class="split-chart-body">
+                        <div class="split-chart-labels">
+                            <canvas id="machine-labels-canvas"></canvas>
+                        </div>
+                        <div class="split-chart-bars">
+                            <canvas id="chart-machine-diff"></canvas>
+                        </div>
                     </div>
-                    <div class="split-chart-bars">
-                        <canvas id="chart-machine-diff"></canvas>
+                    <div class="split-chart-footer">
+                        <div class="split-chart-label-spacer"></div>
+                        <div class="split-chart-axis-pane">
+                            <canvas id="machine-axis-canvas"></canvas>
+                        </div>
                     </div>
                 </div>
             </section>
