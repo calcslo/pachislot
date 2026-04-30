@@ -70,6 +70,7 @@
                     <option value="5">5の付く日 (5,15,25)</option>
                     <option value="8">8の付く日 (8,18,28)</option>
                     <option value="358">3・5・8の付く日 (イベント)</option>
+                    <option value="not358">3・5・8の付かない日</option>
                 </select>
             </div>
         </section>
@@ -274,7 +275,7 @@
 
                     <div class="chart-card" style="grid-column: 1 / -1;">
                         <h3 class="chart-title">ゲーム数別 平均差枚</h3>
-                        <p class="section-note">過去数日間の平均ゲーム数（1000G刻み）に対して、翌日の平均差枚がどうなったかを集計します。</p>
+                        <p class="section-note">過去数日間（通常日・イベント日両方含む）の平均ゲーム数（1000G刻み）に対して、翌日（イベント日等フィルタ対象日）の平均差枚がどうなったかを集計します。</p>
                         <div class="analysis-controls" style="margin-bottom:1rem;">
                             <div class="tabs" id="game-count-period-tabs">
                                 <button class="tab-btn active" data-period="1">前日</button>
@@ -468,6 +469,44 @@
                             </div>
                         </div>
 
+                        <!-- Past game count average (NEW) -->
+                        <div class="target-condition-card" id="cond-card-past-game">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-past-game-enabled">
+                                    <span class="cond-label">過去G数平均</span>
+                                </label>
+                                <span class="cond-badge" id="cond-past-game-badge">OFF</span>
+                            </div>
+                            <div class="cond-body">
+                                <div style="margin-bottom:0.5rem;">
+                                    <select id="cond-past-game-period" class="styled-select" style="width:100%; font-size:0.85rem; padding:4px;">
+                                        <option value="1">前日</option>
+                                        <option value="2">前日～2日前</option>
+                                        <option value="3">前日～3日前</option>
+                                        <option value="4">前日～4日前</option>
+                                        <option value="5">前日～5日前</option>
+                                        <option value="6">前日～6日前</option>
+                                        <option value="7">前日～7日前</option>
+                                    </select>
+                                </div>
+                                <div class="cond-checkboxes" id="cond-past-game-ranges" style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                    <label><input type="checkbox" class="past-game-chk" value="0"> ～1000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="1"> 1001～2000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="2"> 2001～3000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="3"> 3001～4000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="4"> 4001～5000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="5"> 5001～6000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="6"> 6001～7000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="7"> 7001～8000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="8"> 8001～9000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="9"> 9001～10000G</label>
+                                    <label><input type="checkbox" class="past-game-chk" value="10"> 10001G～</label>
+                                </div>
+                                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">フィルタ無視（通常日含む）</div>
+                            </div>
+                        </div>
+
                     </div><!-- /.target-conditions-grid -->
 
 
@@ -483,6 +522,7 @@
                                 <label><input type="checkbox" class="prio-chk" value="digit"> 台番号末尾</label>
                                 <label><input type="checkbox" class="prio-chk" value="island-avg"> 島平均差枚</label>
                                 <label><input type="checkbox" class="prio-chk" value="machine-avg"> 台平均差枚</label>
+                                <label><input type="checkbox" class="prio-chk" value="past-game"> 過去G数平均</label>
                             </div>
                         </div>
                         <div class="target-priority-block">

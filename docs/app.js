@@ -17,7 +17,6 @@ let rawData = [], layoutData = [], layoutLookup = {};
 let currentTab = 'all', currentPeriod = '3m', currentEventFilter = 'none', currentSection = 'summary-section';
 let charts = {}, activeDate = null, currentCumulFilter = 'all';
 let diffThresholds = { neg1: -2000, neg2: -1000, pos1: 1000, pos2: 2000 };
-let islandThresholds = { neg1: -500, neg2: -200, pos1: 200, pos2: 500 };
 let includeOldData = false; // 旧データ(2026/4/21以前)を含めるかどうか
 const OLD_DATA_CUTOFF = '2026-04-21'; // この日付以前のデータを旧データとして扱う
 
@@ -310,43 +309,12 @@ function getFilteredData() {
 }
 
 function calculateDynamicThresholds(data) {
-    if (!data.length) return;
-
-    // Calculate machine-level averages for the period
-    const ms = {};
-    data.forEach(row => {
-        const num = normalizeNum(row['台番号']);
-        if (!ms[num]) ms[num] = { diff: 0, count: 0 };
-        ms[num].diff += Number(row['最終差枚']) || 0;
-        ms[num].count++;
-    });
-    const machineAvgs = Object.values(ms).map(st => st.diff / st.count);
-    const pos = machineAvgs.filter(v => v > 0), neg = machineAvgs.filter(v => v < 0);
-
+    const diffs = data.map(d => Number(d['最終差枚']) || 0);
+    const pos = diffs.filter(v => v > 0), neg = diffs.filter(v => v < 0);
     diffThresholds.pos1 = pos.length ? percentile(pos, 33) : 1000;
     diffThresholds.pos2 = pos.length ? percentile(pos, 66) : 2000;
     diffThresholds.neg1 = neg.length ? percentile(neg, 33) : -2000;
     diffThresholds.neg2 = neg.length ? percentile(neg, 66) : -1000;
-
-    // Calculate island-level averages for the period
-    const islandStats = {};
-    Object.keys(ms).forEach(num => {
-        const l = layoutLookup[num];
-        if (l) {
-            const iId = l.islandId;
-            if (!islandStats[iId]) islandStats[iId] = { total: 0, count: 0 };
-            islandStats[iId].total += ms[num].diff / ms[num].count;
-            islandStats[iId].count++;
-        }
-    });
-    const iAvgs = Object.values(islandStats).map(st => st.total / st.count);
-    const iPos = iAvgs.filter(v => v > 0), iNeg = iAvgs.filter(v => v < 0);
-
-    islandThresholds.pos1 = iPos.length ? percentile(iPos, 33) : 200;
-    islandThresholds.pos2 = iPos.length ? percentile(iPos, 66) : 500;
-    islandThresholds.neg1 = iNeg.length ? percentile(iNeg, 33) : -500;
-    islandThresholds.neg2 = iNeg.length ? percentile(iNeg, 66) : -200;
-
     updateHeatmapLegends();
 }
 
@@ -522,9 +490,6 @@ function generateLegendHtml(t) {
 function updateHeatmapLegends() {
     const lHtml = generateLegendHtml(diffThresholds);
     const dl = document.getElementById('diff-legend'); if (dl) dl.innerHTML = lHtml;
-
-    const iHtml = generateLegendHtml(islandThresholds);
-    const rl = document.getElementById('row-legend'); if (rl) rl.innerHTML = iHtml;
 }
 
 function buildHeatmapGrid(wrapId, cellBuilder) {
@@ -601,7 +566,19 @@ function renderHeatmaps(data) {
     const islandAvgs = {};
     for (const [iId, st] of Object.entries(islandStats)) { islandAvgs[iId] = st.count > 0 ? Math.round(st.total / st.count) : 0; }
 
-    // Use global islandThresholds calculated in updateDashboard
+    // Calculate dynamic thresholds for islands based on island averages
+    const iAvgVals = Object.values(islandAvgs).filter(v => v !== 0);
+    const iPos = iAvgVals.filter(v => v > 0);
+    const iNeg = iAvgVals.filter(v => v < 0);
+    const islandThresholds = {
+        pos1: iPos.length ? percentile(iPos, 33) : 200,
+        pos2: iPos.length ? percentile(iPos, 66) : 500,
+        neg1: iNeg.length ? percentile(iNeg, 33) : -500,
+        neg2: iNeg.length ? percentile(iNeg, 66) : -200
+    };
+    const rl = document.getElementById('row-legend');
+    if (rl) rl.innerHTML = generateLegendHtml(islandThresholds);
+
     const rowWrap = document.getElementById('row-heatmap-wrapper'); rowWrap.innerHTML = '';
     const rowInner = document.createElement('div');
     rowInner.className = 'heatmap-inner';
