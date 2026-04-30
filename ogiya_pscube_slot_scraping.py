@@ -765,23 +765,11 @@ def extract_pscube_graph_data_all_days(page: Page, today_date_str: str) -> dict:
 
     return results
 
-def get_today_date(page: Page) -> str:
-    text = page.inner_text("body")
-    match = re.search(r"(\d{4}/\d{2}/\d{2})\s+(\d{2}:\d{2})\s*更新", text)
-    if match:
-        date_str = match.group(1)
-        time_str = match.group(2)
-        dt = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y/%m/%d %H:%M")
-        if 0 <= dt.hour < 8:
-            today_dt = dt - datetime.timedelta(days=1)
-        else:
-            today_dt = dt
-        return today_dt.strftime("%Y-%m-%d")
-    else:
-        now = datetime.datetime.now()
-        if now.hour < 8:
-            now -= datetime.timedelta(days=1)
-        return now.strftime("%Y-%m-%d")
+def get_today_date(page: Page = None) -> str:
+    now = datetime.datetime.now()
+    if 0 <= now.hour < 9:
+        now -= datetime.timedelta(days=1)
+    return now.strftime("%Y-%m-%d")
 
 def extract_slot_table(page: Page) -> dict:
     """
@@ -865,7 +853,7 @@ def check_missing_machines(expected_machines):
         return []
         
     now = datetime.datetime.now()
-    if 0 <= now.hour < 8:
+    if 0 <= now.hour < 9:
         now -= datetime.timedelta(days=1)
     
     target_dates = [
@@ -879,7 +867,13 @@ def check_missing_machines(expected_machines):
     
     missing = []
     for m in expected_machines:
-        c.execute("SELECT COUNT(*) FROM slot_data WHERE 台番号=? AND 日付 IN (?, ?, ?)", (m, *target_dates))
+        try:
+            m_int = int(m)
+        except ValueError:
+            continue
+            
+        # layout.json は '690'、DBは '0690' などフォーマットが異なる場合があるため、数値として比較する
+        c.execute("SELECT COUNT(*) FROM slot_data WHERE CAST(台番号 AS INTEGER)=? AND 日付 IN (?, ?, ?)", (m_int, *target_dates))
         if c.fetchone()[0] < 3:
             missing.append(m)
     conn.close()
@@ -971,7 +965,7 @@ def site1_action(page: Page) -> None:
             for idx, machine_num in enumerate(machine_numbers):
                 # --- 修正箇所: ここから (深夜早朝0-8時の実行時は1日ずらす) ---
                 now = datetime.datetime.now()
-                if 0 <= now.hour < 8:
+                if 0 <= now.hour < 9:
                     now -= datetime.timedelta(days=1)
                 
                 expected_today = now.strftime("%Y-%m-%d")
@@ -1119,6 +1113,122 @@ def scrape_site1_scrapling():
         locale="ja-JP"
     )
 
+def scrape_missing_machines_action(page: Page, missing_machines: list):
+    logger.info(f"欠損データ {len(missing_machines)} 台の直接スクレイピングを開始します。")
+    page.set_viewport_size({"width": 390, "height": 844})
+    
+    # 事前に DB から「台番号」(整数扱い)と直近の「機種名」の対応を取得
+    machine_model_map = {}
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT CAST(台番号 AS INTEGER), 機種名 FROM slot_data GROUP BY CAST(台番号 AS INTEGER) ORDER BY 日付 DESC")
+    for row in c.fetchall():
+        machine_model_map[row[0]] = row[1]
+    conn.close()
+
+    today_date_str = get_today_date()
+    today_dt = datetime.datetime.strptime(today_date_str, "%Y-%m-%d")
+    day1_str = (today_dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    day2_str = (today_dt - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+
+    for idx, machine_num in enumerate(missing_machines):
+        try:
+            m_int = int(machine_num)
+        except ValueError:
+            continue
+            
+        cd_dai_str = f"{m_int:04d}" 
+
+        logger.info(f"リトライ [{idx+1}/{len(missing_machines)}]: 台番号 {cd_dai_str} に直接アクセスします。")
+        machine_url = f"https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v06-001.php?cd_dai={cd_dai_str}"
+        
+        try:
+            page.goto(machine_url, wait_until="networkidle")
+            check_page_health(page)
+            human_like_delay(2.0, 3.5)
+            handle_interstitial(page)
+            check_page_health(page)
+
+            # 機種名の取得
+            model_name = machine_model_map.get(m_int, "不明")
+            if model_name == "不明":
+                title = page.title()
+                if "｜" in title:
+                    model_name = title.split("｜")[-1].strip()
+            
+            completed_dates_for_machine = get_completed_dates_for_machine(model_name, cd_dai_str)
+
+            dates_to_scrape = {}
+            if today_date_str not in completed_dates_for_machine: dates_to_scrape['本日'] = today_date_str
+            if day1_str not in completed_dates_for_machine: dates_to_scrape['1日前'] = day1_str
+            if day2_str not in completed_dates_for_machine: dates_to_scrape['2日前'] = day2_str
+
+            if not dates_to_scrape:
+                logger.info(f"台番号 {cd_dai_str} はすでにデータが揃っています。")
+                continue
+
+            table_data = extract_slot_table(page)
+            graph_results = extract_pscube_graph_data_all_days(page, today_date_str)
+
+            for day_label, actual_date in dates_to_scrape.items():
+                sasamai = graph_results.get(day_label, "取得失敗")
+                
+                conn_local = sqlite3.connect(DB_FILE)
+                cursor_local = conn_local.cursor()
+                try:
+                    bonus = table_data.get(day_label, {}).get("BONUS", 0)
+                    big = table_data.get(day_label, {}).get("BIG", 0)
+                    reg = table_data.get(day_label, {}).get("REG", 0)
+                    games = table_data.get(day_label, {}).get("累計ゲーム", 0)
+
+                    games_int = int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0
+
+                    if games_int == 0:
+                        sasamai_final = 0
+                        if isinstance(sasamai, (int, float)) and sasamai != 0:
+                            logger.warning(f"台番号 {cd_dai_str} 累計G=0のため差枚0に補正")
+                    else:
+                        sasamai_final = sasamai if isinstance(sasamai, (int, float)) else 0
+
+                    record_tuple = (
+                        actual_date, model_name, cd_dai_str,
+                        int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
+                        int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
+                        int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
+                        games_int,
+                        sasamai_final
+                    )
+                    
+                    cursor_local.execute('''
+                        INSERT OR REPLACE INTO slot_data (日付, 機種名, 台番号, BONUS, BIG, REG, 累計ゲーム, 最終差枚)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', record_tuple)
+                    conn_local.commit()
+                    logger.info(f"リトライ: 台番号 {cd_dai_str} ({actual_date}) 保存成功")
+                finally:
+                    conn_local.close()
+
+        except Exception as e:
+            logger.error(f"リトライ中の台番号 {cd_dai_str} でエラー: {e}")
+            try:
+                page.screenshot(path=f"error_retry_{cd_dai_str}.png")
+            except:
+                pass
+            raise e
+
+def scrape_missing_machines_scrapling(missing_machines: list):
+    logger.info("欠損データに対して scrapling (StealthyFetcher) を使用して直接取得します")
+    def action_wrapper(page: Page):
+        scrape_missing_machines_action(page, missing_machines)
+
+    StealthyFetcher.fetch(
+        SITE1_URL, 
+        page_action=action_wrapper, 
+        headless=False, 
+        proxy=PROXY_SERVER,
+        locale="ja-JP"
+    )
+
 def export_and_upload_to_github():
     # データのエクスポート処理とGitHubへの自動アップロード
     # （現在は都度DBに保存しているため、無条件でエクスポートとアップロードを実行する）
@@ -1174,28 +1284,32 @@ def main(skip_scraping: bool = False):
                 except Exception as e:
                     logger.warning(f"export_slot_data.py の実行に失敗しました（既存のlayout.jsonを使用します）: {e}")
 
-                # メインのスクレイピング実行
-                scrape_site1_scrapling()
-                
-                # 成功してここに来た場合、島図（layout.json）と照合して欠損がないか確認
+                # 期待される台番号を再度取得 (export_slot_dataで更新された可能性があるため)
                 expected = get_expected_machines_from_layout()
+                if not expected:
+                    logger.warning("期待される台番号(layout.json)が空です。従来の全走査(site1_action)を実行します。")
+                    scrape_site1_scrapling()
+                    expected = get_expected_machines_from_layout()
+                
                 if expected:
                     logger.info(f"島図より {len(expected)} 台の台番号をロードしました。完了確認を開始します。")
                     
-                    for retry_i in range(3):
+                    for retry_i in range(4): # 1周目(0) + リトライ(1-3)
                         missing = check_missing_machines(expected)
                         if not missing:
                             logger.info("島図の全台のデータが揃っていることを確認しました（整合性OK）。")
                             break
                         
-                        logger.warning(f"データ欠損を確認しました (残り {len(missing)} 台): {missing}")
-                        logger.info(f"欠損データの再取得を開始します (追加試行 {retry_i + 1}/3)...")
+                        if retry_i == 0:
+                            logger.info(f"初回チェック: {len(missing)} 台のデータが不足しています。直接取得を開始します。")
+                        else:
+                            logger.warning(f"データ欠損を確認しました (残り {len(missing)} 台): {missing}")
+                            logger.info(f"欠損データの再取得を開始します (追加試行 {retry_i}/3)...")
+                            # IPを切り替えてから再試行（IPブロック対策）
+                            if not setup_docker_proxy(force_restart_docker=True):
+                                logger.warning("プロキシの切り替えに失敗しましたが、続行します。")
                         
-                        # IPを切り替えてから再試行（IPブロック対策）
-                        if not setup_docker_proxy(force_restart_docker=True):
-                            logger.warning("プロキシの切り替えに失敗しましたが、続行します。")
-                        
-                        scrape_site1_scrapling()
+                        scrape_missing_machines_scrapling(missing)
                     
                     # 最終チェック
                     final_missing = check_missing_machines(expected)
@@ -1203,7 +1317,7 @@ def main(skip_scraping: bool = False):
                         logger.info("全機種のスクレイピングが正常に完了しました。")
                         break
                     else:
-                        logger.error(f"3回の追加試行後も以下のデータが不足しています: {final_missing}")
+                        logger.error(f"追加試行後も以下のデータが不足しています: {final_missing}")
                         # 次の全体 attempt に回す
                         raise Exception("Incomplete data after additional retries")
                 else:

@@ -16,10 +16,7 @@ from scrapling.fetchers import StealthyFetcher
 # ==========================================
 # ログ設定
 # ==========================================
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# ログ設定は main.py で一括管理
 logger = logging.getLogger(__name__)
 
 class QueueHandler(logging.Handler):
@@ -57,6 +54,8 @@ DOCKER_CMD = [
     "tantantanuki/ja-vpngate-proxy"
 ]
 
+
+
 # ==========================================
 # ユーティリティ関数（BOT検知回避用）
 # ==========================================
@@ -65,7 +64,6 @@ def ensure_docker_desktop_running():
     """Docker Desktopが起動しているか確認し、起動していなければ起動する"""
     logger.info("Docker Desktopの起動状態を確認しています...")
     try:
-        # docker versionが成功するか確認
         res = subprocess.run(["docker", "version"], capture_output=True, text=True)
         if res.returncode == 0:
             logger.info("Docker Desktopは既に起動しています。")
@@ -74,10 +72,8 @@ def ensure_docker_desktop_running():
         pass
 
     logger.info("Docker Desktopを起動します...")
-    # Docker Desktopのパス (標準的な場所)
     docker_path = r"C:\Program Files\Docker\Docker\Docker Desktop.exe"
     if os.path.exists(docker_path):
-        # startコマンドを使って非同期で起動
         subprocess.Popen([docker_path], shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
     else:
         logger.error(f"Docker Desktopが見つかりません: {docker_path}")
@@ -89,11 +85,10 @@ def ensure_docker_desktop_running():
         logger.info(f"Dockerの起動を待機中... ({ (i+1)*5 }秒経過)")
         res = subprocess.run(["docker", "version"], capture_output=True, text=True)
         if res.returncode == 0:
-            # 念のためもう少し待つ
             time.sleep(5)
             logger.info("Docker Desktopが正常に起動しました。")
             return True
-            
+
     logger.error("Docker Desktopの起動タイムアウトです。")
     return False
 
@@ -117,29 +112,97 @@ def kill_process_on_port(port: int):
         )
         if result.stdout:
             # 行をパースしてPID（最後の列）を取得
+            pids = set()
             for line in result.stdout.strip().split('\n'):
                 if "LISTENING" in line and f":{port}" in line:
                     parts = line.split()
-                    pid = parts[-1]
-                    logger.info(f"ポート {port} を使用中のプロセス (PID: {pid}) を終了します...")
-                    subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True)
-                    time.sleep(1) # 終了を待機
+                    pids.add(parts[-1])
+            
+            for pid in pids:
+                logger.info(f"ポート {port} を使用中のプロセス (PID: {pid}) を終了します...")
+                subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True)
+                time.sleep(1) # 終了を待機
+
     except Exception as e:
         logger.error(f"ポート {port} の解放中にエラー: {e}")
 
-def setup_docker_proxy():
-    """Dockerコンテナを起動し、ログと接続を確認する"""
-    max_retries = 3
+def is_proxy_working() -> bool:
+    """Check whether the local HTTP proxy is usable."""
+    try:
+        resp = requests.get(
+            "http://httpbin.org/ip",
+            proxies={"http": PROXY_SERVER, "https": PROXY_SERVER},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            logger.info(f"Proxy is working: {resp.json().get('origin')}")
+            return True
+    except Exception as e:
+        logger.debug(f"Proxy check failed: {e}")
+    return False
+
+def is_port_in_use(port: int) -> bool:
+    """Return True when localhost:port accepts TCP connections."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("localhost", port)) == 0
+
+def is_port_owner_docker(port: int) -> bool:
+    """Return True when Docker publishes the specified host port."""
+    try:
+        res = subprocess.run(
+            ["docker", "ps", "--filter", f"publish={port}", "--format", "{{.ID}}"],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        return bool(res.stdout.strip())
+    except Exception as e:
+        logger.debug(f"Failed to inspect Docker port owner: {e}")
+        return False
+
+def restart_proxy() -> bool:
+    """
+    Dockerコンテナを停止→Docker Desktop再起動→コンテナ再起動を行い、
+    プロキシIPを切り替える。
+    """
+    logger.info("=== Docker再起動・プロキシ切替を開始します ===")
+    subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
+    stop_docker_desktop()
+    time.sleep(15)
+
+    if not ensure_docker_desktop_running():
+        logger.error("Docker Desktopを再起動できませんでした。")
+        return False
+
+    return setup_docker_proxy(force_restart_docker=True)
+
+def setup_docker_proxy(force_restart_docker: bool = False) -> bool:
+    """
+    VPN Gate Proxyコンテナを起動し、IPが切り替わったことを確認する。
+    force_restart_docker: Trueの場合、無条件でDocker Desktopの再起動から行う。
+    """
+    if not force_restart_docker:
+        # すでにポートが占有されている場合のチェック
+        if is_port_in_use(8118):
+            if is_port_owner_docker(8118):
+                logger.info("ポート 8118 は既にDockerコンテナによって使用されています。接続確認を行います...")
+                if is_proxy_working():
+                    logger.info("既存のプロキシコンテナが正常に動作しています。")
+                    return True
+                else:
+                    logger.warning("既存のプロキシコンテナが動作していません。フルリセットを行います。")
+                    return restart_proxy()
+            else:
+                logger.warning("ポート 8118 がDocker以外のプロセスによって占有されています。解放を試みます。")
+                kill_process_on_port(8118)
+
+    max_retries = 10
     for attempt in range(max_retries):
         logger.info(f"Dockerコンテナ起動試行中 ({attempt + 1}/{max_retries})...")
-        
-        # ポート 8118 を占有しているプロセスがあれば終了させる
-        kill_process_on_port(8118)
-        
-        # 既存のコンテナがあれば停止
+
+        # コンテナのクリーンアップ
         subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
-        
-        # コンテナを起動 (-itはsubprocessでは-iのみ、または無しで実行)
+
         process = subprocess.Popen(
             ["docker", "run", "--rm", "--name", CONTAINER_NAME,
              "--cap-add=NET_ADMIN", "--device=/dev/net/tun",
@@ -151,32 +214,25 @@ def setup_docker_proxy():
             text=True,
             bufsize=1
         )
-        
+
         success = False
         pattern_found = False
         last_log_time = time.time()
-        
+
         try:
-            # ログ監視ループ
             while True:
-                # 非ブロッキングで1行読み込むためにtimeout付きで待機したいが、
-                # Pythonのreadlineはブロッキングなので、selectや低レベルな仕組みが必要。
-                # ここでは簡易的に、一定時間待ってから読み込むか、別のスレッドで監視する。
-                # または、単純に一定時間内にログが出なければ成功とするロジックにする。
-                
                 line = process.stdout.readline()
                 if not line:
                     if process.poll() is not None:
                         logger.error("Dockerプロセスが終了しました。")
                         break
                     continue
-                
+
                 line = line.strip()
                 if line:
                     logger.debug(f"Docker: {line}")
                     last_log_time = time.time()
-                
-                # パターン確認
+
                 match = re.search(r"before=([\d\.]+) after=([\d\.]+)", line)
                 if not pattern_found and match:
                     before_ip = match.group(1)
@@ -184,14 +240,11 @@ def setup_docker_proxy():
                     if before_ip == after_ip:
                         logger.error(f"IPが変わっていません: before={before_ip} after={after_ip}")
                         break
-                    
+
                     logger.info("ログに接続成功パターンが見つかりました。静止を待ちます...")
                     pattern_found = True
-                    # パターンが見つかったら、そこから5秒間ログが止まるのを待つ
                     start_wait = time.time()
-                    while time.time() - start_wait < 10: # 最大10秒待機
-                        # ここでも非ブロッキング読み込みが必要。
-                        # Windowsでも動くように、短いスリープとpollを組み合わせる。
+                    while time.time() - start_wait < 10:
                         time.sleep(1)
                         if time.time() - last_log_time >= 5:
                             logger.info("5秒間のログ静止を確認しました。")
@@ -200,38 +253,26 @@ def setup_docker_proxy():
                     if success:
                         break
 
-                # タイムアウト (3分)
                 if time.time() - last_log_time > 180:
                     logger.error("コンテナ起動タイムアウト")
                     break
-            
+
             if success:
-                # 導通確認
-                logger.info("localhost:8118 でプロキシの導通確認を行います...")
-                try:
-                    # 実際にプロキシ経由でアクセス
-                    resp = requests.get("http://httpbin.org/ip", 
-                                        proxies={"http": PROXY_SERVER, "https": PROXY_SERVER}, 
-                                        timeout=10)
-                    if resp.status_code == 200:
-                        logger.info(f"プロキシ接続成功: {resp.json().get('origin')}")
-                        return True
-                    else:
-                        logger.warning(f"導通確認失敗 (ステータスコード: {resp.status_code})")
-                except Exception as e:
-                    logger.warning(f"導通確認中にエラー: {e}")
-            
+                if is_proxy_working():
+                    return True
+                else:
+                    logger.warning("コンテナは起動しましたが、プロキシが正常に動作していません。")
+
         except Exception as e:
             logger.error(f"監視中にエラーが発生しました: {e}")
-        
-        # 失敗した場合はクリーンアップしてリトライ
-        logger.warning("起動に失敗しました。再起動します。")
+
+        logger.warning("起動に失敗しました。コンテナを破棄して再試行します。")
         subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)
         process.terminate()
         time.sleep(5)
         
-    logger.error("最大試行回数を超えました。")
-    return False
+    logger.error("コンテナ起動の試行回数が上限に達しました。Docker Desktopの再起動を行います。")
+    return restart_proxy()
 
 def human_like_delay(min_sec: float = 1.0, max_sec: float = 3.0):
     """人間らしいランダム待機（一様分布）"""

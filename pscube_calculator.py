@@ -5,10 +5,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 # 機種ごとのボーダー値
-BORDER_DICT = {
+# オーギヤタウン半田店用機種リスト (P's Cube表記)
+OGIYA_BORDER_DICT = {
     "eF戦姫絶唱シンフォギア4 キャロルver.": 17.8,
-    "e ソードアート・オンライン 閃光の軌跡": 16.5,
-    "P にゃんこ大戦争 多様性のネコ": 17.5,
     "e Re:ｾﾞﾛ season2 M13": 16.6,
     "P大海物語5": 17.7,
     "P新世ｴｳﾞｧ15未来への咆哮": 17.8,
@@ -30,6 +29,55 @@ BORDER_DICT = {
     "PA海物語極ｼﾞｬﾊﾟﾝHBD": 17.6,
     "PA大海物語5 HLD": 16.8,
 }
+
+# コスモジャパン大府店用機種リスト (テラモバ2表記)
+COSMO_BORDER_DICT = {
+    "e ソードアート・オンライン 閃光の軌跡": 16.5,
+    "P にゃんこ大戦争 多様性のネコ": 17.5,
+    "新世紀エヴァンゲリオン～未来への咆哮～": 17.8,
+    "e 新世紀エヴァンゲリオン ～はじまりの記憶～": 16.7,
+    "e 東京喰種": 16.7,
+    "e 魔法少女まどか☆マギカ3 時間遡行～始まりの願い～": 20.2,
+    "eFキン肉マン": 16.6,
+    "e 北斗の拳11 暴凶星": 16.8,
+    "eFブルーロック": 17.4,
+    "e 甲鉄城のカバネリ2 咲かせや燦然": 17.1,
+    "eリコリス・リコイル": 17.2,
+    "e牙狼12黄金騎士極限": 17.2,
+    "e アズールレーン2 THE ANIMATION 超次元": 18.0,
+    "e女神のカフェテラス": 18.0,
+    "e ゴジラ対エヴァンゲリオン2 超デカゴールド": 18.0,
+    "e 真・北斗無双 第5章 夢幻闘双": 18.0,
+    "e花の慶次～黄金の一撃": 18.0,
+    "e地獄少女 7500Ver.": 18.0,
+    "e東京リベンジャーズ": 18.0,
+    "P Re:ゼロから始める異世界生活 season2 129ver.": 18.0,
+}
+
+# コスモジャパン大府店用 機種名と台番号の対応マップ
+COSMO_MACHINE_MAP = {
+    "新世紀エヴァンゲリオン～未来への咆哮～": [range(2081, 2151)],
+    "e アズールレーン2 THE ANIMATION 超次元": [range(661, 673), range(708, 721)],
+    "e 新世紀エヴァンゲリオン ～はじまりの記憶～": [range(2021, 2033), range(2068, 2081)],
+    "e 東京喰種": [range(1731, 1753), range(1778, 1801)],
+    "e 魔法少女まどか☆マギカ3 時間遡行～始まりの願い～": [range(673, 708)],
+    "eFキン肉マン": [range(626, 661)],
+    "e女神のカフェテラス": [range(733, 768)],
+    "e ゴジラ対エヴァンゲリオン2 超デカゴールド": [range(2056, 2068)],
+    "e 甲鉄城のカバネリ2 咲かせや燦然": [range(1838, 1861)],
+    "e 真・北斗無双 第5章 夢幻闘双": [range(1813, 1826)],
+    "e 北斗の拳11 暴凶星": [range(1753, 1766)],
+    "eFブルーロック": [range(601, 613)],
+    "eリコリス・リコイル": [range(1801, 1813)],
+    "e花の慶次～黄金の一撃": [range(1766, 1778)],
+    "e牙狼12黄金騎士極限": [range(613, 626)],
+    "e地獄少女 7500Ver.": [range(727, 733), range(768, 774)],
+    "e東京リベンジャーズ": [range(1826, 1838)],
+    "P Re:ゼロから始める異世界生活 season2 129ver.": [range(816, 828)],
+}
+
+# 全店統合リスト (計算用)
+BORDER_DICT = {**OGIYA_BORDER_DICT, **COSMO_BORDER_DICT}
 
 # 機種ごとのST/時短設定 (Min, Med, Max の計算に使用)
 # key: machine_name or partial name
@@ -59,6 +107,11 @@ ST_CONFIG = {
         "min": {"big": 163, "special": 163},
         "max": {"big": 100, "special": 163},
     },
+    "新世紀エヴァンゲリオン～未来への咆哮～": {
+        "med": {"big": 135, "special": 163},
+        "min": {"big": 163, "special": 163},
+        "max": {"big": 100, "special": 163},
+    },
     "eF.からくりｻｰｶｽ2 R": {
         "med": {"big": 70, "special": 135},
         "min": {"big": 135, "special": 135},
@@ -82,7 +135,17 @@ ST_CONFIG = {
         "min": {"big_low": 157,"big_high":157, "special": 157, "big_dedama": 800},
         "max": {"big_low": 100,"big_high":157, "special": 157, "big_dedama": 800},
     },
+    "e 新世紀エヴァンゲリオン ～はじまりの記憶～": {
+        "med": {"big_low": 129,"big_high":157, "special": 157, "big_dedama": 800},
+        "min": {"big_low": 157,"big_high":157, "special": 157, "big_dedama": 800},
+        "max": {"big_low": 100,"big_high":157, "special": 157, "big_dedama": 800},
+    },
     "e東京喰種W": {
+        "med": {"big": 65, "special": 130},
+        "min": {"big": 130, "special": 130},
+        "max": {"big": 0, "special": 130},
+    },
+    "e 東京喰種": {
         "med": {"big": 65, "special": 130},
         "min": {"big": 130, "special": 130},
         "max": {"big": 0, "special": 130},
@@ -92,7 +155,17 @@ ST_CONFIG = {
         "min": {"big_low": 100, "big_high": 130, "special": 130, "big_dedama": 600},
         "max": {"big_low": 0, "big_high": 130, "special": 130, "big_dedama": 600},
     },
+    "e 魔法少女まどか☆マギカ3 時間遡行～始まりの願い～": {
+        "med": {"big_low": 70, "big_high": 130, "special": 130, "big_dedama": 600},
+        "min": {"big_low": 100, "big_high": 130, "special": 130, "big_dedama": 600},
+        "max": {"big_low": 0, "big_high": 130, "special": 130, "big_dedama": 600},
+    },
     "eF.ｷﾝ肉ﾏﾝ": {
+        "med": {"big": 73, "special": 145},
+        "min": {"big": 145, "special": 145},
+        "max": {"big": 0, "special": 145},
+    },
+    "eFキン肉マン": {
         "med": {"big": 73, "special": 145},
         "min": {"big": 145, "special": 145},
         "max": {"big": 0, "special": 145},
@@ -102,7 +175,17 @@ ST_CONFIG = {
         "min": {"big_low": 10,"big_high":10, "special": 10, "big_dedama": 1500},
         "max": {"big_low": 0,"big_high":10, "special": 10, "big_dedama": 1500},
     },
+    "e 北斗の拳11 暴凶星": {
+        "med": {"big_low": 4,"big_high":10,"special": 10, "big_dedama": 1500},
+        "min": {"big_low": 10,"big_high":10, "special": 10, "big_dedama": 1500},
+        "max": {"big_low": 0,"big_high":10, "special": 10, "big_dedama": 1500},
+    },
     "eF.ﾌﾞﾙｰﾛｯｸMZ": {
+        "med": {"big_low":41,"big_high":75, "special": 75, "big_dedama": 1300},
+        "min": {"big_low":136,"big_high":248, "special": 248, "big_dedama": 1300},
+        "max": {"big_low":6,"big_high":11, "special": 11, "big_dedama": 1300},
+    },
+    "eFブルーロック": {
         "med": {"big_low":41,"big_high":75, "special": 75, "big_dedama": 1300},
         "min": {"big_low":136,"big_high":248, "special": 248, "big_dedama": 1300},
         "max": {"big_low":6,"big_high":11, "special": 11, "big_dedama": 1300},
@@ -112,12 +195,25 @@ ST_CONFIG = {
         "min": {"big": 134, "special": 134},
         "max": {"big": 0, "special": 134},
     },
+    "e 甲鉄城のカバネリ2 咲かせや燦然":{
+        "med": {"big":67, "special": 134},
+        "min": {"big": 134, "special": 134},
+        "max": {"big": 0, "special": 134},
+    },
     "eﾘｺﾘｽ･ﾘｺｲﾙM3": {
         "med": {"big_low": 66, "big_high":132,"special": 132, "big_dedama": 1300},
         "min": {"big_low": 132, "big_high":132,"special": 132, "big_dedama": 1300},
         "max": {"big_low": 0, "big_high":132, "special": 132, "big_dedama": 1300},
     },
+    "eリコリス・リコイル": {
+        "med": {"big_low": 66, "big_high":132,"special": 132, "big_dedama": 1300},
+        "min": {"big_low": 132, "big_high":132,"special": 132, "big_dedama": 1300},
+        "max": {"big_low": 0, "big_high":132, "special": 132, "big_dedama": 1300},
+    },
     "e牙狼12 XX-MJ": {
+        "all": {"special": 1}
+    },
+    "e牙狼12黄金騎士極限": {
         "all": {"special": 1}
     },
     "eﾘﾝｸﾞ最恐領域RHA": {

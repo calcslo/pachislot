@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pachinko Scraper Dashboard</title>
+    <title>オーギヤタウン半田店パチンコボーダー</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -277,7 +277,7 @@
 <div class="container">
     <div class="glass-panel">
         <div class="header-actions">
-            <h1>P's Cube Scraper</h1>
+            <h1>オーギヤタウン半田店パチンコボーダー</h1>
             <div class="status-indicator">
                 <div class="dot" id="status-dot"></div>
                 <span id="status-text">待機中</span>
@@ -325,6 +325,9 @@
 
 <script>
     let ws;
+    let reconnectTimer = null;
+    let lastLogSignature = null;
+    let lastLogAt = 0;
     let chartData = {}; // Format: { "machine_num": { data } }
     
     // UI Elements
@@ -370,6 +373,14 @@
     }
 
     function connectWebSocket() {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
         
@@ -389,8 +400,9 @@
         };
         
         ws.onclose = () => {
+            ws = null;
             appendLog('WARNING', 'WebSocket切断。5秒後に再接続します...');
-            setTimeout(connectWebSocket, 5000);
+            reconnectTimer = setTimeout(connectWebSocket, 5000);
         };
     }
 
@@ -436,6 +448,14 @@
     }
 
     function appendLog(level, message) {
+        const now = Date.now();
+        const signature = `${level}\n${message}`;
+        if (signature === lastLogSignature && now - lastLogAt < 2000) {
+            return;
+        }
+        lastLogSignature = signature;
+        lastLogAt = now;
+
         const div = document.createElement('div');
         div.className = `log-entry log-${level}`;
         const time = new Date().toLocaleTimeString();
@@ -686,6 +706,16 @@
     // Run setup and init on load
     setupDragScroll();
     init();
+
+    window.addEventListener('beforeunload', () => {
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+        }
+        if (ws) {
+            ws.onclose = null;
+            ws.close();
+        }
+    });
 
 </script>
 </body>
