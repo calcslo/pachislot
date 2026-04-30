@@ -282,8 +282,11 @@ function getFilteredData() {
         f = f.filter(r => r['日付'] > OLD_DATA_CUTOFF);
     }
     if (currentTab !== 'all') {
-        const m = currentTab === 'hanahana' ? MACHINE_GROUPS.hanahana : MACHINE_GROUPS.juggler;
-        f = f.filter(r => m.includes(r['機種名']));
+        if (currentTab === 'hanahana') {
+            f = f.filter(r => r['機種名'].includes('ﾊﾅﾊﾅ') || r['機種名'].includes('ハナハナ'));
+        } else if (currentTab === 'juggler') {
+            f = f.filter(r => r['機種名'].includes('ｼﾞｬｸﾞﾗｰ') || r['機種名'].includes('ジャグラー'));
+        }
     }
     if (f.length) {
         const dates = rawData.map(r => r['日付']).sort();
@@ -302,6 +305,7 @@ function getFilteredData() {
             if (currentEventFilter === '5') return s.endsWith('5');
             if (currentEventFilter === '8') return s.endsWith('8');
             if (currentEventFilter === '358') return s.endsWith('3') || s.endsWith('5') || s.endsWith('8');
+            if (currentEventFilter === 'not358') return !s.endsWith('3') && !s.endsWith('5') && !s.endsWith('8');
             return true;
         });
     }
@@ -309,12 +313,22 @@ function getFilteredData() {
 }
 
 function calculateDynamicThresholds(data) {
-    const diffs = data.map(d => Number(d['最終差枚']) || 0);
+    if (!data.length) return;
+    // ヒートマップで表示されるのは台ごとの期間平均であるため、しきい値も台ごとの平均分布から算出する
+    const machineStats = {};
+    data.forEach(d => {
+        const num = d['台番号'];
+        if (!machineStats[num]) machineStats[num] = { total: 0, count: 0 };
+        machineStats[num].total += Number(d['最終差枚']) || 0;
+        machineStats[num].count++;
+    });
+    const diffs = Object.values(machineStats).map(s => Math.round(s.total / s.count));
+
     const pos = diffs.filter(v => v > 0), neg = diffs.filter(v => v < 0);
-    diffThresholds.pos1 = pos.length ? percentile(pos, 33) : 1000;
-    diffThresholds.pos2 = pos.length ? percentile(pos, 66) : 2000;
-    diffThresholds.neg1 = neg.length ? percentile(neg, 33) : -2000;
-    diffThresholds.neg2 = neg.length ? percentile(neg, 66) : -1000;
+    diffThresholds.pos1 = pos.length ? percentile(pos, 33) : 500;
+    diffThresholds.pos2 = pos.length ? percentile(pos, 66) : 1000;
+    diffThresholds.neg1 = neg.length ? percentile(neg, 33) : -1000;
+    diffThresholds.neg2 = neg.length ? percentile(neg, 66) : -500;
     updateHeatmapLegends();
 }
 
@@ -566,10 +580,11 @@ function renderHeatmaps(data) {
     const islandAvgs = {};
     for (const [iId, st] of Object.entries(islandStats)) { islandAvgs[iId] = st.count > 0 ? Math.round(st.total / st.count) : 0; }
 
-    // Calculate dynamic thresholds for islands based on island averages
-    const iAvgVals = Object.values(islandAvgs).filter(v => v !== 0);
-    const iPos = iAvgVals.filter(v => v > 0);
-    const iNeg = iAvgVals.filter(v => v < 0);
+    // Calculate dynamic thresholds for islands based on individual machine averages within the group
+    // This makes the scale more robust and "group-aware" especially when fewer islands are involved
+    const machineAvgs = Object.values(ms).map(st => Math.round(st.diff / st.count)).filter(v => v !== 0);
+    const iPos = machineAvgs.filter(v => v > 0);
+    const iNeg = machineAvgs.filter(v => v < 0);
     const islandThresholds = {
         pos1: iPos.length ? percentile(iPos, 33) : 200,
         pos2: iPos.length ? percentile(iPos, 66) : 500,
@@ -592,17 +607,23 @@ function renderHeatmaps(data) {
     trimmedLayout.forEach(row => {
         const rowEl = document.createElement('div'); rowEl.className = 'heatmap-row';
         row.forEach(cell => {
+            const num = normalizeNum(cell);
             const isEmpty = cell === '';
+            const isFiltered = !isEmpty && ms[num];
             const el = document.createElement('div'); el.className = `heatmap-cell${isEmpty ? ' empty' : ''}`;
             if (!isEmpty) {
-                const num = normalizeNum(cell);
                 el.textContent = cell;
-                const iId = layoutLookup[num] ? layoutLookup[num].islandId : '不明';
-                el.dataset.islandId = iId;
-                const iAvg = islandAvgs[iId] || 0;
-                el.style.backgroundColor = getHeatmapColor(iAvg, islandThresholds);
-                el.addEventListener('mouseenter', () => { tooltip.innerHTML = `<div class="tooltip-title">${iId}</div><div class="tooltip-body"><div>平均差枚: ${formatVal(iAvg)}</div></div>`; tooltip.classList.add('visible'); });
-                el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+                if (!isFiltered) {
+                    el.style.backgroundColor = 'transparent';
+                    el.style.border = '1px solid rgba(128,128,128,0.2)';
+                } else {
+                    const iId = layoutLookup[num] ? layoutLookup[num].islandId : '不明';
+                    el.dataset.islandId = iId;
+                    const iAvg = islandAvgs[iId] || 0;
+                    el.style.backgroundColor = getHeatmapColor(iAvg, islandThresholds);
+                    el.addEventListener('mouseenter', () => { tooltip.innerHTML = `<div class="tooltip-title">${iId}</div><div class="tooltip-body"><div>平均差枚: ${formatVal(iAvg)}</div></div>`; tooltip.classList.add('visible'); });
+                    el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+                }
             }
             rowEl.appendChild(el);
         });
@@ -662,7 +683,7 @@ function applyHeatmapCellSizes() {
     wrapIds.forEach(id => {
         const wrap = document.getElementById(id);
         if (!wrap || !wrap.children.length) return;
-        
+
         const availW = wrap.clientWidth - 8;
         const gap = (numCols - 1) * gapWidth;
         const minCell = 16;
@@ -674,8 +695,8 @@ function applyHeatmapCellSizes() {
 
         // PC版のメインヒートマップのみ縮小して画面に収める
         if (mainIds.includes(id) && !isMobile) {
-            maxCell = 28; // PC版メインタブをコンパクトにする
-            maxFont = 11;
+            maxCell = 19; // PC版メインタブをコンパクトにする
+            maxFont = 8;
         }
 
         if (cellSize >= maxCell) {
@@ -1847,6 +1868,17 @@ function renderTargetSupport(filteredData) {
         },
         machineAvg: {
             enabled: document.getElementById('cond-machine-avg-enabled').checked
+        },
+        pastGame: {
+            enabled: document.getElementById('cond-past-game-enabled').checked,
+            periods: [...document.querySelectorAll('.past-game-period-row')].map(row => {
+                const pVal = parseInt(row.dataset.period);
+                return {
+                    period: pVal,
+                    enabled: row.querySelector('.period-chk').checked,
+                    ranges: [...row.querySelectorAll('.range-chk:checked')].map(c => parseInt(c.value))
+                };
+            }).filter(p => p.enabled)
         }
     };
 
@@ -1866,8 +1898,17 @@ function renderTargetSupport(filteredData) {
     const selectedModels = [...document.querySelectorAll('#target-model-filter-list input:checked')].map(c => c.value);
 
     // 5. Evaluate each machine in layoutLookup
-    const condKeyMap = { consNeg: 'cons-neg', consPos: 'cons-pos', position: 'position', digit: 'digit', islandAvg: 'island-avg', machineAvg: 'machine-avg' };
+    const condKeyMap = { consNeg: 'cons-neg', consPos: 'cons-pos', position: 'position', digit: 'digit', islandAvg: 'island-avg', machineAvg: 'machine-avg', pastGame: 'past-game' };
     const machines = [];
+    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
+    const dateIdxMap = {};
+    allDates.forEach((d, i) => dateIdxMap[d] = i);
+    const mHist = {};
+    rawData.forEach(row => {
+        const num = normalizeNum(row['台番号']);
+        if (!mHist[num]) mHist[num] = {};
+        mHist[num][row['日付']] = Number(row['累計ゲーム']) || 0;
+    });
 
     for (const num of Object.keys(layoutLookup)) {
         const numVal = parseInt(num);
@@ -1911,10 +1952,41 @@ function renderTargetSupport(filteredData) {
         checkCond('islandAvg', iAvg !== null);
         checkCond('machineAvg', mAvg !== null);
 
+        // Past Game Count Average (Independent Periods)
+        let pastGameMatch = false;
+        let displayAvg = null;
+        if (conds.pastGame.enabled && conds.pastGame.periods.length > 0) {
+            const latestIdx = dateIdxMap[latestDate];
+            if (latestIdx !== undefined) {
+                for (const pCond of conds.pastGame.periods) {
+                    let sumG = 0, countG = 0;
+                    for (let i = 0; i < pCond.period; i++) {
+                        const idx = latestIdx - i;
+                        if (idx >= 0) {
+                            const d = allDates[idx];
+                            const g = mHist[num] ? mHist[num][d] : undefined;
+                            if (g !== undefined) { sumG += g; countG++; }
+                        }
+                    }
+                    const avgG = countG > 0 ? sumG / countG : 0;
+                    if (displayAvg === null) displayAvg = avgG;
+
+                    let bucket = 0;
+                    if (avgG > 10000) bucket = 10;
+                    else if (avgG > 0) bucket = Math.floor((avgG - 1) / 1000);
+                    
+                    if (pCond.ranges.length === 0 || pCond.ranges.includes(bucket)) {
+                        pastGameMatch = true;
+                    }
+                }
+            }
+        }
+        checkCond('pastGame', pastGameMatch);
+
         const totalMatch = prioMatch + otherMatch;
 
         machines.push({
-            num, sk, mAvg, iAvg, posVal, digit,
+            num, sk, mAvg, iAvg, posVal, digit, avgG: displayAvg,
             prioMatch, otherMatch, totalMatch, matchedConds,
             rec: latestRec[num] || null
         });
@@ -1977,7 +2049,7 @@ function renderTargetSupport(filteredData) {
         const tbl = document.createElement('table');
         tbl.innerHTML = `<thead><tr>
             <th>順位</th><th>台番号</th><th>機種</th><th>合致数</th>
-            <th>連続凹み</th><th>連続凸</th><th>台平均差枚</th><th>島平均差枚</th><th>位置</th>
+            <th>連続凹み</th><th>連続凸</th><th>台平均差枚</th><th>島平均差枚</th><th>過去G平均</th><th>位置</th>
         </tr></thead>`;
         const tbody = document.createElement('tbody');
         top30.forEach((m, i) => {
@@ -1993,6 +2065,7 @@ function renderTargetSupport(filteredData) {
                 <td>${m.sk.pos > 0 ? `<span style="color:#f87171">凸${m.sk.pos}日</span>` : '–'}</td>
                 <td>${m.mAvg !== null ? formatVal(Math.round(m.mAvg)) : '–'}</td>
                 <td>${m.iAvg !== null ? formatVal(Math.round(m.iAvg)) : '–'}</td>
+                <td>${m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '–'}</td>
                 <td>${getPosLabel(m.num)}</td>
             `;
             tbody.appendChild(tr);
@@ -2045,9 +2118,10 @@ function renderTargetSupport(filteredData) {
                 const streakTxt = sk.neg > 0 ? `凹み${sk.neg}日連続` : sk.pos > 0 ? `凸${sk.pos}日連続` : 'なし';
                 const mAvgTxt = m && m.mAvg !== null ? `${Math.round(m.mAvg).toLocaleString()}枚` : '–';
                 const iAvgTxt = m && m.iAvg !== null ? `${Math.round(m.iAvg).toLocaleString()}枚` : '–';
+                const pastGAvgTxt = m && m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '–';
                 const dataUrl = `https://ogiya.pt.teramoba2.com/handa/standgraph/?rack_no=${parseInt(num)}&dai_hall_id=2292&target_date=${latestDate}`;
 
-                const matchStr = m ? m.matchedConds.map(k => ({ consNeg: '連続凹み', consPos: '連続凸', position: '角位置', digit: '台末尾', islandAvg: '島平均差枚', machineAvg: '台平均差枚' }[k] || k)).join('・') : '–';
+                const matchStr = m ? m.matchedConds.map(k => ({ consNeg: '連続凹み', consPos: '連続凸', position: '角位置', digit: '台末尾', islandAvg: '島平均差枚', machineAvg: '台平均差枚', pastGame: '過去G数平均' }[k] || k)).join('・') : '–';
 
                 if (isMobile) {
                     // Mobile: tap to show popup
@@ -2068,6 +2142,7 @@ function renderTargetSupport(filteredData) {
                             <div class="tm-row"><span>連続凹み/凸</span><span>${streakTxt}</span></div>
                             <div class="tm-row"><span>台平均差枚</span><span>${mAvgTxt}</span></div>
                             <div class="tm-row"><span>島平均差枚</span><span>${iAvgTxt}</span></div>
+                            <div class="tm-row"><span>過去G数平均</span><span>${pastGAvgTxt}</span></div>
                             <div class="tm-row"><span>合致条件</span><span>${matchStr}</span></div>
                         `;
                         link.href = dataUrl;
@@ -2086,6 +2161,7 @@ function renderTargetSupport(filteredData) {
                             <div>総G数: ${latestG !== null ? latestG.toLocaleString() : '–'}</div>
                             <div>連続: ${streakTxt}</div>
                             <div>台平均: ${mAvgTxt} / 島平均: ${iAvgTxt}</div>
+                            <div>過去G平均: ${pastGAvgTxt}</div>
                             <div style="margin-top:4px;font-size:0.85em;color:#93c5fd">クリックでデータサイトへ</div>
                         </div>`;
                     el.addEventListener('mouseenter', () => { tooltip.innerHTML = tipHtml; tooltip.classList.add('visible'); });
@@ -2130,6 +2206,14 @@ function setupTargetSection() {
     setupCondBadges();
     setupTargetSearchBtn();
     setupMobilePopupClose();
+
+    // Event listeners for Past Game Count condition
+    document.querySelectorAll('.period-chk, .range-chk, #cond-past-game-enabled').forEach(el => {
+        el.addEventListener('change', () => {
+            const res = document.getElementById('target-results');
+            if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
+        });
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

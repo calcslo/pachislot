@@ -835,6 +835,57 @@ def extract_slot_table(page: Page) -> dict:
         return data;
     }''')
 
+def get_expected_machines_from_layout():
+    """layout.jsonから期待される台番号のリストを取得する"""
+    layout_path = os.path.join(SCRIPT_DIR, "docs", "layout.json")
+    if not os.path.exists(layout_path):
+        logger.warning(f"layout.jsonが見つかりません: {layout_path}")
+        return set()
+    
+    try:
+        with open(layout_path, "r", encoding="utf-8") as f:
+            layout = json.load(f)
+        
+        machines = set()
+        for row in layout:
+            for cell in row:
+                if cell is not None and str(cell).strip() != "":
+                    # 数値のみを抽出
+                    val = str(cell).strip()
+                    if val.isdigit():
+                        machines.add(val)
+        return machines
+    except Exception as e:
+        logger.error(f"layout.jsonの解析中にエラー: {e}")
+        return set()
+
+def check_missing_machines(expected_machines):
+    """DBをチェックし、期待される台番号の中でデータが欠けているものを返す"""
+    if not expected_machines:
+        return []
+        
+    now = datetime.datetime.now()
+    if 0 <= now.hour < 8:
+        now -= datetime.timedelta(days=1)
+    
+    target_dates = [
+        now.strftime("%Y-%m-%d"),
+        (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
+        (now - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+    ]
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    
+    missing = []
+    for m in expected_machines:
+        c.execute("SELECT COUNT(*) FROM slot_data WHERE 台番号=? AND 日付 IN (?, ?, ?)", (m, *target_dates))
+        if c.fetchone()[0] < 3:
+            missing.append(m)
+    conn.close()
+    return missing
+
+
 # ==========================================
 # スクレイピング ロジック
 # ==========================================
@@ -1068,41 +1119,7 @@ def scrape_site1_scrapling():
         locale="ja-JP"
     )
 
-def main():
-    logger.info("=== スロット スクレイピング開始 ===")
-    init_db()
-    migrate_csv_to_db()
-    
-    # 処理ループ (エラー時のリトライ付き)
-    max_restarts = 10
-    for attempt in range(max_restarts):
-        try:
-            # 初回以外は強制的にDocker Desktop再起動から試みる（ループ回避）
-            force_reset = (attempt > 0)
-            if not ensure_docker_desktop_running():
-                logger.error("Docker Desktopが起動できなかったため、処理を中止します。")
-                break
-            
-            if not setup_docker_proxy(force_restart_docker=force_reset):
-                logger.error("Dockerプロキシのセットアップに失敗しました。再試行します。")
-                continue
-            
-            scrape_site1_scrapling()
-            
-            # 成功してここまで来たらループを抜ける
-            logger.info("全機種のスクレイピングが正常に完了しました。")
-            break
-            
-        except Exception as e:
-            logger.error(f"スクレイピング中に致命的なエラーが発生しました (試行 {attempt+1}/{max_restarts}): {e}")
-            if attempt < max_restarts - 1:
-                logger.info("Docker Desktopとコンテナを再起動してリトライします...")
-                if not restart_proxy():
-                    logger.warning("プロキシ再起動に失敗。15秒後に再試行します。")
-                    time.sleep(15)
-            else:
-                logger.error("最大リトライ回数に達したため、処理を終了します。")
-    
+def export_and_upload_to_github():
     # データのエクスポート処理とGitHubへの自動アップロード
     # （現在は都度DBに保存しているため、無条件でエクスポートとアップロードを実行する）
     logger.info("docsディレクトリへのJSONデータエクスポートを開始します...")
@@ -1124,22 +1141,106 @@ def main():
             logger.info("GitHub Pagesへのアップロードが完了しました。")
     except Exception as e:
         logger.error(f"データエクスポートまたはGitHubへのアップロード中にエラーが発生しました: {e}")
+
+def main(skip_scraping: bool = False):
+    logger.info("=== スロット スクレイピング開始 ===")
+    init_db()
+    migrate_csv_to_db()
+    
+    if not skip_scraping:
+        # 期待される台番号を取得しておく
+        expected_machines = get_expected_machines_from_layout()
+        if expected_machines:
+            logger.info(f"島図より {len(expected_machines)} 台の台番号をロードしました。")
+
+        # 処理ループ (エラー時のリトライ付き)
+        max_restarts = 10
+        for attempt in range(max_restarts):
+            try:
+                # 初回以外は強制的にDocker Desktop再起動から試みる（ループ回避）
+                force_reset = (attempt > 0)
+                if not ensure_docker_desktop_running():
+                    logger.error("Docker Desktopが起動できなかったため、処理を中止します。")
+                    break
+                
+                if not setup_docker_proxy(force_restart_docker=force_reset):
+                    logger.error("Dockerプロキシのセットアップに失敗しました。再試行します。")
+                    continue
+                
+                # 島図レイアウトを最新にするためにエクスポートを実行
+                logger.info("島図レイアウトの最新化のため export_slot_data.py を実行します...")
+                try:
+                    subprocess.run([sys.executable, "export_slot_data.py"], check=True)
+                except Exception as e:
+                    logger.warning(f"export_slot_data.py の実行に失敗しました（既存のlayout.jsonを使用します）: {e}")
+
+                # メインのスクレイピング実行
+                scrape_site1_scrapling()
+                
+                # 成功してここに来た場合、島図（layout.json）と照合して欠損がないか確認
+                expected = get_expected_machines_from_layout()
+                if expected:
+                    logger.info(f"島図より {len(expected)} 台の台番号をロードしました。完了確認を開始します。")
+                    
+                    for retry_i in range(3):
+                        missing = check_missing_machines(expected)
+                        if not missing:
+                            logger.info("島図の全台のデータが揃っていることを確認しました（整合性OK）。")
+                            break
+                        
+                        logger.warning(f"データ欠損を確認しました (残り {len(missing)} 台): {missing}")
+                        logger.info(f"欠損データの再取得を開始します (追加試行 {retry_i + 1}/3)...")
+                        
+                        # IPを切り替えてから再試行（IPブロック対策）
+                        if not setup_docker_proxy(force_restart_docker=True):
+                            logger.warning("プロキシの切り替えに失敗しましたが、続行します。")
+                        
+                        scrape_site1_scrapling()
+                    
+                    # 最終チェック
+                    final_missing = check_missing_machines(expected)
+                    if not final_missing:
+                        logger.info("全機種のスクレイピングが正常に完了しました。")
+                        break
+                    else:
+                        logger.error(f"3回の追加試行後も以下のデータが不足しています: {final_missing}")
+                        # 次の全体 attempt に回す
+                        raise Exception("Incomplete data after additional retries")
+                else:
+                    logger.info("期待される台番号リストが空のため、完了確認をスキップして終了します。")
+                    break
+                
+            except Exception as e:
+                logger.error(f"スクレイピング中に致命的なエラーが発生しました (試行 {attempt+1}/{max_restarts}): {e}")
+                if attempt < max_restarts - 1:
+                    logger.info("Docker Desktopとコンテナを再起動してリトライします...")
+                    if not restart_proxy():
+                        logger.warning("プロキシ再起動に失敗。15秒後に再試行します。")
+                        time.sleep(15)
+                else:
+                    logger.error("最大リトライ回数に達したため、処理を終了します。")
+    else:
+        logger.info("スクレイピング処理をスキップし、データのエクスポートとアップロードのみ行います。")
+    
+    # GitHubアップロード実行
+    export_and_upload_to_github()
     
     logger.info("=== 全処理終了 ===")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="P's Cube Slot Scraper")
-    parser.add_argument("--cron", action="store_true", help="Cron mode: Only run between 5:00 and 7:00 AM")
+    parser.add_argument("--cron", action="store_true", help="Cron mode: Only run between 3:00 and 5:00 AM")
     args = parser.parse_args()
 
+    skip_scraping = False
     if args.cron:
         now = datetime.datetime.now()
-        if not (5 <= now.hour < 7):
-            logger.info(f"Cron mode: 現在の時刻({now.strftime('%H:%M')})は実行時間(5:00-7:00)外のため終了します。")
-            exit(0)
+        if not (3 <= now.hour < 5):
+            logger.info(f"Cron mode: 現在の時刻({now.strftime('%H:%M')})は実行時間(3:00-5:00)外のため、スクレイピングをスキップしてGitHubアップロードのみ行います。")
+            skip_scraping = True
 
     try:
-        main()
+        main(skip_scraping=skip_scraping)
     finally:
         logger.info("クリーンアップ処理を開始します...")
         subprocess.run(["docker", "rm", "-f", CONTAINER_NAME], capture_output=True)

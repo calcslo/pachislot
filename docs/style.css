@@ -1166,7 +1166,7 @@ tbody tr.clickable td:first-child {
     border: none;
     border-radius: 14px;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
+    color: var(--bg-color); /* Use background color (dark in dark mode, light in light mode) for contrast */
     font-size: 1.05rem;
     font-weight: 800;
     cursor: pointer;

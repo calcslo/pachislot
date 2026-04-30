@@ -469,41 +469,148 @@
                             </div>
                         </div>
 
-                        <!-- Past game count average (NEW) -->
-                        <div class="target-condition-card" id="cond-card-past-game">
+                        <!-- Past game count average (NEW: Independent Periods) -->
+                        <div class="target-condition-card" id="cond-card-past-game" style="grid-column: 1 / -1;">
                             <div class="cond-header">
                                 <label class="cond-toggle">
                                     <input type="checkbox" id="cond-past-game-enabled">
-                                    <span class="cond-label">過去G数平均</span>
+                                    <span class="cond-label">過去G数平均（期間ごとに独立設定）</span>
                                 </label>
                                 <span class="cond-badge" id="cond-past-game-badge">OFF</span>
                             </div>
-                            <div class="cond-body">
-                                <div style="margin-bottom:0.5rem;">
-                                    <select id="cond-past-game-period" class="styled-select" style="width:100%; font-size:0.85rem; padding:4px;">
-                                        <option value="1">前日</option>
-                                        <option value="2">前日～2日前</option>
-                                        <option value="3">前日～3日前</option>
-                                        <option value="4">前日～4日前</option>
-                                        <option value="5">前日～5日前</option>
-                                        <option value="6">前日～6日前</option>
-                                        <option value="7">前日～7日前</option>
-                                    </select>
+                            <div class="cond-body" style="display: block; width: 100%;">
+                                <div class="past-game-grid">
+                                    <!-- Periods 1 to 7 -->
+                                    <div class="past-game-period-row" data-period="1">
+                                        <div class="period-header">
+                                            <label><input type="checkbox" class="period-chk" value="1"> 前日</label>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="2">
+                                        <div class="period-header">
+                                            <label><input type="checkbox" class="period-chk" value="2"> ～2日前平均</label>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="3">
+                                        <div class="period-header">
+                                            <label><input type="checkbox" class="period-chk" value="3"> ～3日前平均</label>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="4">
+                                        <div class="period-header">
+                                            <label><input type="checkbox" class="period-chk" value="4"> ～4日前平均</label>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="5">
+                                        <div class="period-header">
+                                            <label><input type="checkbox" class="period-chk" value="5"> ～5日前平均</label>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="6">
+                                        <div class="period-header">
+                                            <label><input type="checkbox" class="period-chk" value="6"> ～6日前平均</label>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="7">
+                                        <div class="period-header">
+                                            <label><input type="checkbox" class="period-chk" value="7"> ～7日前平均</label>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="cond-checkboxes" id="cond-past-game-ranges" style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                                    <label><input type="checkbox" class="past-game-chk" value="0"> ～1000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="1"> 1001～2000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="2"> 2001～3000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="3"> 3001～4000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="4"> 4001～5000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="5"> 5001～6000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="6"> 6001～7000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="7"> 7001～8000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="8"> 8001～9000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="9"> 9001～10000G</label>
-                                    <label><input type="checkbox" class="past-game-chk" value="10"> 10001G～</label>
+                                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem; padding-top:0.4rem; border-top:1px solid var(--glass-border);">
+                                    フィルタ無視（通常日含む平均）。複数指定時は、いずれかの期間で合致すれば「過去G数平均」条件合致としてカウントされます。
                                 </div>
-                                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">フィルタ無視（通常日含む）</div>
                             </div>
                         </div>
 
