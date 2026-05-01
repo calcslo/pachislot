@@ -1857,12 +1857,15 @@ function setupMobilePopupClose() {
 function renderTargetSupport(filteredData) {
     // 1. Compute latest streaks (ignores filter)
     const streaks = computeLatestStreaks();
-    // 2. Compute machine/island avgs from filtered data
+    // 2. Compute machine/island/model avgs from filtered data
     const machineAvg = computeMachineAvgFromFiltered(filteredData);
     const islandAvg = computeIslandAvgFromFiltered(filteredData);
+    const modelAvg = computeModelAvgFromFiltered(filteredData);
     // 3. Get latest records for hover info
     const latestRec = getLatestRecords();
     const latestDate = Object.values(latestRec).map(r => r['日付']).sort().slice(-1)[0] || '';
+    const now = new Date();
+    const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     // 4. Read conditions
     const conds = {
@@ -1889,8 +1892,12 @@ function renderTargetSupport(filteredData) {
         machineAvg: {
             enabled: document.getElementById('cond-machine-avg-enabled').checked
         },
+        modelAvg: {
+            enabled: document.getElementById('cond-model-avg-enabled').checked
+        },
         pastGame: {
             enabled: document.getElementById('cond-past-game-enabled').checked,
+            logic: document.querySelector('input[name="past-game-logic"]:checked')?.value || 'or',
             periods: [...document.querySelectorAll('.past-game-period-row')].map(row => {
                 const pVal = parseInt(row.dataset.period);
                 return {
@@ -1910,6 +1917,9 @@ function renderTargetSupport(filteredData) {
     const prioConds = [...document.querySelectorAll('.prio-chk:checked')].map(c => c.value);
     // diff priority
     const diffPriority = document.querySelector('input[name="diff-priority"]:checked')?.value || 'machine';
+    
+    // Sort by match count checkbox
+    const sortByMatchCount = document.getElementById('sort-by-match-count')?.checked;
 
     // Has diff conditions?
     const hasDiffConds = conds.machineAvg.enabled || conds.islandAvg.enabled;
@@ -1918,7 +1928,7 @@ function renderTargetSupport(filteredData) {
     const selectedModels = [...document.querySelectorAll('#target-model-filter-list input:checked')].map(c => c.value);
 
     // 5. Evaluate each machine in layoutLookup
-    const condKeyMap = { consNeg: 'cons-neg', consPos: 'cons-pos', position: 'position', digit: 'digit', islandAvg: 'island-avg', machineAvg: 'machine-avg', pastGame: 'past-game' };
+    const condKeyMap = { consNeg: 'cons-neg', consPos: 'cons-pos', position: 'position', digit: 'digit', islandAvg: 'island-avg', machineAvg: 'machine-avg', modelAvg: 'model-avg', pastGame: 'past-game' };
     const machines = [];
     const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
     const dateIdxMap = {};
@@ -1971,6 +1981,7 @@ function renderTargetSupport(filteredData) {
         // 差枚系：データがあれば常に「合致」（フィルタなし、ソートのみ）
         checkCond('islandAvg', iAvg !== null);
         checkCond('machineAvg', mAvg !== null);
+        checkCond('modelAvg', modelAvg[model] !== undefined);
 
         // Past Game Count Average (Independent Periods)
         let pastGameMatch = false;
@@ -1978,6 +1989,7 @@ function renderTargetSupport(filteredData) {
         if (conds.pastGame.enabled && conds.pastGame.periods.length > 0) {
             const latestIdx = dateIdxMap[latestDate];
             if (latestIdx !== undefined) {
+                const results = [];
                 for (const pCond of conds.pastGame.periods) {
                     let sumG = 0, countG = 0;
                     for (let i = 0; i < pCond.period; i++) {
@@ -1995,9 +2007,12 @@ function renderTargetSupport(filteredData) {
                     if (avgG > 10000) bucket = 10;
                     else if (avgG > 0) bucket = Math.floor((avgG - 1) / 1000);
                     
-                    if (pCond.ranges.length === 0 || pCond.ranges.includes(bucket)) {
-                        pastGameMatch = true;
-                    }
+                    results.push(pCond.ranges.length === 0 || pCond.ranges.includes(bucket));
+                }
+                if (conds.pastGame.logic === 'and') {
+                    pastGameMatch = results.every(r => r === true);
+                } else {
+                    pastGameMatch = results.some(r => r === true);
                 }
             }
         }
@@ -2014,13 +2029,18 @@ function renderTargetSupport(filteredData) {
 
     // 6. Sort (ranking)
     machines.sort((a, b) => {
-        const aD1 = diffPriority === 'machine' ? (a.mAvg ?? -Infinity) : (a.iAvg ?? -Infinity);
-        const bD1 = diffPriority === 'machine' ? (b.mAvg ?? -Infinity) : (b.iAvg ?? -Infinity);
+        const aD1 = diffPriority === 'machine' ? (a.mAvg ?? -Infinity) : (diffPriority === 'island' ? (a.iAvg ?? -Infinity) : (modelAvg[a.rec?.['機種名']] ?? -Infinity));
+        const bD1 = diffPriority === 'machine' ? (b.mAvg ?? -Infinity) : (diffPriority === 'island' ? (b.iAvg ?? -Infinity) : (modelAvg[b.rec?.['機種名']] ?? -Infinity));
         const aD2 = diffPriority === 'machine' ? (a.iAvg ?? -Infinity) : (a.mAvg ?? -Infinity);
         const bD2 = diffPriority === 'machine' ? (b.iAvg ?? -Infinity) : (b.mAvg ?? -Infinity);
 
+        // If 'sort-by-match-count' is enabled, total match count is the absolute primary key
+        if (sortByMatchCount) {
+            if (b.totalMatch !== a.totalMatch) return b.totalMatch - a.totalMatch;
+        }
+
         // Primary: if diff conditions exist, sort by diff values first
-        if (hasDiffConds) {
+        if (!sortByMatchCount && (hasDiffConds || conds.modelAvg.enabled)) {
             if (bD1 !== aD1) return bD1 - aD1;
             if (bD2 !== aD2) return bD2 - aD2;
         }
@@ -2030,7 +2050,8 @@ function renderTargetSupport(filteredData) {
         if (b.otherMatch !== a.otherMatch) return b.otherMatch - a.otherMatch;
 
         // If diff conditions were NOT primary (OFF), use diffs as tiebreaker
-        if (!hasDiffConds) {
+        // OR if sortByMatchCount was true, diffs can act as tiebreaker after match counts
+        if (sortByMatchCount || !hasDiffConds) {
             if (bD1 !== aD1) return bD1 - aD1;
             if (bD2 !== aD2) return bD2 - aD2;
         }
@@ -2069,25 +2090,60 @@ function renderTargetSupport(filteredData) {
         const tbl = document.createElement('table');
         tbl.innerHTML = `<thead><tr>
             <th>順位</th><th>台番号</th><th>機種</th><th>合致数</th>
-            <th>連続凹み</th><th>連続凸</th><th>台平均差枚</th><th>島平均差枚</th><th>過去G平均</th><th>位置</th>
+            ${activeConds.includes('consNeg') ? '<th>連続凹み</th>' : ''}
+            ${activeConds.includes('consPos') ? '<th>連続凸</th>' : ''}
+            ${activeConds.includes('machineAvg') ? '<th>台平均差枚</th>' : ''}
+            ${activeConds.includes('islandAvg') ? '<th>島平均差枚</th>' : ''}
+            ${activeConds.includes('modelAvg') ? '<th>機種平均差枚</th>' : ''}
+            ${activeConds.includes('pastGame') ? '<th>過去G平均</th>' : ''}
+            ${activeConds.includes('position') ? '<th>位置</th>' : ''}
         </tr></thead>`;
         const tbody = document.createElement('tbody');
         top30.forEach((m, i) => {
             const model = m.rec ? m.rec['機種名'] : '-';
             const tr = document.createElement('tr');
             tr.style.borderLeft = `4px solid ${colorMap[m.num] === 'transparent' ? '#444' : colorMap[m.num]}`;
+            tr.classList.add('clickable');
+            
+            const mc = m.matchedConds;
+            const mAvgVal = m.mAvg !== null ? Math.round(m.mAvg) : null;
+            const iAvgVal = m.iAvg !== null ? Math.round(m.iAvg) : null;
+            const modAvgVal = modelAvg[model] !== undefined ? Math.round(modelAvg[model]) : null;
+
             tr.innerHTML = `
                 <td>${i + 1}</td>
                 <td style="font-weight:bold">${parseInt(m.num)}</td>
                 <td style="text-align:left;font-size:0.85em">${model}</td>
                 <td><span style="background:${colorMap[m.num] === 'transparent' ? '#444' : colorMap[m.num]};padding:2px 8px;border-radius:10px;font-weight:bold">${m.totalMatch}/${totalConds}</span></td>
-                <td>${m.sk.neg > 0 ? `<span style="color:#60a5fa">凹${m.sk.neg}日</span>` : '–'}</td>
-                <td>${m.sk.pos > 0 ? `<span style="color:#f87171">凸${m.sk.pos}日</span>` : '–'}</td>
-                <td>${m.mAvg !== null ? formatVal(Math.round(m.mAvg)) : '–'}</td>
-                <td>${m.iAvg !== null ? formatVal(Math.round(m.iAvg)) : '–'}</td>
-                <td>${m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '–'}</td>
-                <td>${getPosLabel(m.num)}</td>
+                ${activeConds.includes('consNeg') ? `<td style="${mc.includes('consNeg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.sk.neg > 0 ? `凹${m.sk.neg}日` : '–'}</td>` : ''}
+                ${activeConds.includes('consPos') ? `<td style="${mc.includes('consPos') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.sk.pos > 0 ? `凸${m.sk.pos}日` : '–'}</td>` : ''}
+                ${activeConds.includes('machineAvg') ? `<td style="${mc.includes('machineAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${mAvgVal !== null ? formatVal(mAvgVal) : '–'}</td>` : ''}
+                ${activeConds.includes('islandAvg') ? `<td style="${mc.includes('islandAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${iAvgVal !== null ? formatVal(iAvgVal) : '–'}</td>` : ''}
+                ${activeConds.includes('modelAvg') ? `<td style="${mc.includes('modelAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${modAvgVal !== null ? formatVal(modAvgVal) : '–'}</td>` : ''}
+                ${activeConds.includes('pastGame') ? `<td style="${mc.includes('pastGame') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '–'}</td>` : ''}
+                ${activeConds.includes('position') ? `<td style="${mc.includes('position') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${getPosLabel(m.num)}</td>` : ''}
             `;
+
+            // --- 修正後のクリックイベント処理 ---
+            tr.addEventListener('click', () => {
+                const cell = document.querySelector(`#target-heatmap-wrapper .heatmap-cell[data-num="${m.num}"]`);
+                if (cell) {
+                    // 他のハイライトを解除
+                    document.querySelectorAll('#target-heatmap-wrapper .highlight-machine').forEach(c => {
+                        c.classList.remove('highlight-machine');
+                    });
+                    
+                    // ハイライト用クラスを追加 (!importantがあるためインラインスタイルより優先される)
+                    cell.classList.add('highlight-machine');
+                    
+                    // スムーズスクロール
+                    cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                    
+                    // 強制再描画（アニメーションを即時開始させるため）
+                    void cell.offsetWidth;
+                }
+            });
+
             tbody.appendChild(tr);
         });
         tbl.appendChild(tbody);
@@ -2107,6 +2163,7 @@ function renderTargetSupport(filteredData) {
             const el = document.createElement('div'); el.className = `heatmap-cell${isEmpty ? ' empty' : ''}`;
             if (!isEmpty) {
                 const num = normalizeNum(cell);
+                el.dataset.num = num; // Add data-num for easy lookup
                 const m = machines.find(x => x.num === num);
                 const color = colorMap[num] || 'transparent';
                 el.style.backgroundColor = color;
@@ -2139,7 +2196,7 @@ function renderTargetSupport(filteredData) {
                 const mAvgTxt = m && m.mAvg !== null ? `${Math.round(m.mAvg).toLocaleString()}枚` : '–';
                 const iAvgTxt = m && m.iAvg !== null ? `${Math.round(m.iAvg).toLocaleString()}枚` : '–';
                 const pastGAvgTxt = m && m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '–';
-                const dataUrl = `https://ogiya.pt.teramoba2.com/handa/standgraph/?rack_no=${parseInt(num)}&dai_hall_id=2292&target_date=${latestDate}`;
+                const dataUrl = `https://ogiya.pt.teramoba2.com/handa/standgraph/?rack_no=${parseInt(num)}&dai_hall_id=2292&target_date=${todayDate}`;
 
                 const matchStr = m ? m.matchedConds.map(k => ({ consNeg: '連続凹み', consPos: '連続凸', position: '角位置', digit: '台末尾', islandAvg: '島平均差枚', machineAvg: '台平均差枚', pastGame: '過去G数平均' }[k] || k)).join('・') : '–';
 
@@ -2196,6 +2253,7 @@ function renderTargetSupport(filteredData) {
     });
     wrap.appendChild(inner);
     enableHeatmapPinchZoom('target-heatmap-wrapper');
+    applyHeatmapCellSizes();
 
     document.getElementById('target-results').style.display = 'block';
 }
@@ -2215,10 +2273,19 @@ function populateTargetModelFilter() {
 
     filterContainer.querySelectorAll('input').forEach(chk => {
         chk.addEventListener('change', () => {
+            saveTargetConditions();
             const res = document.getElementById('target-results');
             if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
         });
     });
+
+    // Apply saved models if any
+    if (window._savedModels) {
+        filterContainer.querySelectorAll('input').forEach(chk => {
+            if (window._savedModels.includes(chk.value)) chk.checked = true;
+        });
+        delete window._savedModels;
+    }
 }
 
 function setupTargetSection() {
@@ -2227,13 +2294,77 @@ function setupTargetSection() {
     setupTargetSearchBtn();
     setupMobilePopupClose();
 
+    document.getElementById('btn-model-filter-all')?.addEventListener('click', () => {
+        const chks = document.querySelectorAll('#target-model-filter-list input[type="checkbox"]');
+        let changed = false;
+        chks.forEach(c => { if (!c.checked) { c.checked = true; changed = true; } });
+        if (changed) {
+            saveTargetConditions();
+            const res = document.getElementById('target-results');
+            if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
+        }
+    });
+
+    document.getElementById('btn-model-filter-clear')?.addEventListener('click', () => {
+        const chks = document.querySelectorAll('#target-model-filter-list input[type="checkbox"]');
+        let changed = false;
+        chks.forEach(c => { if (c.checked) { c.checked = false; changed = true; } });
+        if (changed) {
+            saveTargetConditions();
+            const res = document.getElementById('target-results');
+            if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
+        }
+    });
+
     // Event listeners for Past Game Count condition
-    document.querySelectorAll('.period-chk, .range-chk, #cond-past-game-enabled').forEach(el => {
+    document.querySelectorAll('.period-chk, .range-chk, #cond-past-game-enabled, input[name="past-game-logic"]').forEach(el => {
         el.addEventListener('change', () => {
+            saveTargetConditions();
             const res = document.getElementById('target-results');
             if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
         });
     });
+    // 機種平均のリスナーも追加
+    document.getElementById('cond-model-avg-enabled').addEventListener('change', () => {
+        saveTargetConditions();
+        const res = document.getElementById('target-results');
+        if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
+    });
+    
+    document.querySelectorAll('.period-all-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            const row = e.target.closest('.past-game-period-row');
+            row.querySelectorAll('.range-chk').forEach(c => c.checked = true);
+            row.querySelector('.period-chk').checked = true;
+            saveTargetConditions();
+            const res = document.getElementById('target-results');
+            if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
+        });
+    });
+
+    document.querySelectorAll('.period-clear-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            const row = e.target.closest('.past-game-period-row');
+            row.querySelectorAll('.range-chk').forEach(c => c.checked = false);
+            row.querySelector('.period-chk').checked = false;
+            saveTargetConditions();
+            const res = document.getElementById('target-results');
+            if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
+        });
+    });
+    
+    // Add listeners for other conditions
+    const otherSelectors = [
+        '#cond-cons-neg-enabled', '#cond-cons-pos-enabled', '#cond-position-enabled', '#cond-digit-enabled',
+        '#cond-island-avg-enabled', '#cond-machine-avg-enabled', '#sort-by-match-count',
+        '.cons-neg-chk', '.cons-pos-chk', '.pos-chk', '.digit-chk',
+        '.prio-chk', 'input[name="diff-priority"]'
+    ];
+    document.querySelectorAll(otherSelectors.join(',')).forEach(el => {
+        el.addEventListener('change', saveTargetConditions);
+    });
+
+    loadTargetConditions();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2323,3 +2454,103 @@ function renderGameCountAnalysis() {
 }
 
 
+
+
+function saveTargetConditions() {
+    const config = {
+        enabled: {
+            consNeg: document.getElementById('cond-cons-neg-enabled').checked,
+            consPos: document.getElementById('cond-cons-pos-enabled').checked,
+            position: document.getElementById('cond-position-enabled').checked,
+            digit: document.getElementById('cond-digit-enabled').checked,
+            islandAvg: document.getElementById('cond-island-avg-enabled').checked,
+            machineAvg: document.getElementById('cond-machine-avg-enabled').checked,
+            modelAvg: document.getElementById('cond-model-avg-enabled').checked,
+            pastGame: document.getElementById('cond-past-game-enabled').checked,
+        },
+        vals: {
+            consNeg: [...document.querySelectorAll('.cons-neg-chk:checked')].map(c => c.value),
+            consPos: [...document.querySelectorAll('.cons-pos-chk:checked')].map(c => c.value),
+            position: [...document.querySelectorAll('.pos-chk:checked')].map(c => c.value),
+            digit: [...document.querySelectorAll('.digit-chk:checked')].map(c => c.value),
+            pastGameLogic: document.querySelector('input[name="past-game-logic"]:checked')?.value || 'or',
+            diffPriority: document.querySelector('input[name="diff-priority"]:checked')?.value || 'machine',
+            sortByMatchCount: document.getElementById('sort-by-match-count')?.checked,
+            prioConds: [...document.querySelectorAll('.prio-chk:checked')].map(c => c.value),
+            models: [...document.querySelectorAll('#target-model-filter-list input:checked')].map(c => c.value)
+        },
+        pastGame: [...document.querySelectorAll('.past-game-period-row')].map(row => ({
+            period: row.dataset.period,
+            enabled: row.querySelector('.period-chk').checked,
+            ranges: [...row.querySelectorAll('.range-chk:checked')].map(c => c.value)
+        }))
+    };
+    localStorage.setItem('target_support_config', JSON.stringify(config));
+}
+
+function loadTargetConditions() {
+    const data = localStorage.getItem('target_support_config');
+    if (!data) return;
+    try {
+        const config = JSON.parse(data);
+        // Value checkboxes
+        const setChecks = (selector, vals) => {
+            if (!vals) return;
+            document.querySelectorAll(selector).forEach(c => {
+                c.checked = vals.includes(c.value);
+            });
+        };
+        setChecks('.cons-neg-chk', config.vals.consNeg);
+        setChecks('.cons-pos-chk', config.vals.consPos);
+        setChecks('.pos-chk', config.vals.position);
+        setChecks('.digit-chk', config.vals.digit);
+        setChecks('.prio-chk', config.vals.prioConds);
+
+        // Radios
+        if (config.vals.pastGameLogic) {
+            const r = document.querySelector(`input[name="past-game-logic"][value="${config.vals.pastGameLogic}"]`);
+            if (r) r.checked = true;
+        }
+        if (config.vals.diffPriority) {
+            const r = document.querySelector(`input[name="diff-priority"][value="${config.vals.diffPriority}"]`);
+            if (r) r.checked = true;
+        }
+        
+        if (config.vals.sortByMatchCount !== undefined) {
+            const cb = document.getElementById('sort-by-match-count');
+            if (cb) cb.checked = config.vals.sortByMatchCount;
+        }
+
+        // Past game rows
+        if (config.pastGame) {
+            config.pastGame.forEach(item => {
+                const row = document.querySelector(`.past-game-period-row[data-period="${item.period}"]`);
+                if (row) {
+                    const pchk = row.querySelector('.period-chk');
+                    if (pchk) pchk.checked = item.enabled;
+                    row.querySelectorAll('.range-chk').forEach(c => {
+                        c.checked = item.ranges.includes(c.value);
+                    });
+                }
+            });
+        }
+
+        // Enabled checkboxes (dispatch change events last so saveTargetConditions gets correct state)
+        const idMap = {
+            consNeg: 'cond-cons-neg-enabled', consPos: 'cond-cons-pos-enabled', position: 'cond-position-enabled',
+            digit: 'cond-digit-enabled', islandAvg: 'cond-island-avg-enabled', machineAvg: 'cond-machine-avg-enabled',
+            modelAvg: 'cond-model-avg-enabled', pastGame: 'cond-past-game-enabled'
+        };
+        for (const [key, id] of Object.entries(idMap)) {
+            const el = document.getElementById(id);
+            if (el && config.enabled[key] !== undefined) {
+                el.checked = config.enabled[key];
+                el.dispatchEvent(new Event('change')); // Trigger badge update & save
+            }
+        }
+
+        // Models (populated later, so we need a way to apply this after population)
+        window._savedModels = config.vals.models;
+
+    } catch (e) { console.error('Failed to load config', e); }
+}

@@ -1,6 +1,7 @@
 import re
 import pandas as pd
 import logging
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +47,12 @@ COSMO_BORDER_DICT = {
     "e牙狼12黄金騎士極限": 17.2,
     #後で実装する
     #"e アズールレーン2 THE ANIMATION 超次元": 18.0,
-    "e女神のカフェテラス": 27.4,
+    "e 女神のカフェテラス": 27.4,
     "e ゴジラ対エヴァンゲリオン2 超デカゴールド": 29.9,
     "e 真・北斗無双 第5章 夢幻闘双": 17.0,
-    "e花の慶次～黄金の一撃": 16.5,
+    "e 花の慶次～黄金の一撃": 16.5,
     #"e地獄少女 7500Ver.": 18.0,
-    "e東京リベンジャーズ": 16.5,
+    "e 東京リベンジャーズ": 16.5,
     "P Re:ゼロから始める異世界生活 season2 129ver.": 16.1,
 }
 
@@ -63,17 +64,17 @@ COSMO_MACHINE_MAP = {
     "e 東京喰種": [range(1731, 1753), range(1778, 1801)],
     "e 魔法少女まどか☆マギカ3 時間遡行～始まりの願い～": [range(673, 708)],
     "eFキン肉マン": [range(626, 661)],
-    "e女神のカフェテラス": [range(733, 768)],
+    "e 女神のカフェテラス": [range(733, 768)],
     "e ゴジラ対エヴァンゲリオン2 超デカゴールド": [range(2056, 2068)],
     "e 甲鉄城のカバネリ2 咲かせや燦然": [range(1838, 1861)],
     "e 真・北斗無双 第5章 夢幻闘双": [range(1813, 1826)],
     "e 北斗の拳11 暴凶星": [range(1753, 1766)],
     "eFブルーロック": [range(601, 613)],
     "eリコリス・リコイル": [range(1801, 1813)],
-    "e花の慶次～黄金の一撃": [range(1766, 1778)],
+    "e 花の慶次～黄金の一撃": [range(1766, 1778)],
     "e牙狼12黄金騎士極限": [range(613, 626)],
     #"e地獄少女 7500Ver.": [range(727, 733), range(768, 774)],
-    "e東京リベンジャーズ": [range(1826, 1838)],
+    "e 東京リベンジャーズ": [range(1826, 1838)],
     "P Re:ゼロから始める異世界生活 season2 129ver.": [range(816, 828)],
 }
 
@@ -113,7 +114,7 @@ ST_CONFIG = {
         "min": {"big": 163, "special": 163},
         "max": {"big": 100, "special": 163},
     },
-    "e女神のカフェテラス": {
+    "e 女神のカフェテラス": {
         "med": {"big": 40, "special": 100},
         "min": {"big": 100, "special": 100},
         "max": {"big": 0, "special": 100},
@@ -128,12 +129,12 @@ ST_CONFIG = {
         "min": {"big": 5, "special": 5},
         "max": {"big": 0, "special": 5},
     },
-    "e花の慶次～黄金の一撃": {
+    "e 花の慶次～黄金の一撃": {
         "med": {"big": 122, "special": 143},
         "min": {"big": 143, "special": 143},
         "max": {"big": 100, "special": 143},
     },
-    "e東京リベンジャーズ": {
+    "e 東京リベンジャーズ": {
         "med": {"big_low": 121, "big_high": 144, "special": 144, "big_dedama": 1001},
         "min": {"big_low": 144, "big_high": 144, "special": 144, "big_dedama": 1001},
         "max": {"big_low": 100, "big_high": 144, "special": 144, "big_dedama": 1001},
@@ -264,15 +265,39 @@ ST_CONFIG = {
     },
 }
 
+def normalize_machine_name(name):
+    """機種名を正規化して比較しやすくする (全角半角の統一、スペース除去)"""
+    if not name:
+        return ""
+    # NFKC正規化 (全角英数を半角に、半角カナを全角に、等)
+    normalized = unicodedata.normalize('NFKC', name)
+    # スペース（半角・全角）をすべて除去
+    normalized = normalized.replace(" ", "").replace("　", "")
+    # アルファベットを小文字に統一
+    normalized = normalized.lower()
+    return normalized
+
+
 def get_machine_config(machine_name):
-    """機種名から設定を取得する"""
+    """機種名から設定を取得する (正規化一致または部分一致)"""
+    norm_target = normalize_machine_name(machine_name)
+    
+    # 1. 正規化完全一致で検索
     for key, config in ST_CONFIG.items():
-        if key == machine_name:
+        if normalize_machine_name(key) == norm_target:
             return config
+            
+    # 2. 正規化部分一致で検索 (ST_CONFIGのキーが機種名に含まれているか)
+    for key, config in ST_CONFIG.items():
+        norm_key = normalize_machine_name(key)
+        if norm_key and norm_key in norm_target:
+            return config
+
     return None
 
 def calculate_decrease_start_core(df, final_start, machine_name, mode):
     """ST/時短回数の合計（減算対象）を計算する"""
+    norm_target = normalize_machine_name(machine_name)
     config = get_machine_config(machine_name)
     if not config:
         return 0
@@ -304,14 +329,14 @@ def calculate_decrease_start_core(df, final_start, machine_name, mode):
             else:
                 st_val = m_config.get("big", 0)
                 
-            if machine_name == "Pｽｰﾊﾟｰ海物語IN沖縄6 LTP" and current_dedama <= 100:
+            if normalize_machine_name("Pｽｰﾊﾟｰ海物語IN沖縄6 LTP") == norm_target and current_dedama <= 100:
                 has_large_start = True
                 st_val = 200
-            elif machine_name == "e Re:ｾﾞﾛ season2 M13":
+            elif normalize_machine_name("e Re:ｾﾞﾛ season2 M13") == norm_target:
                 next_shubetu = df.loc[i+1, "種別"] if i+1 < len(df) else "大当"
                 if next_shubetu != "確変":
                     st_val = 0
-            elif machine_name in ["e東京喰種W", "e北斗の拳11暴凶星SHEF"] and current_dedama <= 300:
+            elif any(normalize_machine_name(m) == norm_target for m in ["e東京喰種W", "e北斗の拳11暴凶星SHEF"]) and current_dedama <= 300:
                 next_shubetu = df.loc[i+1, "種別"] if i+1 < len(df) else "大当"
                 if next_shubetu != "確変":
                     st_val = 0
@@ -323,7 +348,7 @@ def calculate_decrease_start_core(df, final_start, machine_name, mode):
                 # 既に上位ST (special_high) に滞在していると判定できる。
                 next_shubetu = df.loc[i+1, "種別"] if i+1 < len(df) else "大当"
                 
-                if machine_name == "Pｽｰﾊﾟｰ海物語IN沖縄6 LTP":
+                if normalize_machine_name("Pｽｰﾊﾟｰ海物語IN沖縄6 LTP") == norm_target:
                     if current_dedama <= 100:
                         has_large_start = True
                 else:
@@ -430,7 +455,17 @@ def calculate_expected_value(start, dedama, shubetu, final_start, machine_name, 
         print(f"cleaned:{df}")
         
         results = {}
-        border = BORDER_DICT.get(machine_name, 18.0)
+        
+        # ボーダー値の取得 (機種名の表記揺れを考慮)
+        border = None
+        norm_target = normalize_machine_name(machine_name)
+        for key, val in BORDER_DICT.items():
+            if normalize_machine_name(key) == norm_target:
+                border = val
+                break
+        
+        if border is None:
+            border = 18.0
 
         for mode in ["min", "med", "max"]:
             if df.empty:

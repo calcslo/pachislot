@@ -552,6 +552,46 @@ tbody tr.clickable td:first-child {
     z-index: 50;
 }
 
+@keyframes pulseRainbowScale {
+    0% {
+        transform: scale(1);
+        border-color: #ff0000;
+        box-shadow: 0 0 15px #ff0000;
+    }
+    16% {
+        border-color: #ff7f00;
+        box-shadow: 0 0 15px #ff7f00;
+    }
+    33% {
+        border-color: #ffff00;
+        box-shadow: 0 0 15px #ffff00;
+    }
+    50% {
+        transform: scale(1.4);
+        border-color: #00ff00;
+        box-shadow: 0 0 15px #00ff00;
+    }
+    66% {
+        border-color: #0000ff;
+        box-shadow: 0 0 15px #0000ff;
+    }
+    83% {
+        border-color: #4b0082;
+        box-shadow: 0 0 15px #4b0082;
+    }
+    100% {
+        transform: scale(1);
+        border-color: #ff0000;
+        box-shadow: 0 0 15px #ff0000;
+    }
+}
+
+.highlight-machine {
+    animation: pulseRainbowScale 1.5s infinite ease-in-out !important;
+    z-index: 100 !important;
+    border: 3px solid transparent !important;
+}
+
 .heatmap-cell.empty {
     border: none;
     cursor: default;

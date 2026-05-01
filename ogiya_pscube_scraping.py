@@ -80,8 +80,8 @@ def ensure_docker_desktop_running():
         logger.error(f"Docker Desktopが見つかりません: {docker_path}")
         return False
 
-    # 起動を待機 (最大120秒)
-    for i in range(24):
+    # 起動を待機 (最大30秒)
+    for i in range(6):
         time.sleep(5)
         logger.info(f"Dockerの起動を待機中... ({ (i+1)*5 }秒経過)")
         res = subprocess.run(["docker", "version"], capture_output=True, text=True)
@@ -396,10 +396,12 @@ def site1_action(page: Page, target_models: list = None, specific_machines: list
         model_elements = page.query_selector_all(SITE1_MODEL_LIST)
         
         matched_models = []
+        norm_targets = [calc.normalize_machine_name(m) for m in target_models]
         for el in model_elements:
-            text = el.inner_text()
-            if text.strip() in target_models:
-                matched_models.append(text.strip())
+            text = el.inner_text().strip()
+            if calc.normalize_machine_name(text) in norm_targets:
+                matched_models.append(text)
+
         
         logger.info(f"Site 1: 対象機種が {len(matched_models)} 件見つかりました。")
 

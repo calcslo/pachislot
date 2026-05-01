@@ -94,7 +94,8 @@ def ensure_docker_desktop_running() -> bool:
         logger.info("Docker Desktopを起動します...")
         subprocess.Popen([docker_path], shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
 
-    for i in range(24):
+    # 起動を待機 (最大30秒)
+    for i in range(6):
         time.sleep(5)
         logger.info(f"Dockerの起動を待機中... ({(i + 1) * 5}秒経過)")
         if is_docker_engine_ready():
@@ -415,8 +416,16 @@ def scrape_cosmo_obu_drissionpage(target_models: list = None, specific_machines:
         
         all_machines = []
         for model in target_models:
-            if hasattr(calc, 'COSMO_MACHINE_MAP') and model in calc.COSMO_MACHINE_MAP:
-                for r in calc.COSMO_MACHINE_MAP[model]:
+            norm_model = calc.normalize_machine_name(model)
+            found_ranges = None
+            if hasattr(calc, 'COSMO_MACHINE_MAP'):
+                for k, v in calc.COSMO_MACHINE_MAP.items():
+                    if calc.normalize_machine_name(k) == norm_model:
+                        found_ranges = v
+                        break
+            
+            if found_ranges:
+                for r in found_ranges:
                     all_machines.extend(list(r))
             else:
                 logger.warning(f"機種 '{model}' の台番号範囲マップが定義されていないためスキップします。")
@@ -455,13 +464,14 @@ def scrape_cosmo_obu_drissionpage(target_models: list = None, specific_machines:
                     # 機種名の取得
                     try:
                         kishumei_el = page.ele('css:div.st01.title.wrap-machine-name > span', timeout=2)
-                        kishumei = kishumei_el.text if kishumei_el else "不明"
+                        kishumei = kishumei_el.text.strip() if kishumei_el else "不明"
                     except Exception as e:
                         logger.warning(f"機種名取得エラー: {e}")
                         kishumei = "不明"
                     
                     # 対象機種チェック
-                    if kishumei not in target_models:
+                    norm_kishumei = calc.normalize_machine_name(kishumei)
+                    if not any(calc.normalize_machine_name(m) == norm_kishumei for m in target_models):
                         success = True # スキップ対象として「処理成功（次へ）」
                         break
                         
