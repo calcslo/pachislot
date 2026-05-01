@@ -886,6 +886,7 @@ def check_missing_machines(expected_machines):
 
 def site1_action(page: Page) -> None:
     progress = load_progress()
+    processed_count = 0
 
     try:
         page.set_viewport_size({"width": 390, "height": 844})
@@ -1063,6 +1064,11 @@ def site1_action(page: Page) -> None:
                         # 記録完了
                         logger.info(f"Site 1: 台番号 {machine_num} のデータ取得完了。")
                         
+                        processed_count += 1
+                        if processed_count % 10 == 0:
+                            logger.info(f"10台のスクレイピングが完了しました（合計: {processed_count}台）。中間アップロードを実行します。")
+                            export_and_upload_to_github()
+
                         page.go_back(wait_until="networkidle")
                         check_page_health(page)
                         human_like_delay(1.0, 2.0)
@@ -1115,6 +1121,7 @@ def scrape_site1_scrapling():
 
 def scrape_missing_machines_action(page: Page, missing_machines: list):
     logger.info(f"欠損データ {len(missing_machines)} 台の直接スクレイピングを開始します。")
+    processed_count = 0
     page.set_viewport_size({"width": 390, "height": 844})
     
     # 事前に DB から「台番号」(整数扱い)と直近の「機種名」の対応を取得
@@ -1205,6 +1212,11 @@ def scrape_missing_machines_action(page: Page, missing_machines: list):
                     ''', record_tuple)
                     conn_local.commit()
                     logger.info(f"リトライ: 台番号 {cd_dai_str} ({actual_date}) 保存成功")
+                    
+                    processed_count += 1
+                    if processed_count % 10 == 0:
+                        logger.info(f"リトライ分 10台のスクレイピングが完了しました（合計: {processed_count}台）。中間アップロードを実行します。")
+                        export_and_upload_to_github()
                 finally:
                     conn_local.close()
 
