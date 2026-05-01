@@ -2405,3 +2405,7 @@ INFO:     127.0.0.1:50060 - "GET /api/cosmo_obu/status HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51817 - "GET /cosmo_obu/index.html HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:64817 - "GET /cosmo_obu/index.html HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:49309 - "GET /docs/cosmo_obu/index.html HTTP/1.1" 404 Not Found
+INFO:     100.109.8.4:61270 - "GET /cosmo_obu HTTP/1.1" 200 OK
+INFO:     100.109.8.4:61270 - "GET /api/cosmo_obu/models HTTP/1.1" 200 OK
+INFO:     100.109.8.4:61270 - "GET /api/cosmo_obu/status HTTP/1.1" 200 OK
+INFO:     100.109.8.4:61273 - "POST /api/cosmo_obu/run HTTP/1.1" 200 OK

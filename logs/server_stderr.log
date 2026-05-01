@@ -21,3 +21,18 @@ INFO:     connection closed
 INFO:     127.0.0.1:55197 - "WebSocket /ws/cosmo_obu" [accepted]
 INFO:     connection open
 INFO:     connection closed
+INFO:     100.109.8.4:61272 - "WebSocket /ws/cosmo_obu" [accepted]
+INFO:     connection open
+2026-05-01 15:35:57,432 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+INFO:     connection closed
+[2026-05-01T06:38:34.716088300Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-01T06:38:34.719803700Z][Docker Desktop.exe] backend process started
+[2026-05-01T06:41:56.271217400Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-01T06:41:56.811962100Z][Docker Desktop.exe] backend process started
