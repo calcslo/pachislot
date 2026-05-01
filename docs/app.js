@@ -1763,6 +1763,24 @@ function computeMachineAvgFromFiltered(filteredData) {
 }
 
 /**
+ * Compute per-model avg diff from filteredData.
+ */
+function computeModelAvgFromFiltered(filteredData) {
+    const ms = {};
+    filteredData.forEach(row => {
+        const model = row['機種名'];
+        if (!model) return;
+        if (!ms[model]) ms[model] = { diff: 0, count: 0 };
+        ms[model].diff += Number(row['最終差枚']) || 0; ms[model].count++;
+    });
+    const result = {};
+    for (const [model, st] of Object.entries(ms)) {
+        result[model] = st.count > 0 ? st.diff / st.count : 0;
+    }
+    return result;
+}
+
+/**
  * Determine position category (0=角,1=角2,2=角3,'other')
  */
 function getPosCategory(num) {
@@ -1839,6 +1857,14 @@ function setupCondBadges() {
                 card.classList.remove('cond-active');
             }
         });
+        // Initial sync
+        if (cb.checked) {
+            badge.textContent = 'ON'; badge.style.background = 'rgba(34,197,94,0.8)';
+            card.classList.add('cond-active');
+        } else {
+            badge.textContent = 'OFF'; badge.style.background = 'rgba(100,100,120,0.5)';
+            card.classList.remove('cond-active');
+        }
     });
 }
 
@@ -2398,6 +2424,7 @@ function populateTargetModelFilter() {
 function setupTargetSection() {
     setupPrioLimit();
     setupCondBadges();
+    setupExclusionToggle();
     setupTargetSearchBtn();
     setupMobilePopupClose();
 
@@ -2463,16 +2490,186 @@ function setupTargetSection() {
     // Add listeners for other conditions
     const otherSelectors = [
         '#cond-cons-neg-enabled', '#cond-cons-pos-enabled', '#cond-position-enabled', '#cond-digit-enabled',
-        '#cond-island-avg-enabled', '#cond-machine-avg-enabled', '#sort-by-match-count',
+        '#cond-island-avg-enabled', '#cond-machine-avg-enabled', '#cond-model-avg-enabled', '#cond-past-game-enabled',
+        '#ex-cond-cons-neg-enabled', '#ex-cond-cons-pos-enabled', '#ex-cond-position-enabled', '#ex-cond-digit-enabled',
+        '#ex-cond-island-avg-enabled', '#ex-cond-machine-avg-enabled', '#ex-cond-model-avg-enabled', '#ex-cond-past-game-enabled',
+        '#sort-by-match-count',
         '.cons-neg-chk', '.cons-pos-chk', '.pos-chk', '.digit-chk',
-        '.prio-chk', 'input[name="diff-priority"]'
+        '.ex-cons-neg-chk', '.ex-cons-pos-chk', '.ex-pos-chk', '.ex-digit-chk',
+        '.prio-chk', 'input[name="diff-priority"]', 'input[name="ex-past-game-logic"]'
     ];
     document.querySelectorAll(otherSelectors.join(',')).forEach(el => {
-        el.addEventListener('change', saveTargetConditions);
+        el.addEventListener('change', () => {
+            saveTargetConditions();
+            const res = document.getElementById('target-results');
+            if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
+        });
+    });
+
+    // 除外条件：過去G数平均のリスナー
+    document.querySelectorAll('.ex-period-chk, .ex-range-chk').forEach(el => {
+        el.addEventListener('change', () => {
+            saveTargetConditions();
+            const res = document.getElementById('target-results');
+            if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
+        });
     });
 
     loadTargetConditions();
 }
+
+function saveTargetConditions() {
+    const config = {
+        enabled: {
+            consNeg: document.getElementById('cond-cons-neg-enabled')?.checked,
+            consPos: document.getElementById('cond-cons-pos-enabled')?.checked,
+            position: document.getElementById('cond-position-enabled')?.checked,
+            digit: document.getElementById('cond-digit-enabled')?.checked,
+            islandAvg: document.getElementById('cond-island-avg-enabled')?.checked,
+            machineAvg: document.getElementById('cond-machine-avg-enabled')?.checked,
+            modelAvg: document.getElementById('cond-model-avg-enabled')?.checked,
+            pastGame: document.getElementById('cond-past-game-enabled')?.checked,
+            // Excl
+            exConsNeg: document.getElementById('ex-cond-cons-neg-enabled')?.checked,
+            exConsPos: document.getElementById('ex-cond-cons-pos-enabled')?.checked,
+            exPosition: document.getElementById('ex-cond-position-enabled')?.checked,
+            exDigit: document.getElementById('ex-cond-digit-enabled')?.checked,
+            exIslandAvg: document.getElementById('ex-cond-island-avg-enabled')?.checked,
+            exMachineAvg: document.getElementById('ex-cond-machine-avg-enabled')?.checked,
+            exModelAvg: document.getElementById('ex-cond-model-avg-enabled')?.checked,
+            exPastGame: document.getElementById('ex-cond-past-game-enabled')?.checked,
+        },
+        vals: {
+            consNeg: [...document.querySelectorAll('.cons-neg-chk:checked')].map(c => c.value),
+            consPos: [...document.querySelectorAll('.cons-pos-chk:checked')].map(c => c.value),
+            position: [...document.querySelectorAll('.pos-chk:checked')].map(c => c.value),
+            digit: [...document.querySelectorAll('.digit-chk:checked')].map(c => c.value),
+            pastGameLogic: document.querySelector('input[name="past-game-logic"]:checked')?.value || 'or',
+            diffPriority: document.querySelector('input[name="diff-priority"]:checked')?.value || 'machine',
+            sortByMatchCount: document.getElementById('sort-by-match-count')?.checked,
+            prioConds: [...document.querySelectorAll('.prio-chk:checked')].map(c => c.value),
+            models: [...document.querySelectorAll('#target-model-filter-list input:checked')].map(c => c.value),
+            // Excl
+            exConsNeg: [...document.querySelectorAll('.ex-cons-neg-chk:checked')].map(c => c.value),
+            exConsPos: [...document.querySelectorAll('.ex-cons-pos-chk:checked')].map(c => c.value),
+            exPosition: [...document.querySelectorAll('.ex-pos-chk:checked')].map(c => c.value),
+            exDigit: [...document.querySelectorAll('.ex-digit-chk:checked')].map(c => c.value),
+            exPastGameLogic: document.querySelector('input[name="ex-past-game-logic"]:checked')?.value || 'or',
+        },
+        pastGame: [...document.querySelectorAll('.past-game-period-row')].map(row => ({
+            period: row.dataset.period,
+            enabled: row.querySelector('.period-chk').checked,
+            ranges: [...row.querySelectorAll('.range-chk:checked')].map(c => c.value)
+        })),
+        exPastGame: [...document.querySelectorAll('.ex-past-game-period-row')].map(row => ({
+            period: row.dataset.period,
+            enabled: row.querySelector('.ex-period-chk').checked,
+            ranges: [...row.querySelectorAll('.ex-range-chk:checked')].map(c => c.value)
+        }))
+    };
+    localStorage.setItem('target_support_config', JSON.stringify(config));
+}
+
+function loadTargetConditions() {
+    const data = localStorage.getItem('target_support_config');
+    if (!data) return;
+    try {
+        const config = JSON.parse(data);
+        const setChecks = (selector, vals) => {
+            if (!vals) return;
+            document.querySelectorAll(selector).forEach(c => {
+                c.checked = vals.includes(c.value);
+            });
+        };
+        const setEnabled = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && val !== undefined) {
+                el.checked = val;
+                el.dispatchEvent(new Event('change'));
+            }
+        };
+
+        // Enabled states
+        if (config.enabled) {
+            setEnabled('cond-cons-neg-enabled', config.enabled.consNeg);
+            setEnabled('cond-cons-pos-enabled', config.enabled.consPos);
+            setEnabled('cond-position-enabled', config.enabled.position);
+            setEnabled('cond-digit-enabled', config.enabled.digit);
+            setEnabled('cond-island-avg-enabled', config.enabled.islandAvg);
+            setEnabled('cond-machine-avg-enabled', config.enabled.machineAvg);
+            setEnabled('cond-model-avg-enabled', config.enabled.modelAvg);
+            setEnabled('cond-past-game-enabled', config.enabled.pastGame);
+            
+            setEnabled('ex-cond-cons-neg-enabled', config.enabled.exConsNeg);
+            setEnabled('ex-cond-cons-pos-enabled', config.enabled.exConsPos);
+            setEnabled('ex-cond-position-enabled', config.enabled.exPosition);
+            setEnabled('ex-cond-digit-enabled', config.enabled.exDigit);
+            setEnabled('ex-cond-island-avg-enabled', config.enabled.exIslandAvg);
+            setEnabled('ex-cond-machine-avg-enabled', config.enabled.exMachineAvg);
+            setEnabled('ex-cond-model-avg-enabled', config.enabled.exModelAvg);
+            setEnabled('ex-cond-past-game-enabled', config.enabled.exPastGame);
+        }
+
+        // Vals
+        if (config.vals) {
+            setChecks('.cons-neg-chk', config.vals.consNeg);
+            setChecks('.cons-pos-chk', config.vals.consPos);
+            setChecks('.pos-chk', config.vals.position);
+            setChecks('.digit-chk', config.vals.digit);
+            setChecks('.prio-chk', config.vals.prioConds);
+            
+            setChecks('.ex-cons-neg-chk', config.vals.exConsNeg);
+            setChecks('.ex-cons-pos-chk', config.vals.exConsPos);
+            setChecks('.ex-pos-chk', config.vals.exPosition);
+            setChecks('.ex-digit-chk', config.vals.exDigit);
+
+            if (config.vals.pastGameLogic) {
+                const r = document.querySelector(`input[name="past-game-logic"][value="${config.vals.pastGameLogic}"]`);
+                if (r) r.checked = true;
+            }
+            if (config.vals.exPastGameLogic) {
+                const r = document.querySelector(`input[name="ex-past-game-logic"][value="${config.vals.exPastGameLogic}"]`);
+                if (r) r.checked = true;
+            }
+            if (config.vals.diffPriority) {
+                const r = document.querySelector(`input[name="diff-priority"][value="${config.vals.diffPriority}"]`);
+                if (r) r.checked = true;
+            }
+            if (config.vals.sortByMatchCount !== undefined) {
+                const cb = document.getElementById('sort-by-match-count');
+                if (cb) cb.checked = config.vals.sortByMatchCount;
+            }
+            if (config.vals.models) {
+                window._savedModels = config.vals.models;
+            }
+        }
+
+        // Past game rows
+        if (config.pastGame) {
+            config.pastGame.forEach(item => {
+                const row = document.querySelector(`.past-game-period-row[data-period="${item.period}"]`);
+                if (row) {
+                    row.querySelector('.period-chk').checked = item.enabled;
+                    row.querySelectorAll('.range-chk').forEach(c => {
+                        c.checked = item.ranges.includes(c.value);
+                    });
+                }
+            });
+        }
+        if (config.exPastGame) {
+            config.exPastGame.forEach(item => {
+                const row = document.querySelector(`.ex-past-game-period-row[data-period="${item.period}"]`);
+                if (row) {
+                    row.querySelector('.ex-period-chk').checked = item.enabled;
+                    row.querySelectorAll('.ex-range-chk').forEach(c => {
+                        c.checked = item.ranges.includes(c.value);
+                    });
+                }
+            });
+        }
+    } catch (e) { console.error("Load config error:", e); }
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     init();
