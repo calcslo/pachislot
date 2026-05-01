@@ -358,6 +358,179 @@
                         </div>
                     </div>
 
+                    <!-- Exclusion Conditions (Toggleable) -->
+                    <div class="target-exclude-panel" style="margin-bottom: 1.25rem;">
+                        <div class="exclude-toggle" id="exclude-cond-toggle" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 0.6rem 1rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 10px; transition: 0.2s;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <span class="cond-label" style="margin-bottom:0;">除外条件設定</span>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">（合致する台を検索結果から排除）</span>
+                            </div>
+                            <span class="toggle-icon" id="exclude-toggle-icon" style="font-size:1.2rem; font-weight:bold;">+</span>
+                        </div>
+                        <div class="target-conditions-grid" id="exclude-conditions-grid" style="display:none; margin-top:0.75rem;">
+                            <!-- Excl: Consecutive negative streak -->
+                            <div class="target-condition-card" id="ex-cond-card-cons-neg">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-cons-neg-enabled">
+                                        <span class="cond-label">除外：連続凹み日数</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-cons-neg-badge">OFF</span>
+                                </div>
+                                <div class="cond-body cond-checkboxes">
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="1"> 1日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="2"> 2日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="3"> 3日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="4"> 4日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="5"> 5日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="6"> 6日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="7"> 7日以上</label>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Consecutive positive streak -->
+                            <div class="target-condition-card" id="ex-cond-card-cons-pos">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-cons-pos-enabled">
+                                        <span class="cond-label">除外：連続凸日数</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-cons-pos-badge">OFF</span>
+                                </div>
+                                <div class="cond-body cond-checkboxes">
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="1"> 1日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="2"> 2日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="3"> 3日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="4"> 4日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="5"> 5日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="6"> 6日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="7"> 7日以上</label>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Position from corner -->
+                            <div class="target-condition-card" id="ex-cond-card-position">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-position-enabled">
+                                        <span class="cond-label">除外：角からの位置</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-position-badge">OFF</span>
+                                </div>
+                                <div class="cond-body cond-checkboxes">
+                                    <label><input type="checkbox" class="ex-pos-chk" value="0"> 角</label>
+                                    <label><input type="checkbox" class="ex-pos-chk" value="1"> 角2</label>
+                                    <label><input type="checkbox" class="ex-pos-chk" value="2"> 角3</label>
+                                    <label><input type="checkbox" class="ex-pos-chk" value="other"> その他</label>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Tail digit -->
+                            <div class="target-condition-card" id="ex-cond-card-digit">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-digit-enabled">
+                                        <span class="cond-label">除外：台番号末尾</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-digit-badge">OFF</span>
+                                </div>
+                                <div class="cond-body cond-checkboxes">
+                                    <label><input type="checkbox" class="ex-digit-chk" value="0"> 0</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="1"> 1</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="2"> 2</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="3"> 3</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="4"> 4</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="5"> 5</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="6"> 6</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="7"> 7</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="8"> 8</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="9"> 9</label>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Island avg diff -->
+                            <div class="target-condition-card" id="ex-cond-card-island-avg">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-island-avg-enabled">
+                                        <span class="cond-label">除外：島平均差枚</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-island-avg-badge">OFF</span>
+                                </div>
+                                <div class="cond-body">
+                                    <span class="cond-unit">有効にすると島平均がプラスの台を除外</span>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Machine avg diff -->
+                            <div class="target-condition-card" id="ex-cond-card-machine-avg">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-machine-avg-enabled">
+                                        <span class="cond-label">除外：台の平均差枚</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-machine-avg-badge">OFF</span>
+                                </div>
+                                <div class="cond-body">
+                                    <span class="cond-unit">有効にすると台の平均がプラスの台を除外</span>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Model avg diff -->
+                            <div class="target-condition-card" id="ex-cond-card-model-avg">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-model-avg-enabled">
+                                        <span class="cond-label">除外：機種の平均差枚</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-model-avg-badge">OFF</span>
+                                </div>
+                                <div class="cond-body">
+                                    <span class="cond-unit">有効にすると機種平均がプラスの台を除外</span>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Past game count average -->
+                            <div class="target-condition-card" id="ex-cond-card-past-game" style="grid-column: 1 / -1;">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-past-game-enabled">
+                                        <span class="cond-label">除外：過去G数平均</span>
+                                    </label>
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <div class="logic-switch">
+                                            <label><input type="radio" name="ex-past-game-logic" value="or" checked> OR</label>
+                                            <label><input type="radio" name="ex-past-game-logic" value="and"> AND</label>
+                                        </div>
+                                        <span class="cond-badge" id="ex-cond-past-game-badge">OFF</span>
+                                    </div>
+                                </div>
+                                <div class="cond-body" style="display: block; width: 100%;">
+                                    <div class="past-game-grid">
+                                        <div class="ex-past-game-period-row" data-period="1">
+                                            <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                                <label><input type="checkbox" class="ex-period-chk" value="1"> 前日</label>
+                                            </div>
+                                            <div class="period-ranges cond-checkboxes">
+                                                <label><input type="checkbox" class="ex-range-chk" value="0"> ~1000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="1"> 2000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="2"> 3000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="3"> 4000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="4"> 5000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="5"> 6000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="6"> 7000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="7"> 8000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="8"> 9000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="9"> 10000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="10"> 10001G~</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="target-conditions-grid">
 
                         <!-- Consecutive negative streak -->

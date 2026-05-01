@@ -107,6 +107,11 @@ async function init() {
         layoutData.forEach(r => { while (r.length < maxCols) r.push(''); });
         buildLayoutLookup();
         populateTargetModelFilter();
+        // Setup Target Support Tool UI handlers
+        setupTargetSearchBtn();
+        setupCondBadges();
+        setupExclusionToggle();
+        setupMobilePopupClose();
         updateDashboard();
 
     } catch (err) { console.error(err); }
@@ -1809,6 +1814,14 @@ function setupCondBadges() {
         ['cond-machine-avg-enabled', 'cond-machine-avg-badge', 'cond-card-machine-avg'],
         ['cond-model-avg-enabled', 'cond-model-avg-badge', 'cond-card-model-avg'],
         ['cond-past-game-enabled', 'cond-past-game-badge', 'cond-card-past-game'],
+        ['ex-cond-cons-neg-enabled', 'ex-cond-cons-neg-badge', 'ex-cond-card-cons-neg'],
+        ['ex-cond-cons-pos-enabled', 'ex-cond-cons-pos-badge', 'ex-cond-card-cons-pos'],
+        ['ex-cond-position-enabled', 'ex-cond-position-badge', 'ex-cond-card-position'],
+        ['ex-cond-digit-enabled', 'ex-cond-digit-badge', 'ex-cond-card-digit'],
+        ['ex-cond-island-avg-enabled', 'ex-cond-island-avg-badge', 'ex-cond-card-island-avg'],
+        ['ex-cond-machine-avg-enabled', 'ex-cond-machine-avg-badge', 'ex-cond-card-machine-avg'],
+        ['ex-cond-model-avg-enabled', 'ex-cond-model-avg-badge', 'ex-cond-card-model-avg'],
+        ['ex-cond-past-game-enabled', 'ex-cond-past-game-badge', 'ex-cond-card-past-game'],
     ];
     pairs.forEach(([cbId, badgeId, cardId]) => {
         const cb = document.getElementById(cbId);
@@ -1830,6 +1843,19 @@ function setupCondBadges() {
             badge.textContent = 'ON'; badge.style.background = 'rgba(34,197,94,0.8)';
             card.classList.add('cond-active');
         }
+    });
+}
+
+function setupExclusionToggle() {
+    const toggle = document.getElementById('exclude-cond-toggle');
+    const grid = document.getElementById('exclude-conditions-grid');
+    if (!toggle || !grid) return;
+    toggle.addEventListener('click', () => {
+        const isOpen = grid.style.display !== 'none';
+        grid.style.display = isOpen ? 'none' : 'grid';
+        toggle.classList.toggle('active');
+        const icon = document.getElementById('exclude-toggle-icon');
+        if (icon) icon.textContent = isOpen ? '+' : '−';
     });
 }
 
@@ -1911,6 +1937,46 @@ function renderTargetSupport(filteredData) {
                     ranges: [...row.querySelectorAll('.range-chk:checked')].map(c => parseInt(c.value))
                 };
             }).filter(p => p.enabled)
+        },
+        // Exclusion conditions
+        exclude: {
+            consNeg: {
+                enabled: document.getElementById('ex-cond-cons-neg-enabled').checked,
+                vals: [...document.querySelectorAll('.ex-cons-neg-chk:checked')].map(c => parseInt(c.value))
+            },
+            consPos: {
+                enabled: document.getElementById('ex-cond-cons-pos-enabled').checked,
+                vals: [...document.querySelectorAll('.ex-cons-pos-chk:checked')].map(c => parseInt(c.value))
+            },
+            position: {
+                enabled: document.getElementById('ex-cond-position-enabled').checked,
+                vals: [...document.querySelectorAll('.ex-pos-chk:checked')].map(c => c.value === 'other' ? 'other' : parseInt(c.value))
+            },
+            digit: {
+                enabled: document.getElementById('ex-cond-digit-enabled').checked,
+                vals: [...document.querySelectorAll('.ex-digit-chk:checked')].map(c => parseInt(c.value))
+            },
+            islandAvg: {
+                enabled: document.getElementById('ex-cond-island-avg-enabled').checked
+            },
+            machineAvg: {
+                enabled: document.getElementById('ex-cond-machine-avg-enabled').checked
+            },
+            modelAvg: {
+                enabled: document.getElementById('ex-cond-model-avg-enabled').checked
+            },
+            pastGame: {
+                enabled: document.getElementById('ex-cond-past-game-enabled').checked,
+                logic: document.querySelector('input[name="ex-past-game-logic"]:checked')?.value || 'or',
+                periods: [...document.querySelectorAll('.ex-past-game-period-row')].map(row => {
+                    const pVal = parseInt(row.dataset.period);
+                    return {
+                        period: pVal,
+                        enabled: row.querySelector('.ex-period-chk').checked,
+                        ranges: [...row.querySelectorAll('.ex-range-chk:checked')].map(c => parseInt(c.value))
+                    };
+                }).filter(p => p.enabled)
+            }
         }
     };
 
@@ -1964,6 +2030,46 @@ function renderTargetSupport(filteredData) {
         const iAvg = islandAvg[iId] ?? null;
         const posVal = getPosCategory(num);
         const digit = parseInt(num.slice(-1));
+
+        // --- Exclusion Logic (Highest Priority) ---
+        const ex = conds.exclude;
+        let isExcluded = false;
+        
+        if (ex.consNeg.enabled && (ex.consNeg.vals.length === 0 || ex.consNeg.vals.some(v => v === 7 ? sk.neg >= 7 : sk.neg === v))) isExcluded = true;
+        if (ex.consPos.enabled && (ex.consPos.vals.length === 0 || ex.consPos.vals.some(v => v === 7 ? sk.pos >= 7 : sk.pos === v))) isExcluded = true;
+        if (ex.position.enabled && (ex.position.vals.length === 0 || ex.position.vals.includes(posVal))) isExcluded = true;
+        if (ex.digit.enabled && (ex.digit.vals.length === 0 || ex.digit.vals.includes(digit))) isExcluded = true;
+        if (ex.islandAvg.enabled && iAvg !== null && iAvg > 0) isExcluded = true;
+        if (ex.machineAvg.enabled && mAvg !== null && mAvg > 0) isExcluded = true;
+        if (ex.modelAvg.enabled && modelAvg[model] !== undefined && modelAvg[model] > 0) isExcluded = true;
+        
+        if (ex.pastGame.enabled && ex.pastGame.periods.length > 0) {
+            const latestIdx = dateIdxMap[latestDate];
+            if (latestIdx !== undefined) {
+                const results = [];
+                for (const pCond of ex.pastGame.periods) {
+                    let sumG = 0, countG = 0;
+                    for (let i = 0; i < pCond.period; i++) {
+                        const idx = latestIdx - i;
+                        if (idx >= 0) {
+                            const d = allDates[idx];
+                            const g = mHist[num] ? mHist[num][d] : undefined;
+                            if (g !== undefined) { sumG += g; countG++; }
+                        }
+                    }
+                    const avgG = countG > 0 ? sumG / countG : 0;
+                    let bucket = 0;
+                    if (avgG > 10000) bucket = 10;
+                    else if (avgG > 0) bucket = Math.floor((avgG - 1) / 1000);
+                    results.push(pCond.ranges.length === 0 || pCond.ranges.includes(bucket));
+                }
+                if (ex.pastGame.logic === 'and') { if (results.every(r => r === true)) isExcluded = true; }
+                else { if (results.some(r => r === true)) isExcluded = true; }
+            }
+        }
+
+        if (isExcluded) continue;
+        // ------------------------------------------
 
         // Evaluate each active condition
         let prioMatch = 0, otherMatch = 0;
@@ -2296,6 +2402,7 @@ function populateTargetModelFilter() {
 function setupTargetSection() {
     setupPrioLimit();
     setupCondBadges();
+    setupExclusionToggle();
     setupTargetSearchBtn();
     setupMobilePopupClose();
 
