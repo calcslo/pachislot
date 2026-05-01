@@ -135,6 +135,12 @@
             box-shadow: none;
         }
 
+        #stop-btn:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+
         .status-indicator {
             display: flex;
             align-items: center;
@@ -296,7 +302,10 @@
             <input type="text" id="specific-machines" placeholder="例: 123, 456, 789">
         </div>
 
-        <button id="start-btn" onclick="startScraping()">スクレイピング開始</button>
+        <div style="display: flex; gap: 10px;">
+            <button id="start-btn" onclick="startScraping()" style="flex: 2;">スクレイピング開始</button>
+            <button id="stop-btn" onclick="stopScraping()" style="flex: 1; background: var(--accent-red); display: none;">停止</button>
+        </div>
     </div>
 
     <div class="glass-panel">
@@ -436,14 +445,31 @@
         }
     }
 
+    async function stopScraping() {
+        try {
+            const res = await fetch('/api/stop', { method: 'POST' });
+            const result = await res.json();
+            if (result.status === 'success') {
+                appendLog('INFO', '停止信号を送信しました。現在の台の処理が終わるまでお待ちください。');
+            } else {
+                appendLog('ERROR', result.message);
+            }
+        } catch (e) {
+            appendLog('ERROR', `停止リクエストエラー: ${e.message}`);
+        }
+    }
+
     function setScrapingState(isScraping) {
         startBtn.disabled = isScraping;
+        const stopBtn = document.getElementById('stop-btn');
         if (isScraping) {
             statusDot.classList.add('active');
             statusText.textContent = "実行中";
+            stopBtn.style.display = 'block';
         } else {
             statusDot.classList.remove('active');
             statusText.textContent = "待機中";
+            stopBtn.style.display = 'none';
         }
     }
 

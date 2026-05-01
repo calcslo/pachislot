@@ -204,42 +204,21 @@ def is_proxy_working() -> bool:
     return False
 
 
-def setup_docker_proxy(force_restart_docker: bool = False) -> bool:
+def handle_docker_error():
     with _docker_lifecycle_lock:
-        if not ensure_docker_desktop_running():
-            return False
+        logger.info("エラー発生。DockerDesktopと関連プロセスをすべて終了し、10秒待機します...")
+        stop_docker_desktop()
+        time.sleep(10)
+        logger.info("DockerDesktopを再起動します...")
+        ensure_docker_desktop_running()
 
-        if force_restart_docker:
-            remove_cosmo_proxy_container()
-            remove_containers_publishing_proxy_port()
-        elif is_port_in_use(PROXY_PORT):
-            docker_containers = get_docker_containers_publishing_port(PROXY_PORT)
-            if docker_containers:
-                owns_port = any(name == CONTAINER_NAME for _, name in docker_containers)
-                if owns_port:
-                    logger.info(f"Port {PROXY_PORT} is already published by the Cosmo Docker proxy. Reusing it after a proxy check...")
-                    if is_proxy_working():
-                        return True
-                    logger.warning("Existing Cosmo Docker proxy is not responding. Recreating the container...")
-                else:
-                    names = ", ".join(name for _, name in docker_containers)
-                    logger.warning(f"Port {PROXY_PORT} is occupied by another Docker container ({names}). Releasing it for Cosmo Obu...")
-                remove_docker_containers(docker_containers)
-            else:
-                logger.warning(f"Port {PROXY_PORT} is occupied by a non-Docker process. Releasing it...")
-                kill_process_on_port(PROXY_PORT)
-
-        max_retries = 3
-        for attempt in range(max_retries):
-            logger.info(f"Dockerコンテナ起動試行中 ({attempt + 1}/{max_retries})...")
-            if not is_docker_engine_ready():
-                logger.warning("Docker engine became unavailable. Waiting before retry...")
-                time.sleep(10)
-                continue
-
+def start_container_until_ip_changes():
+    with _docker_lifecycle_lock:
+        while True:
             remove_cosmo_proxy_container()
             time.sleep(2)
-
+            
+            logger.info("コンテナを起動します...")
             process = subprocess.Popen(
                 DOCKER_CMD,
                 stdout=subprocess.PIPE,
@@ -247,102 +226,95 @@ def setup_docker_proxy(force_restart_docker: bool = False) -> bool:
                 text=True,
                 bufsize=1
             )
-
-            success = False
-            pattern_found = False
-            last_log_time = time.time()
+            
             output_queue = queue.Queue()
-
             def read_docker_output():
                 try:
-                    for output_line in iter(process.stdout.readline, ""):
-                        output_queue.put(output_line)
+                    for line in iter(process.stdout.readline, ""):
+                        output_queue.put(line)
                 finally:
-                    try:
-                        process.stdout.close()
-                    except Exception:
-                        pass
-
+                    try: process.stdout.close()
+                    except: pass
+            
             threading.Thread(target=read_docker_output, daemon=True).start()
-
-            try:
-                while True:
-                    try:
-                        line = output_queue.get(timeout=1)
-                    except queue.Empty:
-                        if process.poll() is not None:
-                            logger.error("Dockerプロセスが終了しました。")
-                            break
-                        if time.time() - last_log_time > 180:
-                            logger.error("コンテナ起動タイムアウト")
-                            break
-                        continue
-
+            
+            success = False
+            start_time = time.time()
+            error_occurred = False
+            
+            # IPが変わるまで10秒待つ
+            while time.time() - start_time < 10:
+                try:
+                    line = output_queue.get(timeout=1)
                     line = line.strip()
                     if line:
                         logger.debug(f"Docker: {line}")
-                        last_log_time = time.time()
-                        if "unknown server OS" in line or "error during connect" in line:
-                            logger.error("Dockerエンジンの状態異常を検知しました。Docker Desktopを強制再起動します。")
-                            stop_docker_desktop()
-                            time.sleep(5)
-                            ensure_docker_desktop_running()
+                        if "unknown server OS" in line or "error during connect" in line or "no matching manifest" in line:
+                            error_occurred = True
                             break
-
-
-                    match = re.search(r"before=([\d\.]+) after=([\d\.]+)", line)
-                    if not pattern_found and match:
-                        before_ip = match.group(1)
-                        after_ip = match.group(2)
-                        if before_ip == after_ip:
-                            logger.warning(f"IPが変わっていません (before={before_ip} after={after_ip})。接続を継続して待機します...")
-                            continue
-
-                        logger.info("ログに接続成功パターンが見つかりました。静止を待ちます...")
-                        pattern_found = True
-                        quiet_started_at = time.time()
-                        while time.time() - quiet_started_at < 10:
-                            time.sleep(1)
-                            if not output_queue.empty():
-                                break
-                            if process.poll() is not None:
-                                logger.error("Dockerプロセスが終了しました。")
-                                break
-                            if time.time() - last_log_time >= 5:
-                                logger.info("5秒間のログ静止を確認しました。")
+                            
+                        match = re.search(r"before=([\d\.]+) after=([\d\.]+)", line)
+                        if match:
+                            before_ip = match.group(1)
+                            after_ip = match.group(2)
+                            if before_ip != after_ip:
+                                logger.info(f"IPが変更されました: {before_ip} -> {after_ip}")
                                 success = True
                                 break
-                        if success:
-                            break
+                except queue.Empty:
+                    if process.poll() is not None:
+                        if process.returncode != 0:
+                            error_occurred = True
+                        break
+            
+            if error_occurred:
+                process.terminate()
+                raise Exception("コンテナ実行中にDockerエラーが発生しました。")
+                
+            if success:
+                time.sleep(3)
+                if is_proxy_working():
+                    logger.info("プロキシの稼働を確認しました。")
+                    return
+                else:
+                    logger.warning("プロキシが機能していません。コンテナを再起動します。")
+            else:
+                logger.warning("10秒以内にIPが変更されなかったため、コンテナを再起動します。")
+                
+            process.terminate()
 
-                if success and is_proxy_working():
-                    return True
-            except Exception as e:
-                logger.error(f"監視中にエラーが発生しました: {e}")
-            finally:
-                if not success:
-                    process.terminate()
-
-            logger.warning("起動に失敗しました。再起動します。")
-            remove_cosmo_proxy_container()
-            time.sleep(5)
-
-        logger.error("最大試行回数を超えました。")
-        return False
-
+def setup_docker_proxy(force_restart_docker: bool = False) -> bool:
+    with _docker_lifecycle_lock:
+        try:
+            ensure_docker_desktop_running()
+            start_container_until_ip_changes()
+            return True
+        except Exception as e:
+            logger.error(f"セットアップ中にエラー: {e}")
+            try:
+                handle_docker_error()
+                start_container_until_ip_changes()
+                return True
+            except Exception as e2:
+                logger.error(f"再試行後もエラー: {e2}")
+                return False
 
 def restart_docker_proxy(restart_desktop: bool = False) -> bool:
     with _docker_lifecycle_lock:
         logger.info("Dockerプロキシを再起動します...")
-        remove_cosmo_proxy_container()
-        remove_containers_publishing_proxy_port()
         if restart_desktop:
-            stop_docker_desktop()
-            time.sleep(5)
-        if not ensure_docker_desktop_running():
-            return False
-        return setup_docker_proxy(force_restart_docker=True)
-
+            handle_docker_error()
+            try:
+                start_container_until_ip_changes()
+                return True
+            except Exception:
+                return False
+        else:
+            try:
+                start_container_until_ip_changes()
+                return True
+            except Exception:
+                return False
 
 def cleanup_docker_proxy(stop_desktop: bool = False):
     with _docker_lifecycle_lock:
@@ -419,7 +391,7 @@ def cal_samai_from_svg(path, second_line_digit, second_line_point):
         logger.error(f"SVG差枚計算エラー: {e}")
         return 0
 
-def scrape_cosmo_obu_drissionpage(target_models: list = None, specific_machines: list = None, result_queue: queue.Queue = None) -> Dict[str, dict]:
+def scrape_cosmo_obu_drissionpage(target_models: list = None, specific_machines: list = None, result_queue: queue.Queue = None, stop_event: threading.Event = None) -> Dict[str, dict]:
     logger.info("Cosmo Obu: DrissionPage を使用して実行します")
     data = {}
     if target_models is None:
@@ -456,11 +428,14 @@ def scrape_cosmo_obu_drissionpage(target_models: list = None, specific_machines:
             all_machines = [m for m in all_machines if str(m) in specific_machines]
             
         for dai_num in all_machines:
+            if stop_event and stop_event.is_set():
+                logger.info("停止信号を検知しました。スクレイピングを中断します。")
+                break
             if '4' in str(dai_num) or '9' in str(dai_num):
                 continue
             logger.debug(f"台番号 {dai_num} にアクセス中...")
             success = False
-            for retry_count in range(2): # 初回 + プロキシ再起動後の計2回試行
+            for retry_count in range(3):
                 try:
                     page.get(get_url(dai_num, yesterday.year, yesterday.month, yesterday.day))
                     time.sleep(2)
@@ -475,14 +450,7 @@ def scrape_cosmo_obu_drissionpage(target_models: list = None, specific_machines:
                             time.sleep(2)
                     
                     if not page.eles('css:#sel_target_date > option'):
-                        if retry_count == 0:
-                            logger.warning(f"台番号 {dai_num}: 要素が見つかりません。プロキシを再起動して再試行します。")
-                            restart_docker_proxy()
-                            time.sleep(5)
-                            continue
-                        else:
-                            logger.error(f"台番号 {dai_num}: 再試行後も要素が見つかりません。スキップします。")
-                            break
+                        raise Exception("要素が見つかりません。")
                     
                     # 機種名の取得
                     try:
@@ -608,8 +576,8 @@ def scrape_cosmo_obu_drissionpage(target_models: list = None, specific_machines:
                     break # 成功したのでリトライループを抜ける
 
                 except Exception as e:
-                    logger.warning(f"台番号 {dai_num} 試行 {retry_count} でタイムアウトまたはエラーが発生しました: {e}")
-                    # タイムアウト等のエラー時に同意画面を検知・処理
+                    logger.warning(f"台番号 {dai_num} 試行 {retry_count + 1} でエラーが発生しました: {e}")
+                    
                     try:
                         doui_button = page.ele("@id=submittos", timeout=1)
                         if doui_button:
@@ -618,11 +586,15 @@ def scrape_cosmo_obu_drissionpage(target_models: list = None, specific_machines:
                         pass
                     
                     if retry_count == 0:
-                        logger.info("プロキシを再起動して再試行します。")
-                        restart_docker_proxy()
-                        time.sleep(5)
+                        logger.info("エラー発生。IPが変わるまでコンテナを再起動します。")
+                        start_container_until_ip_changes()
+                    elif retry_count == 1:
+                        logger.info("再試行失敗。Docker Desktopを終了し、10秒待機後再起動します。")
+                        handle_docker_error()
+                        start_container_until_ip_changes()
                     else:
-                        break # 2回目も失敗ならこの台を諦める
+                        logger.error(f"台番号 {dai_num}: 全試行失敗。スキップします。")
+                        break
             
             if not success:
                 continue
@@ -644,6 +616,7 @@ def run_cosmo_obu_scraping(
     specific_machines: list = None,
     result_queue: queue.Queue = None,
     stop_desktop_when_done: bool = False,
+    stop_event: threading.Event = None,
 ) -> Dict[str, dict]:
     """Cosmo Obu用のDocker準備、スクレイピング、後片付けを一括で行う。"""
     with _docker_lifecycle_lock:
@@ -659,9 +632,11 @@ def run_cosmo_obu_scraping(
                 target_models=target_models,
                 specific_machines=specific_machines,
                 result_queue=result_queue,
+                stop_event=stop_event,
             )
             logger.info("スクレイピングが完了しました。")
             return results
         finally:
             cleanup_docker_proxy(stop_desktop=stop_desktop_when_done)
-scrape_cosmo_obu_drissionpage()
+if __name__ == "__main__":
+    scrape_cosmo_obu_drissionpage()

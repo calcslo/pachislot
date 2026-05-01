@@ -11,6 +11,7 @@ import socket
 import requests
 import pickle
 import queue
+import threading
 from playwright.sync_api import Page
 from scrapling.fetchers import StealthyFetcher
 # ==========================================
@@ -369,7 +370,7 @@ def extract_pscube_graph_data(page: Page) -> float | str:
     except Exception as e:
         return f"解析エラー: {e}"
 
-def site1_action(page: Page, target_models: list = None, specific_machines: list = None, result_queue: queue.Queue = None) -> dict:
+def site1_action(page: Page, target_models: list = None, specific_machines: list = None, result_queue: queue.Queue = None, stop_event: threading.Event = None) -> dict:
     """Site1 の具体的なページ操作ロジック"""
     data = {}
     
@@ -429,6 +430,9 @@ def site1_action(page: Page, target_models: list = None, specific_machines: list
             logger.info(f"Site 1: '{model_name}' で {len(machine_numbers)} 件の台番号を取得。")
 
             for idx, machine_num in enumerate(machine_numbers):
+                if stop_event and stop_event.is_set():
+                    logger.info("停止信号を検知しました。スクレイピングを中断します。")
+                    return data
                 logger.debug(f"Site 1: [{idx+1}/{len(machine_numbers)}] 台番号 {machine_num} のデータ取得を開始")
                 try:
                     # 台番号リンクを特定してクリック（btn-dai クラスを持つ要素を指定）
@@ -556,7 +560,7 @@ def site1_action(page: Page, target_models: list = None, specific_machines: list
     
     return data
 
-def scrape_site1_scrapling(target_models: list = None, specific_machines: list = None, result_queue: queue.Queue = None) -> Dict[str, dict]:
+def scrape_site1_scrapling(target_models: list = None, specific_machines: list = None, result_queue: queue.Queue = None, stop_event: threading.Event = None) -> Dict[str, dict]:
     """scraplingのStealthyFetcherを用いてSite1をスクレイピング"""
     logger.info("Site 1: scrapling (StealthyFetcher) を使用して実行します")
     
@@ -565,7 +569,7 @@ def scrape_site1_scrapling(target_models: list = None, specific_machines: list =
     
     def action_wrapper(page: Page):
         # 実際の操作ロジックを呼び出し、取得データをscraped_dataに格納
-        result = site1_action(page, target_models, specific_machines, result_queue)
+        result = site1_action(page, target_models, specific_machines, result_queue, stop_event)
         scraped_data.update(result)
 
     # scraplingのfetchを呼び出す（headlessとproxyを指定）

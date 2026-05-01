@@ -11,7 +11,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 import subprocess
-
 import ogiya_pscube_scraping as scraper
 import cosmoobu_teramoba_scraping as cosmo_scraper
 import pscube_calculator as calc
@@ -86,13 +85,15 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 scraping_lock = asyncio.Lock()
 is_scraping = False
 result_queue = queue.Queue()
-connected_websockets = set() # Use a set to avoid duplicates
+connected_websockets = set()
+stop_event = threading.Event()
 
 # Shared state for Cosmo Obu
 scraping_lock_cosmo = asyncio.Lock()
 is_scraping_cosmo = False
 result_queue_cosmo = queue.Queue()
-connected_websockets_cosmo = set() # Use a set to avoid duplicates
+connected_websockets_cosmo = set()
+stop_event_cosmo = threading.Event()
 
 # Docker proxy uses a fixed host port, so only one scraper can own it at a time.
 docker_runtime_lock = threading.Lock()
@@ -101,7 +102,7 @@ class RunRequest(BaseModel):
     models: Optional[List[str]] = None
     specific_machines: Optional[str] = None # comma separated string
 
-def background_scraper_thread(models, specific_machines):
+def background_scraper_thread(models, specific_machines, stop_event):
     global is_scraping
     try:
         with queue_logging(scraper.logger, scraper.QueueHandler, result_queue):
@@ -115,7 +116,7 @@ def background_scraper_thread(models, specific_machines):
                         return
 
                     result_queue.put({"type": "log", "message": "スクレイピングを開始します...", "level": "INFO"})
-                    scraper.scrape_site1_scrapling(target_models=models, specific_machines=specific_machines, result_queue=result_queue)
+                    scraper.scrape_site1_scrapling(target_models=models, specific_machines=specific_machines, result_queue=result_queue, stop_event=stop_event)
                     result_queue.put({"type": "log", "message": "スクレイピングが完了しました。", "level": "INFO"})
             except Exception as e:
                 result_queue.put({"type": "log", "message": f"予期せぬエラーが発生しました: {e}", "level": "ERROR"})
@@ -174,7 +175,7 @@ async def queue_poller_cosmo():
             pass
         await asyncio.sleep(0.1)
 
-def background_scraper_thread_cosmo(models, specific_machines):
+def background_scraper_thread_cosmo(models, specific_machines, stop_event):
     global is_scraping_cosmo
     try:
         with queue_logging(cosmo_scraper.logger, cosmo_scraper.QueueHandler, result_queue_cosmo):
@@ -185,6 +186,7 @@ def background_scraper_thread_cosmo(models, specific_machines):
                         specific_machines=specific_machines,
                         result_queue=result_queue_cosmo,
                         stop_desktop_when_done=False,
+                        stop_event=stop_event,
                     )
             except Exception as e:
                 result_queue_cosmo.put({"type": "log", "message": f"予期せぬエラーが発生しました: {e}", "level": "ERROR"})
@@ -221,10 +223,19 @@ async def run_scraping(req: RunRequest):
     models = req.models if req.models else list(calc.OGIYA_BORDER_DICT.keys())
     
     # Start thread
-    thread = threading.Thread(target=background_scraper_thread, args=(models, specific_machines_list), daemon=True)
+    stop_event.clear()
+    thread = threading.Thread(target=background_scraper_thread, args=(models, specific_machines_list, stop_event), daemon=True)
     thread.start()
     
     return {"status": "success", "message": "スクレイピングをバックグラウンドで開始しました。"}
+
+@app.post("/api/stop")
+async def stop_scraping():
+    global is_scraping
+    if not is_scraping:
+        return {"status": "error", "message": "スクレイピングは実行中ではありません。"}
+    stop_event.set()
+    return {"status": "success", "message": "停止信号を送信しました。"}
 
 @app.get("/api/status")
 async def get_status():
@@ -285,10 +296,19 @@ async def run_scraping_cosmo(req: RunRequest):
         
     models = req.models if req.models else list(calc.COSMO_BORDER_DICT.keys())
     
-    thread = threading.Thread(target=background_scraper_thread_cosmo, args=(models, specific_machines_list), daemon=True)
+    stop_event_cosmo.clear()
+    thread = threading.Thread(target=background_scraper_thread_cosmo, args=(models, specific_machines_list, stop_event_cosmo), daemon=True)
     thread.start()
     
     return {"status": "success", "message": "スクレイピングをバックグラウンドで開始しました。"}
+
+@app.post("/api/cosmo_obu/stop")
+async def stop_scraping_cosmo():
+    global is_scraping_cosmo
+    if not is_scraping_cosmo:
+        return {"status": "error", "message": "スクレイピングは実行中ではありません。"}
+    stop_event_cosmo.set()
+    return {"status": "success", "message": "停止信号を送信しました。"}
 
 @app.get("/api/cosmo_obu/status")
 async def get_status_cosmo():

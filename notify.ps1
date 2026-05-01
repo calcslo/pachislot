@@ -6,7 +6,7 @@ param (
 
 $Message = "Pachislot server stopped."
 if ($ErrorCode -ne 0) {
-    $Message = "Server stopped with error code: $ErrorCode. Check if the port is already in use."
+    $Message = "Server stopped with error code: $ErrorCode. Check logs\server_stderr.log for details."
 }
 
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null

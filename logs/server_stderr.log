@@ -1,0 +1,33 @@
+ëSëÃèàóùÇ≈ÉGÉâÅ[Ç™î≠ê∂ÇµÇ‹ÇµÇΩ: 'cp932' codec can't encode character '\u52a8' in position 6: illegal multibyte sequence
+INFO:     Started server process [31616]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     100.105.6.2:57118 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     Started server process [25336]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:63769 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:55951 - "WebSocket /ws/cosmo_obu" [accepted]
+INFO:     connection open
+Exception in thread Thread-4 (_readerthread):
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "D:\Program Files\Python\Python312\Lib\threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\Program Files\Python\Python312\Lib\subprocess.py", line 1599, in _readerthread
+    buffer.append(fh.read())
+                  ^^^^^^^^^
+  File "<frozen codecs>", line 322, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x8f in position 0: invalid start byte
+[2026-05-01T02:20:36.167534700Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-01T02:20:36.183564700Z][Docker Desktop.exe] backend process started
+INFO:     127.0.0.1:54761 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
