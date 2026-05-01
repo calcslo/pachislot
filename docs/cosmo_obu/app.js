@@ -3,8 +3,8 @@
 // ==========================================
 // コスモジャパン大府店向けキーワード（半角カタカナ）
 const MACHINE_KEYWORDS = {
-    hanahana: 'ﾊﾅﾊﾅ',
-    juggler: 'ｼﾞｬｸﾞﾗｰ'
+    hanahana: 'ハナハナ',
+    juggler: 'ジャグラー'
 };
 
 let MACHINE_GROUPS = {
@@ -29,25 +29,16 @@ function updateMachineGroups(data) {
 // コスモジャパン大府店 設定推測用 コイン持ち・確率テーブル（仮値 ※後で実際の値に修正すること）
 const MACHINE_PROBS = {
     // ハナハナシリーズ
-    // TODO: 以下は仮値。実際のドラゴンハナハナ～閃光～‐30のコイン持ち・確率に修正すること
-    'ﾄﾞﾗｺﾞﾝﾊﾅﾊﾅ～閃光～‐30': { 1: { big: 299, reg: 399 }, 2: { big: 285, reg: 371 }, 3: { big: 273, reg: 341 }, 4: { big: 260, reg: 310 }, 5: { big: 246, reg: 277 }, 6: { big: 227, reg: 227 } },
-    // TODO: 以下は仮値。実際のニューキングハナハナV‐30のコイン持ち・確率に修正すること
-    'ﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV‐30': { 1: { big: 299, reg: 496 }, 2: { big: 291, reg: 471 }, 3: { big: 281, reg: 442 }, 4: { big: 268, reg: 409 }, 5: { big: 253, reg: 372 } },
-    // TODO: 以下は仮値。実際のスターハナハナ‐30のコイン持ち・確率に修正すること
-    'ｽﾀｰﾊﾅﾊﾅ‐30': { 1: { big: 299, reg: 399 }, 2: { big: 285, reg: 374 }, 3: { big: 273, reg: 345 }, 4: { big: 258, reg: 311 }, 5: { big: 241, reg: 273 }, 6: { big: 227, reg: 227 } },
+    'ドラゴンハナハナ～閃光～‐30': { 1: { big: 256, reg: 642 }, 2: { big: 246, reg: 585 }, 3: { big: 235, reg: 537 }, 4: { big: 224, reg: 489 }, 5: { big: 212, reg: 442 }, 6: { big: 199, reg: 399 } },
+    'ニューキングハナハナV‐30': { 1: { big: 299, reg: 496 }, 2: { big: 291, reg: 471 }, 3: { big: 281, reg: 442 }, 4: { big: 268, reg: 409 }, 5: { big: 253, reg: 372 } },
+    'スターハナハナ‐30': { 1: { big: 270, reg: 387 }, 2: { big: 262, reg: 354 }, 3: { big: 252, reg: 322 }, 4: { big: 240, reg: 293 }, 5: { big: 229, reg: 267 }, 6: { big: 218, reg: 242 } },
     // ジャグラーシリーズ
-    // TODO: 以下は仮値。実際のウルトラミラクルジャグラーのコイン持ち・確率に修正すること
-    'ｳﾙﾄﾗﾐﾗｸﾙｼﾞｬｸﾞﾗｰ': { 1: { big: 267.5, reg: 425.6 }, 2: { big: 261.1, reg: 402.1 }, 3: { big: 256, reg: 350.5 }, 4: { big: 242.7, reg: 322.8 }, 5: { big: 233.2, reg: 297.9 }, 6: { big: 216.3, reg: 277.7 } },
-    // TODO: 以下は仮値。実際のネオアイムジャグラーEXのコイン持ち・確率に修正すること
-    'ﾈｵｱｲﾑｼﾞｬｸﾞﾗｰEX': { 1: { big: 273.1, reg: 381 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226, reg: 252.1 } },
-    // TODO: 以下は仮値。実際のゴーゴージャグラー3のコイン持ち・確率に修正すること
-    'ｺﾞｰｺﾞｰｼﾞｬｸﾞﾗｰ3': { 1: { big: 259, reg: 354.2 }, 2: { big: 258, reg: 332.7 }, 3: { big: 257, reg: 306.2 }, 4: { big: 254, reg: 268.6 }, 5: { big: 247.3, reg: 247.3 }, 6: { big: 234.9, reg: 234.9 } },
-    // TODO: 以下は仮値。実際のジャグラーガールズのコイン持ち・確率に修正すること
-    'ｼﾞｬｸﾞﾗｰｶﾞｰﾙｽﾞ': { 1: { big: 273.1, reg: 381 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226, reg: 252.1 } },
-    // TODO: 以下は仮値。実際のミスタージャグラーのコイン持ち・確率に修正すること
-    'ﾐｽﾀｰｼﾞｬｸﾞﾗｰ': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257 }, 6: { big: 237.4, reg: 237.4 } },
-    // TODO: 以下は仮値。実際のハッピージャグラーVIIIのコイン持ち・確率に修正すること
-    'ﾊｯﾋﾟｰｼﾞｬｸﾞﾗｰVIII': { 1: { big: 273.1, reg: 399 }, 2: { big: 269, reg: 364 }, 3: { big: 260.1, reg: 321 }, 4: { big: 248, reg: 282 }, 5: { big: 240, reg: 261 }, 6: { big: 229, reg: 229 } },
+    'ウルトラミラクルジャグラー': { 1: { big: 267.5, reg: 425.6 }, 2: { big: 261.1, reg: 402.1 }, 3: { big: 256.0, reg: 350.5 }, 4: { big: 242.7, reg: 322.8 }, 5: { big: 233.2, reg: 297.9 }, 6: { big: 216.3, reg: 277.7 } },
+    'ネオアイムジャグラーEX': { 1: { big: 273.1, reg: 439.8 }, 2: { big: 269.7, reg: 399.6 }, 3: { big: 269.7, reg: 331.0 }, 4: { big: 259.0, reg: 315.1 }, 5: { big: 259.0, reg: 255.0 }, 6: { big: 255.0, reg: 255.0 } },
+    'ゴーゴージャグラー3': { 1: { big: 259.0, reg: 354.2 }, 2: { big: 258.0, reg: 332.7 }, 3: { big: 257.0, reg: 306.2 }, 4: { big: 254.0, reg: 268.6 }, 5: { big: 247.3, reg: 247.3 }, 6: { big: 234.9, reg: 234.9 } },
+    'ジャグラーガールズ': { 1: { big: 273.1, reg: 381.0 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226.0, reg: 252.1 } },
+    'ミスタージャグラー': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331.0 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257.0 }, 6: { big: 237.4, reg: 237.4 } },
+    'ハッピージャグラーVIII': { 1: { big: 273.1, reg: 397.2 }, 2: { big: 270.8, reg: 362.1 }, 3: { big: 263.2, reg: 332.7 }, 4: { big: 254.0, reg: 300.6 }, 5: { big: 239.2, reg: 273.1 }, 6: { big: 226.0, reg: 256.0 } },
 };
 
 let rawData = [], layoutData = [], layoutLookup = {};
@@ -71,7 +62,7 @@ function percentile(arr, p) { if (!arr.length) return 0; const s = [...arr].sort
 function payout(diff, g) { return g > 0 ? (((3 * g) + diff) / (3 * g) * 100) : 0; }
 function formatVal(v) { if (v > 0) return `<span style="color:#38bdf8;font-weight:bold">+${Math.round(v).toLocaleString()}</span>`; if (v < 0) return `<span style="color:#ef4444;font-weight:bold">${Math.round(v).toLocaleString()}</span>`; return `<span style="color:#94a3b8;font-weight:bold">0</span>`; }
 function formatPct(v) { const n = parseFloat(v); if (n >= 100) return `<span style="color:#38bdf8;font-weight:bold">${n.toFixed(2)}%</span>`; return `<span style="color:#ef4444;font-weight:bold">${n.toFixed(2)}%</span>`; }
-function getPosLabel(num) { const l = layoutLookup[num]; if (!l) return '不明'; if ((parseInt(num) >= 987 && parseInt(num) <= 998) || (parseInt(num) >= 1370 && parseInt(num) <= 1385)) return '円形島'; return l.pos === 0 ? '角' : l.pos === 1 ? '角2' : l.pos === 2 ? '角3' : l.pos === null ? '円形島' : 'その他'; }
+function getPosLabel(num) { const l = layoutLookup[num]; if (!l) return '不明'; return l.pos === 0 ? '角' : l.pos === 1 ? '角2' : l.pos === 2 ? '角3' : 'その他'; }
 
 function isSignificant(digitVals, overallAvg) {
     if (digitVals.length < 3) return false;
@@ -133,8 +124,7 @@ function buildLayoutLookup() {
             for (let i = rIdx - 1; i >= 0; i--) { if (layoutData[i][cIdx] !== '') vT++; else break; }
             for (let i = rIdx + 1; i < layoutData.length; i++) { if (layoutData[i][cIdx] !== '') vB++; else break; }
             let dist = null, dir = 'horizontal';
-            if ((numVal >= 987 && numVal <= 998) || (numVal >= 1370 && numVal <= 1385)) { dist = null; }
-            else if (hL + hR > vT + vB) { dist = Math.min(hL, hR); dir = 'horizontal'; }
+            if (hL + hR > vT + vB) { dist = Math.min(hL, hR); dir = 'horizontal'; }
             else if (vT + vB > hL + hR) { dist = Math.min(vT, vB); dir = 'vertical'; }
             else if (hL + hR > 0) { dist = Math.min(hL, hR); dir = 'horizontal'; }
             else if (vT + vB > 0) { dist = Math.min(vT, vB); dir = 'vertical'; }
@@ -159,11 +149,7 @@ function buildLayoutLookup() {
                     const cellVal = normalizeNum(layoutData[currR][currC]);
                     const numVal = parseInt(cellVal, 10);
 
-                    if ((numVal >= 987 && numVal <= 998) || (numVal >= 1370 && numVal <= 1385)) {
-                        continue;
-                    } else {
-                        islandCells.push(cellVal);
-                    }
+                    islandCells.push(cellVal);
 
                     const currDir = layoutLookup[cellVal].direction;
                     let neighbors = [];
@@ -178,7 +164,7 @@ function buildLayoutLookup() {
                             if (layoutData[nr][nc] !== '' && !visited[nr][nc]) {
                                 const nValStr = normalizeNum(layoutData[nr][nc]);
                                 const nVal = parseInt(nValStr, 10);
-                                if ((nVal >= 987 && nVal <= 998) || (nVal >= 1370 && nVal <= 1385)) continue;
+
                                 if (layoutLookup[nValStr].direction === currDir) {
                                     visited[nr][nc] = true;
                                     queue.push([nr, nc]);
@@ -200,11 +186,7 @@ function buildLayoutLookup() {
 
     for (const cell of Object.keys(layoutLookup)) {
         const numVal = parseInt(cell, 10);
-        if (numVal >= 987 && numVal <= 998) {
-            layoutLookup[cell].islandId = '円形島(987-998)'; layoutLookup[cell].islandMin = 987;
-        } else if (numVal >= 1370 && numVal <= 1385) {
-            layoutLookup[cell].islandId = '円形島(1370-1385)'; layoutLookup[cell].islandMin = 1370;
-        } else if (!layoutLookup[cell].islandId) {
+        if (!layoutLookup[cell].islandId) {
             layoutLookup[cell].islandId = `島 ${numVal}`; layoutLookup[cell].islandMin = numVal;
         }
     }
