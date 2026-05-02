@@ -1877,7 +1877,7 @@ function setupExclusionToggle() {
         grid.style.display = isOpen ? 'none' : 'grid';
         toggle.classList.toggle('active');
         const icon = document.getElementById('exclude-toggle-icon');
-        if (icon) icon.textContent = isOpen ? '+' : '竏・;
+        if (icon) icon.textContent = isOpen ? '+' : '−';
     });
 }
 
@@ -2605,3 +2605,168 @@ function loadTargetConditions() {
 
         // Enabled states
         if (config.enabled) {
+        if (config.enabled) {
+            setEnabled('cond-cons-neg-enabled', config.enabled.consNeg);
+            setEnabled('cond-cons-pos-enabled', config.enabled.consPos);
+            setEnabled('cond-position-enabled', config.enabled.position);
+            setEnabled('cond-digit-enabled', config.enabled.digit);
+            setEnabled('cond-island-avg-enabled', config.enabled.islandAvg);
+            setEnabled('cond-machine-avg-enabled', config.enabled.machineAvg);
+            setEnabled('cond-model-avg-enabled', config.enabled.modelAvg);
+            setEnabled('cond-past-game-enabled', config.enabled.pastGame);
+            
+            setEnabled('ex-cond-cons-neg-enabled', config.enabled.exConsNeg);
+            setEnabled('ex-cond-cons-pos-enabled', config.enabled.exConsPos);
+            setEnabled('ex-cond-position-enabled', config.enabled.exPosition);
+            setEnabled('ex-cond-digit-enabled', config.enabled.exDigit);
+            setEnabled('ex-cond-island-avg-enabled', config.enabled.exIslandAvg);
+            setEnabled('ex-cond-machine-avg-enabled', config.enabled.exMachineAvg);
+            setEnabled('ex-cond-model-avg-enabled', config.enabled.exModelAvg);
+            setEnabled('ex-cond-past-game-enabled', config.enabled.exPastGame);
+        }
+
+        // Vals
+        if (config.vals) {
+            setChecks('.cons-neg-chk', config.vals.consNeg);
+            setChecks('.cons-pos-chk', config.vals.consPos);
+            setChecks('.pos-chk', config.vals.position);
+            setChecks('.digit-chk', config.vals.digit);
+            setChecks('.prio-chk', config.vals.prioConds);
+            
+            setChecks('.ex-cons-neg-chk', config.vals.exConsNeg);
+            setChecks('.ex-cons-pos-chk', config.vals.exConsPos);
+            setChecks('.ex-pos-chk', config.vals.exPosition);
+            setChecks('.ex-digit-chk', config.vals.exDigit);
+
+            if (config.vals.pastGameLogic) {
+                const r = document.querySelector(`input[name="past-game-logic"][value="${config.vals.pastGameLogic}"]`);
+                if (r) r.checked = true;
+            }
+            if (config.vals.exPastGameLogic) {
+                const r = document.querySelector(`input[name="ex-past-game-logic"][value="${config.vals.exPastGameLogic}"]`);
+                if (r) r.checked = true;
+            }
+            if (config.vals.diffPriority) {
+                const r = document.querySelector(`input[name="diff-priority"][value="${config.vals.diffPriority}"]`);
+                if (r) r.checked = true;
+            }
+            if (config.vals.sortByMatchCount !== undefined) {
+                const cb = document.getElementById('sort-by-match-count');
+                if (cb) cb.checked = config.vals.sortByMatchCount;
+            }
+            if (config.vals.models) {
+                window._savedModels = config.vals.models;
+            }
+        }
+
+        // Past game rows
+        if (config.pastGame) {
+            config.pastGame.forEach(item => {
+                const row = document.querySelector(`.past-game-period-row[data-period="${item.period}"]`);
+                if (row) {
+                    row.querySelector('.period-chk').checked = item.enabled;
+                    row.querySelectorAll('.range-chk').forEach(c => {
+                        c.checked = item.ranges.includes(c.value);
+                    });
+                }
+            });
+        }
+        if (config.exPastGame) {
+            config.exPastGame.forEach(item => {
+                const row = document.querySelector(`.ex-past-game-period-row[data-period="${item.period}"]`);
+                if (row) {
+                    row.querySelector('.ex-period-chk').checked = item.enabled;
+                    row.querySelectorAll('.ex-range-chk').forEach(c => {
+                        c.checked = item.ranges.includes(c.value);
+                    });
+                }
+            });
+        }
+    } catch (e) { console.error("Load config error:", e); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    setupTargetSection();
+    setupGameCountPeriodTabs();
+});
+
+function setupGameCountPeriodTabs() {
+    document.getElementById('game-count-period-tabs')?.addEventListener('click', e => {
+        if (e.target.classList.contains('tab-btn')) {
+            document.querySelectorAll('#game-count-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            renderGameCountAnalysis();
+        }
+    });
+}
+
+function renderGameCountAnalysis() {
+    const periodBtn = document.querySelector('#game-count-period-tabs .tab-btn.active');
+    const period = parseInt(periodBtn ? periodBtn.dataset.period : '1');
+
+    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
+    if (allDates.length < 2) return;
+
+    const dateIdxMap = {};
+    allDates.forEach((d, i) => dateIdxMap[d] = i);
+
+    const mHist = {};
+    rawData.forEach(row => {
+        const num = normalizeNum(row['台番号']);
+        if (!mHist[num]) mHist[num] = {};
+        mHist[num][row['日付']] = Number(row['累計ゲーム']) || 0;
+    });
+
+    const targetData = getFilteredData();
+    const buckets = {};
+
+    targetData.forEach(row => {
+        const num = normalizeNum(row['台番号']);
+        const targetDate = row['日付'];
+        const targetDiff = Number(row['最終差枚']) || 0;
+
+        const currentIdx = dateIdxMap[targetDate];
+        if (currentIdx === undefined) return;
+
+        let sumG = 0;
+        let countG = 0;
+
+        for (let i = 1; i <= period; i++) {
+            const prevIdx = currentIdx - i;
+            if (prevIdx >= 0) {
+                const prevDate = allDates[prevIdx];
+                const g = mHist[num][prevDate];
+                if (g !== undefined) {
+                    sumG += g;
+                    countG++;
+                }
+            }
+        }
+
+        if (countG > 0) {
+            const avgG = sumG / countG;
+            const bucketIdx = Math.floor(avgG / 1000);
+            if (!buckets[bucketIdx]) buckets[bucketIdx] = { diffSum: 0, count: 0 };
+            buckets[bucketIdx].diffSum += targetDiff;
+            buckets[bucketIdx].count++;
+        }
+    });
+
+    const labels = [], values = [];
+    Object.keys(buckets).sort((a, b) => parseInt(a) - parseInt(b)).forEach(idx => {
+        const b = buckets[idx];
+        if (b.count < 1) return;
+        labels.push(`${idx * 1000}-${(parseInt(idx) + 1) * 1000}G`);
+        values.push(Math.round(b.diffSum / b.count));
+    });
+
+    const posColor = 'rgba(59,130,246,0.8)';
+    const negColor = 'rgba(239,68,68,0.8)';
+
+    drawBar('chart-game-count-diff', labels, values, '平均差枚', {
+        datasetExtras: {
+            backgroundColor: values.map(v => v > 0 ? posColor : negColor)
+        }
+    });
+}
