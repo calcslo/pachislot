@@ -1026,12 +1026,39 @@ tbody tr.clickable td:first-child {
     border-color: var(--primary) !important;
 }
 
+.exclude-toggle:active {
+    background: rgba(255, 255, 255, 0.1) !important;
+    transform: scale(0.99);
+}
+
 .exclude-toggle .toggle-icon {
     transition: transform 0.3s ease;
 }
 
 .exclude-toggle.active .toggle-icon {
     transform: rotate(45deg); /* + into x */
+}
+
+/* Condition Card Tap Support */
+.target-condition-card {
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.target-condition-card:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.target-condition-card:active {
+    transform: scale(0.98);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.target-condition-card.cond-active {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2) !important;
 }
 
 .target-conditions-grid {
