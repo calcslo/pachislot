@@ -307,25 +307,25 @@ function getFilteredData() {
     let f = rawData;
     // 譌ｧ繝・・繧ｿ繝輔ぅ繝ｫ繧ｿ: OFF縺ｮ蝣ｴ蜷医・OLD_DATA_CUTOFF莉･蜑阪・繝・・繧ｿ繧帝勁螟・
     if (!includeOldData) {
-        f = f.filter(r => r['譌･莉・] > OLD_DATA_CUTOFF);
+        f = f.filter(r => r['日付] > OLD_DATA_CUTOFF);
     }
     if (currentTab !== 'all') {
         const m = currentTab === 'hanahana' ? MACHINE_GROUPS.hanahana : MACHINE_GROUPS.juggler;
         f = f.filter(r => m.includes(r['讖溽ｨｮ蜷・]));
     }
     if (f.length) {
-        const dates = rawData.map(r => r['譌･莉・]).sort();
+        const dates = rawData.map(r => r['日付]).sort();
         const latestStr = dates[dates.length - 1];
         const latest = new Date(latestStr);
-        if (currentPeriod === 'latest') { f = f.filter(r => r['譌･莉・] === latestStr); }
-        else if (currentPeriod === '3d') { const c = new Date(latest); c.setDate(c.getDate() - 2); f = f.filter(r => r['譌･莉・] >= c.toISOString().split('T')[0]); }
-        else if (currentPeriod === '7d') { const c = new Date(latest); c.setDate(c.getDate() - 6); f = f.filter(r => r['譌･莉・] >= c.toISOString().split('T')[0]); }
-        else if (currentPeriod === '1m') { const c = new Date(latest); c.setMonth(c.getMonth() - 1); f = f.filter(r => r['譌･莉・] >= c.toISOString().split('T')[0]); }
-        else if (currentPeriod === '3m') { const c = new Date(latest); c.setMonth(c.getMonth() - 3); f = f.filter(r => r['譌･莉・] >= c.toISOString().split('T')[0]); }
+        if (currentPeriod === 'latest') { f = f.filter(r => r['日付] === latestStr); }
+        else if (currentPeriod === '3d') { const c = new Date(latest); c.setDate(c.getDate() - 2); f = f.filter(r => r['日付] >= c.toISOString().split('T')[0]); }
+        else if (currentPeriod === '7d') { const c = new Date(latest); c.setDate(c.getDate() - 6); f = f.filter(r => r['日付] >= c.toISOString().split('T')[0]); }
+        else if (currentPeriod === '1m') { const c = new Date(latest); c.setMonth(c.getMonth() - 1); f = f.filter(r => r['日付] >= c.toISOString().split('T')[0]); }
+        else if (currentPeriod === '3m') { const c = new Date(latest); c.setMonth(c.getMonth() - 3); f = f.filter(r => r['日付] >= c.toISOString().split('T')[0]); }
     }
     if (currentEventFilter !== 'none') {
         f = f.filter(r => {
-            const d = new Date(r['譌･莉・]), s = String(d.getDate());
+            const d = new Date(r['日付]), s = String(d.getDate());
             if (currentEventFilter === '3') return s.endsWith('3');
             if (currentEventFilter === '5') return s.endsWith('5');
             if (currentEventFilter === '8') return s.endsWith('8');
@@ -342,7 +342,7 @@ function calculateDynamicThresholds(data) {
     // 繝偵・繝医・繝・・縺ｧ陦ｨ遉ｺ縺輔ｌ繧九・縺ｯ蜿ｰ縺斐→縺ｮ譛滄俣蟷ｳ蝮・〒縺ゅｋ縺溘ａ縲√＠縺阪＞蛟､繧ょ床縺斐→縺ｮ蟷ｳ蝮・・蟶・°繧臥ｮ怜・縺吶ｋ
     const machineStats = {};
     data.forEach(d => {
-        const num = d['蜿ｰ逡ｪ蜿ｷ'];
+        const num = d['台番号'];
         if (!machineStats[num]) machineStats[num] = { total: 0, count: 0 };
         machineStats[num].total += Number(d['譛邨ょｷｮ譫・]) || 0;
         machineStats[num].count++;
@@ -440,9 +440,9 @@ function updateDashboard() {
 function renderSummary(data) {
     const daily = {}, monthly = {};
     data.forEach(row => {
-        const date = row['譌･莉・], month = date.substring(0, 7);
-        const diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['邏ｯ險医ご繝ｼ繝']) || 0;
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']), lastDigit = parseInt(num.slice(-1));
+        const date = row['日付], month = date.substring(0, 7);
+        const diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['累計ゲーム']) || 0;
+        const num = normalizeNum(row['台番号']), lastDigit = parseInt(num.slice(-1));
         if (!daily[date]) daily[date] = { date, diff: 0, g: 0, count: 0, digits: Array(10).fill().map(() => []) };
         daily[date].diff += diff; daily[date].g += g; daily[date].count += 1;
         if (!isNaN(lastDigit)) daily[date].digits[lastDigit].push(diff);
@@ -553,14 +553,14 @@ function buildHeatmapGrid(wrapId, cellBuilder) {
 }
 
 function renderHeatmaps(data) {
-    const activeData = activeDate ? data.filter(d => d['譌･莉・] === activeDate) : data;
+    const activeData = activeDate ? data.filter(d => d['日付] === activeDate) : data;
 
     const ms = {};
     activeData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
+        const num = normalizeNum(row['台番号']);
         if (!ms[num]) ms[num] = { diff: 0, count: 0, big: 0, reg: 0, g: 0, model: row['讖溽ｨｮ蜷・] };
         ms[num].diff += Number(row['譛邨ょｷｮ譫・]) || 0; ms[num].big += Number(row['BIG']) || 0;
-        ms[num].reg += Number(row['REG']) || 0; ms[num].g += Number(row['邏ｯ險医ご繝ｼ繝']) || 0; ms[num].count += 1;
+        ms[num].reg += Number(row['REG']) || 0; ms[num].g += Number(row['累計ゲーム']) || 0; ms[num].count += 1;
     });
 
     // Diff heatmap
@@ -568,7 +568,7 @@ function renderHeatmaps(data) {
         if (!ms[num]) { el.style.backgroundColor = 'transparent'; el.style.border = '1px solid rgba(128,128,128,0.2)'; return; }
         const st = ms[num], avg = Math.round(st.diff / st.count);
         el.style.backgroundColor = getHeatmapColor(avg);
-        const t = `<div class="tooltip-title">蜿ｰ逡ｪ蜿ｷ: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>蟷ｳ蝮・ｷｮ譫・ ${formatVal(avg)}</div><div>蟇ｾ雎｡譌･謨ｰ: ${st.count}譌･</div></div>`;
+        const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>平均差枚 ${formatVal(avg)}</div><div>蟇ｾ雎｡譌･謨ｰ: ${st.count}譌･</div></div>`;
         el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
         el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
     });
@@ -583,7 +583,7 @@ function renderHeatmaps(data) {
             if (est) { el.style.backgroundColor = SETTING_COLORS[est.setting] || 'transparent'; sText = `謗ｨ螳夊ｨｭ螳・${est.setting}(${(est.prob * 100).toFixed(1)}%)`; }
         }
         const avg = Math.round(st.diff / st.count);
-        const t = `<div class="tooltip-title">蜿ｰ逡ｪ蜿ｷ: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>蟷ｳ蝮・ｷｮ譫・ ${formatVal(avg)}</div>${sText ? `<div>${sText}</div>` : ''}</div>`;
+        const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>平均差枚 ${formatVal(avg)}</div>${sText ? `<div>${sText}</div>` : ''}</div>`;
         el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
         el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
     });
@@ -646,7 +646,7 @@ function renderHeatmaps(data) {
                     el.dataset.islandId = iId;
                     const iAvg = islandAvgs[iId] || 0;
                     el.style.backgroundColor = getHeatmapColor(iAvg, islandThresholds);
-                    el.addEventListener('mouseenter', () => { tooltip.innerHTML = `<div class="tooltip-title">${iId}</div><div class="tooltip-body"><div>蟷ｳ蝮・ｷｮ譫・ ${formatVal(iAvg)}</div></div>`; tooltip.classList.add('visible'); });
+                    el.addEventListener('mouseenter', () => { tooltip.innerHTML = `<div class="tooltip-title">${iId}</div><div class="tooltip-body"><div>平均差枚 ${formatVal(iAvg)}</div></div>`; tooltip.classList.add('visible'); });
                     el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
                 }
             }
@@ -666,7 +666,7 @@ function renderHeatmaps(data) {
     cCtx.parentElement.style.height = `${h}px`;
     charts['row-heatmap'] = new Chart(cCtx, {
         type: 'bar',
-        data: { labels, datasets: [{ label: '蟲ｶ蟷ｳ蝮・ｷｮ譫・, data: vals, backgroundColor: vals.map(v => v > 0 ? 'rgba(59,130,246,0.7)' : 'rgba(239,68,68,0.7)'), borderRadius: 4 }] },
+        data: { labels, datasets: [{ label: '蟲ｶ平均差枚, data: vals, backgroundColor: vals.map(v => v > 0 ? 'rgba(59,130,246,0.7)' : 'rgba(239,68,68,0.7)'), borderRadius: 4 }] },
         options: {
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false }, datalabels: { display: false } },
@@ -850,7 +850,7 @@ function resetHeatmapZoom(id) {
 
 
 // ==========================================
-// MACHINE TAB (蜿ｰ逡ｪ蜿ｷ蛻･蟾ｮ譫・
+// MACHINE TAB (台番号蛻･蟾ｮ譫・
 // ==========================================
 
 // 髯､螟悶☆繧区ｩ溽ｨｮ蜷・
@@ -1099,7 +1099,7 @@ function renderMachineTab(data) {
     // Build per-machine history to find latest model per machine number
     const machineModels = {};
     data.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']), model = row['讖溽ｨｮ蜷・], date = row['譌･莉・];
+        const num = normalizeNum(row['台番号']), model = row['讖溽ｨｮ蜷・], date = row['日付];
         // 髯､螟匁ｩ溽ｨｮ繧偵せ繧ｭ繝・・
         if (EXCLUDED_MODELS.includes(model)) return;
         if (!machineModels[num]) machineModels[num] = { latestDate: '', latestModel: '', entries: {} };
@@ -1107,7 +1107,7 @@ function renderMachineTab(data) {
         const key = model;
         if (!machineModels[num].entries[key]) machineModels[num].entries[key] = { diff: 0, g: 0, count: 0, latestDate: '' };
         machineModels[num].entries[key].diff += Number(row['譛邨ょｷｮ譫・]) || 0;
-        machineModels[num].entries[key].g += Number(row['邏ｯ險医ご繝ｼ繝']) || 0;
+        machineModels[num].entries[key].g += Number(row['累計ゲーム']) || 0;
         machineModels[num].entries[key].count += 1;
         if (date > machineModels[num].entries[key].latestDate) machineModels[num].entries[key].latestDate = date;
     });
@@ -1198,9 +1198,9 @@ function computeCumulDiffByDate(allRawData) {
     // Returns map: date -> { prevMonthCumul: X, diff: Y, g: Z, count: N }
     const byMachine = {};
     allRawData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
+        const num = normalizeNum(row['台番号']);
         if (!byMachine[num]) byMachine[num] = [];
-        byMachine[num].push({ date: row['譌･莉・], diff: Number(row['譛邨ょｷｮ譫・]) || 0, g: Number(row['邏ｯ險医ご繝ｼ繝']) || 0 });
+        byMachine[num].push({ date: row['日付], diff: Number(row['譛邨ょｷｮ譫・]) || 0, g: Number(row['累計ゲーム']) || 0 });
     });
 
     // For each date, gather how many machines' prev cumul we know
@@ -1242,8 +1242,8 @@ function renderAnalysis(data) {
     const dayOfMonth = Array(32).fill().map(() => ({ diff: 0, g: 0, c: 0 }));// index=day 1-31
 
     data.forEach(row => {
-        const d = row['譌･莉・], diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['邏ｯ險医ご繝ｼ繝']) || 0;
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']), model = row['讖溽ｨｮ蜷・];
+        const d = row['日付], diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['累計ゲーム']) || 0;
+        const num = normalizeNum(row['台番号']), model = row['讖溽ｨｮ蜷・];
         const digit = parseInt(num.slice(-1));
         if (!isNaN(digit)) { digits[digit].diff += diff; digits[digit].g += g; digits[digit].c++; }
         const dayStr = d.split('-')[2], nday = parseInt(dayStr.slice(-1));
@@ -1265,18 +1265,18 @@ function renderAnalysis(data) {
 
     const buildCD = obj => { let labels = [], dDiff = [], dPayout = []; for (const [k, v] of Object.entries(obj)) { if (v.c === 0) continue; labels.push(k); dDiff.push(v.diff / v.c); dPayout.push(payout(v.diff, v.g)); } return { labels, dDiff, dPayout }; };
 
-    drawBar('chart-digit', buildCD(digits).labels, buildCD(digits).dDiff, '蟷ｳ蝮・ｷｮ譫・);
-    drawBar('chart-nday', buildCD(ndays).labels, buildCD(ndays).dDiff, '蟷ｳ蝮・ｷｮ譫・);
+    drawBar('chart-digit', buildCD(digits).labels, buildCD(digits).dDiff, '平均差枚);
+    drawBar('chart-nday', buildCD(ndays).labels, buildCD(ndays).dDiff, '平均差枚);
     const wdOrder = [1, 2, 3, 4, 5, 6, 0];
     const ordW = wdOrder.map(i => ({ ...wdays[i], name: wdNames[i] }));
-    drawBar('chart-weekday', ordW.filter(w => w.c > 0).map(w => w.name), ordW.filter(w => w.c > 0).map(w => w.diff / w.c), '蟷ｳ蝮・ｷｮ譫・);
-    drawBar('chart-position', buildCD(positions).labels, buildCD(positions).dDiff, '蟷ｳ蝮・ｷｮ譫・);
-    drawBar('chart-model', buildCD(models).labels, buildCD(models).dDiff, '蟷ｳ蝮・ｷｮ譫・, { dynamicWidth: true });
+    drawBar('chart-weekday', ordW.filter(w => w.c > 0).map(w => w.name), ordW.filter(w => w.c > 0).map(w => w.diff / w.c), '平均差枚);
+    drawBar('chart-position', buildCD(positions).labels, buildCD(positions).dDiff, '平均差枚);
+    drawBar('chart-model', buildCD(models).labels, buildCD(models).dDiff, '平均差枚, { dynamicWidth: true });
 
     // Day of month (1-31) bar charts
     const domLabels = [], domDiff = [], domPayout = [];
     for (let i = 1; i <= 31; i++) { if (dayOfMonth[i].c > 0) { domLabels.push(`${i}譌･`); domDiff.push(dayOfMonth[i].diff / dayOfMonth[i].c); domPayout.push(payout(dayOfMonth[i].diff, dayOfMonth[i].g)); } }
-    drawBar('chart-dayofmonth-diff', domLabels, domDiff, '蟷ｳ蝮・ｷｮ譫・);
+    drawBar('chart-dayofmonth-diff', domLabels, domDiff, '平均差枚);
     drawDotChart('chart-dayofmonth-payout', domLabels, domPayout, '蜃ｺ邇・%)');
 
     // Consecutive & Neighbor analysis
@@ -1290,24 +1290,24 @@ function renderAnalysis(data) {
 
     const matrix = {};
     for (const [m, hist] of Object.entries(mHistory)) {
-        hist.forEach(r => { if (!matrix[r['譌･莉・]]) matrix[r['譌･莉・]] = {}; matrix[r['譌･莉・]][m] = r; });
+        hist.forEach(r => { if (!matrix[r['日付]]) matrix[r['日付]] = {}; matrix[r['日付]][m] = r; });
     }
     for (const [m, hist] of Object.entries(mHistory)) {
-        hist.sort((a, b) => a['譌･莉・].localeCompare(b['譌･莉・]));
+        hist.sort((a, b) => a['日付].localeCompare(b['日付]));
         let negS = 0, posS = 0;
         for (const row of hist) {
-            const diff = row.diff, g = Number(row['邏ｯ險医ご繝ｼ繝']) || 0;
+            const diff = row.diff, g = Number(row['累計ゲーム']) || 0;
             if (g === 0) continue;
             consNeg[Math.min(negS, 6)].diff += diff; consNeg[Math.min(negS, 6)].c++;
             consPos[Math.min(posS, 6)].diff += diff; consPos[Math.min(posS, 6)].c++;
             if (diff < 0) { negS++; posS = 0; } else if (diff > 0) { posS++; negS = 0; } else { negS = 0; posS = 0; }
             const loc = layoutLookup[m];
             if (loc) {
-                const dmap = matrix[row['譌･莉・]];
+                const dmap = matrix[row['日付]];
                 let lM = null, rM = null;
                 layoutData[loc.row_idx].forEach(c => { if (c === '') return; const nc = normalizeNum(c); const cl = layoutLookup[nc]; if (cl && cl.col_idx === loc.col_idx - 1) lM = nc; if (cl && cl.col_idx === loc.col_idx + 1) rM = nc; });
                 const rL = lM ? dmap[lM] : null, rR = rM ? dmap[rM] : null;
-                const cSet = r => { if (!r) return null; const e = estimateSetting(r['讖溽ｨｮ蜷・], r['邏ｯ險医ご繝ｼ繝'] || 0, r['BIG'] || 0, r['REG'] || 0); return e ? e.setting : null; };
+                const cSet = r => { if (!r) return null; const e = estimateSetting(r['讖溽ｨｮ蜷・], r['累計ゲーム'] || 0, r['BIG'] || 0, r['REG'] || 0); return e ? e.setting : null; };
                 const mySet = cSet(row);
                 [rL, rR].forEach(nR => {
                     if (!nR) return;
@@ -1321,11 +1321,11 @@ function renderAnalysis(data) {
             }
         }
     }
-    drawBar('chart-cons-neg', ['0譌･', '1譌･', '2譌･', '3譌･', '4譌･', '5譌･', '6譌･莉･荳・], consNeg.map(v => v.c ? v.diff / v.c : 0), '鄙梧律蟷ｳ蝮・ｷｮ譫・);
-    drawBar('chart-cons-pos', ['0譌･', '1譌･', '2譌･', '3譌･', '4譌･', '5譌･', '6譌･莉･荳・], consPos.map(v => v.c ? v.diff / v.c : 0), '鄙梧律蟷ｳ蝮・ｷｮ譫・);
-    drawBar('chart-neighbor-diff', buildCD(neiDiffBuckets).labels, buildCD(neiDiffBuckets).dDiff, '蟷ｳ蝮・ｷｮ譫・);
+    drawBar('chart-cons-neg', ['0譌･', '1譌･', '2譌･', '3譌･', '4譌･', '5譌･', '6譌･莉･荳・], consNeg.map(v => v.c ? v.diff / v.c : 0), '鄙梧律平均差枚);
+    drawBar('chart-cons-pos', ['0譌･', '1譌･', '2譌･', '3譌･', '4譌･', '5譌･', '6譌･莉･荳・], consPos.map(v => v.c ? v.diff / v.c : 0), '鄙梧律平均差枚);
+    drawBar('chart-neighbor-diff', buildCD(neiDiffBuckets).labels, buildCD(neiDiffBuckets).dDiff, '平均差枚);
     drawBar('chart-neighbor-setting', buildCD(neiSetBuckets).labels, buildCD(neiSetBuckets).dDiff, '閾ｪ蜿ｰ蟷ｳ蝮・ｨｭ螳・);
-    drawBar('chart-both-neighbor-diff', buildCD(bothDiffBuckets).labels, buildCD(bothDiffBuckets).dDiff, '蟷ｳ蝮・ｷｮ譫・);
+    drawBar('chart-both-neighbor-diff', buildCD(bothDiffBuckets).labels, buildCD(bothDiffBuckets).dDiff, '平均差枚);
     drawBar('chart-both-neighbor-setting', buildCD(bothSetBuckets).labels, buildCD(bothSetBuckets).dDiff, '閾ｪ蜿ｰ蟷ｳ蝮・ｨｭ螳・);
 
     // Monthly cumulative analysis
@@ -1339,9 +1339,9 @@ function renderCumulAnalysis(data) {
     // 1. Group data by date to get daily total diff and total g
     const daily = {};
     data.forEach(row => {
-        const date = row['譌･莉・];
+        const date = row['日付];
         const diff = Number(row['譛邨ょｷｮ譫・]) || 0;
-        const g = Number(row['邏ｯ險医ご繝ｼ繝']) || 0;
+        const g = Number(row['累計ゲーム']) || 0;
         if (!daily[date]) daily[date] = { date, diff: 0, g: 0, count: 0 };
         daily[date].diff += diff;
         daily[date].g += g;
@@ -1438,22 +1438,22 @@ function renderCumulAnalysis(data) {
 // ==========================================
 function renderDateDetail(date) {
     const body = document.getElementById('modal-body'); body.innerHTML = '';
-    const dayData = rawData.filter(r => r['譌･莉・] === date);
+    const dayData = rawData.filter(r => r['日付] === date);
 
     // Compute consecutive streaks per machine UP TO this date
     const streakMap = {};
-    const allDates = [...new Set(rawData.map(r => r['譌･莉・]))].sort();
+    const allDates = [...new Set(rawData.map(r => r['日付]))].sort();
     const dateIdx = allDates.indexOf(date);
     rawData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
+        const num = normalizeNum(row['台番号']);
         if (!streakMap[num]) streakMap[num] = { neg: 0, pos: 0 };
     });
     // Build per-machine date-sorted history up to (not including) target date
     const mHist = {};
-    rawData.filter(r => r['譌･莉・] < date).forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
+    rawData.filter(r => r['日付] < date).forEach(row => {
+        const num = normalizeNum(row['台番号']);
         if (!mHist[num]) mHist[num] = [];
-        mHist[num].push({ date: row['譌･莉・], diff: Number(row['譛邨ょｷｮ譫・]) || 0 });
+        mHist[num].push({ date: row['日付], diff: Number(row['譛邨ょｷｮ譫・]) || 0 });
     });
     for (const [num, hist] of Object.entries(mHist)) {
         hist.sort((a, b) => a.date.localeCompare(b.date));
@@ -1467,10 +1467,10 @@ function renderDateDetail(date) {
     hmSec.innerHTML = `<h3>蟾ｮ譫壹・險ｭ螳壹ヲ繝ｼ繝医・繝・・ (${date})</h3>`;
     const ms = {};
     dayData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
+        const num = normalizeNum(row['台番号']);
         if (!ms[num]) ms[num] = { diff: 0, count: 0, big: 0, reg: 0, g: 0, model: row['讖溽ｨｮ蜷・] };
         ms[num].diff += Number(row['譛邨ょｷｮ譫・]) || 0; ms[num].big += Number(row['BIG']) || 0;
-        ms[num].reg += Number(row['REG']) || 0; ms[num].g += Number(row['邏ｯ險医ご繝ｼ繝']) || 0; ms[num].count += 1;
+        ms[num].reg += Number(row['REG']) || 0; ms[num].g += Number(row['累計ゲーム']) || 0; ms[num].count += 1;
     });
 
     // Diff heatmap for this date
@@ -1524,7 +1524,7 @@ function renderDateDetail(date) {
             if (!ms[num]) { el.style.background = 'transparent'; el.style.border = '1px solid rgba(128,128,128,0.2)'; return; }
             const st = ms[num], avg = Math.round(st.diff / st.count);
             el.style.backgroundColor = getHeatmapColor(avg, localT);
-            const t = `<div class="tooltip-title">蜿ｰ逡ｪ蜿ｷ: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>蟾ｮ譫・ ${formatVal(avg)}</div></div>`;
+            const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>蟾ｮ譫・ ${formatVal(avg)}</div></div>`;
             el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
             el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
         });
@@ -1536,7 +1536,7 @@ function renderDateDetail(date) {
                 const est = estimateSetting(st.model, st.g, st.big, st.reg);
                 if (est) { el.style.backgroundColor = SETTING_COLORS[est.setting]; sText = `謗ｨ螳夊ｨｭ螳・${est.setting}(${(est.prob * 100).toFixed(1)}%)`; }
             }
-            const t = `<div class="tooltip-title">蜿ｰ逡ｪ蜿ｷ: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div>${sText ? `<div>${sText}</div>` : ''}</div>`;
+            const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div>${sText ? `<div>${sText}</div>` : ''}</div>`;
             el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
             el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
         });
@@ -1561,7 +1561,7 @@ function renderDateDetail(date) {
             const iId = layoutLookup[num] ? layoutLookup[num].islandId : null;
             const ia = iId ? (iAvg2[iId] || 0) : 0;
             el.style.backgroundColor = getHeatmapColor(ia, iT2);
-            const t = `<div class="tooltip-title">${iId || num}</div><div class="tooltip-body"><div>蟲ｶ蟷ｳ蝮・ｷｮ譫・ ${formatVal(ia)}</div></div>`;
+            const t = `<div class="tooltip-title">${iId || num}</div><div class="tooltip-body"><div>蟲ｶ平均差枚 ${formatVal(ia)}</div></div>`;
             el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
             el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
         });
@@ -1574,7 +1574,7 @@ function renderDateDetail(date) {
             if (streakText) {
                 el.textContent = `${num}\n${streakText}`;
                 const m = ms[num] ? ms[num].model : '荳肴・';
-                const t = `<div class="tooltip-title">蜿ｰ逡ｪ蜿ｷ: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${m}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>邯咏ｶ・ ${streakText}</div></div>`;
+                const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${m}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>邯咏ｶ・ ${streakText}</div></div>`;
                 el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
                 el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
             }
@@ -1586,12 +1586,12 @@ function renderDateDetail(date) {
     mSec.innerHTML = '<h3>讖溽ｨｮ蛻･繝・・繧ｿ・亥ｹｳ蝮・ｷｮ譫夐剄鬆・ｼ・/h3>';
     const modelStats = {};
     dayData.forEach(row => {
-        const m = row['讖溽ｨｮ蜷・], diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['邏ｯ險医ご繝ｼ繝']) || 0;
+        const m = row['讖溽ｨｮ蜷・], diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['累計ゲーム']) || 0;
         if (!modelStats[m]) modelStats[m] = { diff: 0, g: 0, c: 0, win: 0 };
         modelStats[m].diff += diff; modelStats[m].g += g; modelStats[m].c++;
         if (diff > 0) modelStats[m].win++;
     });
-    let mHtml = '<div class="table-container"><table class="modal-compact-table"><thead><tr><th>讖溽ｨｮ蜷・/th><th>蜿ｰ謨ｰ</th><th>蟷ｳ蝮・ｷｮ譫・/th><th>蟷ｳ蝮⑧謨ｰ</th><th>蜍晉紫</th></tr></thead><tbody>';
+    let mHtml = '<div class="table-container"><table class="modal-compact-table"><thead><tr><th>讖溽ｨｮ蜷・/th><th>蜿ｰ謨ｰ</th><th>平均差枚/th><th>蟷ｳ蝮⑧謨ｰ</th><th>蜍晉紫</th></tr></thead><tbody>';
     Object.entries(modelStats).sort((a, b) => b[1].diff / b[1].c - a[1].diff / a[1].c).forEach(([m, st]) => {
         const avg = Math.round(st.diff / st.c), avgG = Math.round(st.g / st.c);
         mHtml += `<tr><td style="text-align:left">${m}</td><td>${st.c}</td><td>${formatVal(avg)}</td><td>${avgG.toLocaleString()}</td><td>${(st.win / st.c * 100).toFixed(1)}%</td></tr>`;
@@ -1604,12 +1604,12 @@ function renderDateDetail(date) {
     dSec.innerHTML = '<h3>譛ｫ蟆ｾ蛻･繝・・繧ｿ</h3>';
     const digitStats = Array(10).fill().map(() => ({ diff: 0, g: 0, c: 0, win: 0 }));
     dayData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']), d = parseInt(num.slice(-1));
+        const num = normalizeNum(row['台番号']), d = parseInt(num.slice(-1));
         if (isNaN(d)) return;
-        const diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['邏ｯ險医ご繝ｼ繝']) || 0;
+        const diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['累計ゲーム']) || 0;
         digitStats[d].diff += diff; digitStats[d].g += g; digitStats[d].c++; if (diff > 0) digitStats[d].win++;
     });
-    let dHtml = '<div class="table-container"><table class="modal-compact-table"><thead><tr><th>譛ｫ蟆ｾ</th><th>蜿ｰ謨ｰ</th><th>蟷ｳ蝮・ｷｮ譫・/th><th>蟷ｳ蝮⑧謨ｰ</th><th>蜃ｺ邇・/th><th>蜍晉紫</th></tr></thead><tbody>';
+    let dHtml = '<div class="table-container"><table class="modal-compact-table"><thead><tr><th>譛ｫ蟆ｾ</th><th>蜿ｰ謨ｰ</th><th>平均差枚/th><th>蟷ｳ蝮⑧謨ｰ</th><th>蜃ｺ邇・/th><th>蜍晉紫</th></tr></thead><tbody>';
     digitStats.forEach((st, i) => {
         if (st.c === 0) return;
         const avg = Math.round(st.diff / st.c), avgG = Math.round(st.g / st.c);
@@ -1620,7 +1620,7 @@ function renderDateDetail(date) {
 
     // ---- Section: Per-machine bar chart (split: labels fixed, bars scroll) ----
     const cSec = document.createElement('div'); cSec.className = 'modal-section';
-    cSec.innerHTML = '<h3>蜿ｰ逡ｪ蜿ｷ蛻･ 蟾ｮ譫壽｣偵げ繝ｩ繝・/h3>';
+    cSec.innerHTML = '<h3>台番号蛻･ 蟾ｮ譫壽｣偵げ繝ｩ繝・/h3>';
     const splitW = document.createElement('div'); splitW.className = 'split-chart-wrapper';
     splitW.innerHTML = `
         <div class="split-chart-body">
@@ -1643,7 +1643,7 @@ function renderDateDetail(date) {
     setTimeout(() => {
         const items = [];
         dayData.forEach(row => {
-            const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']), diff = Number(row['譛邨ょｷｮ譫・]) || 0;
+            const num = normalizeNum(row['台番号']), diff = Number(row['譛邨ょｷｮ譫・]) || 0;
             items.push({ label: `[ ${num} ] ${row['讖溽ｨｮ蜷・]}`, avg: diff, num });
         });
         items.sort((a, b) => parseInt(a.num) - parseInt(b.num));
@@ -1696,9 +1696,9 @@ function computeLatestStreaks() {
     const streaks = {};// num -> {neg, pos}
     const byMachine = {};
     rawData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
+        const num = normalizeNum(row['台番号']);
         if (!byMachine[num]) byMachine[num] = [];
-        byMachine[num].push({ date: row['譌･莉・], diff: Number(row['譛邨ょｷｮ譫・]) || 0 });
+        byMachine[num].push({ date: row['日付], diff: Number(row['譛邨ょｷｮ譫・]) || 0 });
     });
     for (const [num, hist] of Object.entries(byMachine)) {
         hist.sort((a, b) => a.date.localeCompare(b.date));
@@ -1719,8 +1719,8 @@ function computeLatestStreaks() {
 function getLatestRecords() {
     const latest = {};// num -> row
     rawData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
-        if (!latest[num] || row['譌･莉・] > latest[num]['譌･莉・]) latest[num] = row;
+        const num = normalizeNum(row['台番号']);
+        if (!latest[num] || row['日付] > latest[num]['日付]) latest[num] = row;
     });
     return latest;
 }
@@ -1751,7 +1751,7 @@ function computeIslandAvgFromFiltered(filteredData) {
 function computeMachineAvgFromFiltered(filteredData) {
     const ms = {};
     filteredData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
+        const num = normalizeNum(row['台番号']);
         if (!ms[num]) ms[num] = { diff: 0, count: 0 };
         ms[num].diff += Number(row['譛邨ょｷｮ譫・]) || 0; ms[num].count++;
     });
@@ -1916,7 +1916,7 @@ function renderTargetSupport(filteredData) {
     const modelAvg = computeModelAvgFromFiltered(filteredData);
     // 3. Get latest records for hover info
     const latestRec = getLatestRecords();
-    const latestDate = Object.values(latestRec).map(r => r['譌･莉・]).sort().slice(-1)[0] || '';
+    const latestDate = Object.values(latestRec).map(r => r['日付]).sort().slice(-1)[0] || '';
     const now = new Date();
     const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -2023,14 +2023,14 @@ function renderTargetSupport(filteredData) {
     // 5. Evaluate each machine in layoutLookup
     const condKeyMap = { consNeg: 'cons-neg', consPos: 'cons-pos', position: 'position', digit: 'digit', islandAvg: 'island-avg', machineAvg: 'machine-avg', modelAvg: 'model-avg', pastGame: 'past-game' };
     const machines = [];
-    const allDates = [...new Set(rawData.map(r => r['譌･莉・]))].sort();
+    const allDates = [...new Set(rawData.map(r => r['日付]))].sort();
     const dateIdxMap = {};
     allDates.forEach((d, i) => dateIdxMap[d] = i);
     const mHist = {};
     rawData.forEach(row => {
-        const num = normalizeNum(row['蜿ｰ逡ｪ蜿ｷ']);
+        const num = normalizeNum(row['台番号']);
         if (!mHist[num]) mHist[num] = {};
-        mHist[num][row['譌･莉・]] = Number(row['邏ｯ險医ご繝ｼ繝']) || 0;
+        mHist[num][row['日付]] = Number(row['累計ゲーム']) || 0;
     });
 
     for (const num of Object.keys(layoutLookup)) {
@@ -2222,12 +2222,12 @@ function renderTargetSupport(filteredData) {
     } else {
         const tbl = document.createElement('table');
         tbl.innerHTML = `<thead><tr>
-            <th>鬆・ｽ・/th><th>蜿ｰ逡ｪ蜿ｷ</th><th>讖溽ｨｮ</th><th>蜷郁・謨ｰ</th>
+            <th>鬆・ｽ・/th><th>台番号</th><th>讖溽ｨｮ</th><th>蜷郁・謨ｰ</th>
             ${activeConds.includes('consNeg') ? '<th>騾｣邯壼・縺ｿ</th>' : ''}
             ${activeConds.includes('consPos') ? '<th>騾｣邯壼・</th>' : ''}
-            ${activeConds.includes('machineAvg') ? '<th>蜿ｰ蟷ｳ蝮・ｷｮ譫・/th>' : ''}
-            ${activeConds.includes('islandAvg') ? '<th>蟲ｶ蟷ｳ蝮・ｷｮ譫・/th>' : ''}
-            ${activeConds.includes('modelAvg') ? '<th>讖溽ｨｮ蟷ｳ蝮・ｷｮ譫・/th>' : ''}
+            ${activeConds.includes('machineAvg') ? '<th>蜿ｰ平均差枚/th>' : ''}
+            ${activeConds.includes('islandAvg') ? '<th>蟲ｶ平均差枚/th>' : ''}
+            ${activeConds.includes('modelAvg') ? '<th>讖溽ｨｮ平均差枚/th>' : ''}
             ${activeConds.includes('pastGame') ? '<th>驕主悉G蟷ｳ蝮・/th>' : ''}
             ${activeConds.includes('position') ? '<th>菴咲ｽｮ</th>' : ''}
         </tr></thead>`;
@@ -2311,7 +2311,7 @@ function renderTargetSupport(filteredData) {
                 // Build info for tooltip/popup
                 const rec = m ? m.rec : null;
                 const latestDiff = rec ? Number(rec['譛邨ょｷｮ譫・]) || 0 : null;
-                const latestG = rec ? Number(rec['邏ｯ險医ご繝ｼ繝']) || 0 : null;
+                const latestG = rec ? Number(rec['累計ゲーム']) || 0 : null;
                 const latestBig = rec ? Number(rec['BIG']) || 0 : null;
                 const latestReg = rec ? Number(rec['REG']) || 0 : null;
                 const model = rec ? rec['讖溽ｨｮ蜷・] : '荳肴・';
@@ -2331,7 +2331,7 @@ function renderTargetSupport(filteredData) {
                 const pastGAvgTxt = m && m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '窶・;
                 const dataUrl = `https://ogiya.pt.teramoba2.com/handa/standgraph/?rack_no=${parseInt(num)}&dai_hall_id=2292&target_date=${todayDate}`;
 
-                const matchStr = m ? m.matchedConds.map(k => ({ consNeg: '騾｣邯壼・縺ｿ', consPos: '騾｣邯壼・', position: '隗剃ｽ咲ｽｮ', digit: '蜿ｰ譛ｫ蟆ｾ', islandAvg: '蟲ｶ蟷ｳ蝮・ｷｮ譫・, machineAvg: '蜿ｰ蟷ｳ蝮・ｷｮ譫・, pastGame: '驕主悉G謨ｰ蟷ｳ蝮・ }[k] || k)).join('繝ｻ') : '窶・;
+                const matchStr = m ? m.matchedConds.map(k => ({ consNeg: '騾｣邯壼・縺ｿ', consPos: '騾｣邯壼・', position: '隗剃ｽ咲ｽｮ', digit: '蜿ｰ譛ｫ蟆ｾ', islandAvg: '蟲ｶ平均差枚, machineAvg: '蜿ｰ平均差枚, pastGame: '驕主悉G謨ｰ蟷ｳ蝮・ }[k] || k)).join('繝ｻ') : '窶・;
 
                 if (isMobile) {
                     // Mobile: tap to show popup
@@ -2341,7 +2341,7 @@ function renderTargetSupport(filteredData) {
                         const cont = document.getElementById('target-mobile-content');
                         const link = document.getElementById('target-mobile-link');
                         cont.innerHTML = `
-                            <div class="tm-title">蜿ｰ逡ｪ蜿ｷ ${parseInt(num)} <span class="tm-model">${model}</span></div>
+                            <div class="tm-title">台番号 ${parseInt(num)} <span class="tm-model">${model}</span></div>
                             <div class="tm-badge" style="background:${color === 'transparent' ? '#444' : color}">${m ? m.totalMatch : 0}/${totalConds} 譚｡莉ｶ蜷郁・</div>
                             <div class="tm-row"><span>譛譁ｰ譌･蟾ｮ譫・/span><span>${latestDiff !== null ? formatVal(latestDiff) : '窶・}</span></div>
                             <div class="tm-row"><span>謗ｨ螳夊ｨｭ螳・/span><span>${estTxt || '窶・}</span></div>
@@ -2350,8 +2350,8 @@ function renderTargetSupport(filteredData) {
                             <div class="tm-row"><span>蜷域・遒ｺ邇・/span><span>${synProb}</span></div>
                             <div class="tm-row"><span>邱秀謨ｰ</span><span>${latestG !== null ? latestG.toLocaleString() : '窶・}</span></div>
                             <div class="tm-row"><span>騾｣邯壼・縺ｿ/蜃ｸ</span><span>${streakTxt}</span></div>
-                            <div class="tm-row"><span>蜿ｰ蟷ｳ蝮・ｷｮ譫・/span><span>${mAvgTxt}</span></div>
-                            <div class="tm-row"><span>蟲ｶ蟷ｳ蝮・ｷｮ譫・/span><span>${iAvgTxt}</span></div>
+                            <div class="tm-row"><span>蜿ｰ平均差枚/span><span>${mAvgTxt}</span></div>
+                            <div class="tm-row"><span>蟲ｶ平均差枚/span><span>${iAvgTxt}</span></div>
                             <div class="tm-row"><span>驕主悉G謨ｰ蟷ｳ蝮・/span><span>${pastGAvgTxt}</span></div>
                             <div class="tm-row"><span>蜷郁・譚｡莉ｶ</span><span>${matchStr}</span></div>
                         `;
@@ -2362,7 +2362,7 @@ function renderTargetSupport(filteredData) {
                 } else {
                     // PC: hover tooltip
                     const tipHtml = `
-                        <div class="tooltip-title">蜿ｰ逡ｪ蜿ｷ: ${parseInt(num)} ${model}</div>
+                        <div class="tooltip-title">台番号: ${parseInt(num)} ${model}</div>
                         <div class="tooltip-body">
                             <div><b>${m ? m.totalMatch : 0}/${totalConds} 譚｡莉ｶ蜷郁・</b>${matchStr ? ` (${matchStr})` : ''}  </div>
                             <div>譛譁ｰ譌･蟾ｮ譫・ ${latestDiff !== null ? formatVal(latestDiff) : '窶・}</div>
@@ -2506,7 +2506,7 @@ function setupTargetSection() {
         });
     });
 
-    // 髯､螟匁擅莉ｶ・夐℃蜴ｻG謨ｰ蟷ｳ蝮・・繝ｪ繧ｹ繝翫・
+    // 除外条件：過去G数平均のリスナー
     document.querySelectorAll('.ex-period-chk, .ex-range-chk').forEach(el => {
         el.addEventListener('change', () => {
             saveTargetConditions();
@@ -2518,7 +2518,7 @@ function setupTargetSection() {
     // --- Mobile Tap Support for cards ---
     document.querySelectorAll('.target-condition-card').forEach(card => {
         card.addEventListener('click', (e) => {
-            // Checkbox繧・Λ繝吶Ν縲∽ｸｭ霄ｫ繧堤峩謗･隗ｦ縺｣縺溷ｴ蜷医・菴輔ｂ縺励↑縺・
+            // Checkboxやラベル、中身を直接触った場合は何もしない
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL' || e.target.closest('.cond-body')) return;
             
             const mainCb = card.querySelector('.cond-header input[type="checkbox"]');
@@ -2770,3 +2770,4 @@ function renderGameCountAnalysis() {
         }
     });
 }
+

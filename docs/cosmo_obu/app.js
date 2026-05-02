@@ -1,10 +1,10 @@
-// ==========================================
+﻿// ==========================================
 // Configuration
 // ==========================================
-// コスモジャパン大府店向けキーワード（半角カタカナ）
+// 繧ｳ繧ｹ繝｢繧ｸ繝｣繝代Φ螟ｧ蠎懷ｺ怜髄縺代く繝ｼ繝ｯ繝ｼ繝会ｼ亥濠隗偵き繧ｿ繧ｫ繝奇ｼ・
 const MACHINE_KEYWORDS = {
-    hanahana: 'ハナハナ',
-    juggler: 'ジャグラー'
+    hanahana: '繝上リ繝上リ',
+    juggler: '繧ｸ繝｣繧ｰ繝ｩ繝ｼ'
 };
 
 let MACHINE_GROUPS = {
@@ -16,7 +16,7 @@ function updateMachineGroups(data) {
     const hanahanaSet = new Set();
     const jugglerSet = new Set();
     data.forEach(row => {
-        const model = row['機種名'];
+        const model = row['讖溽ｨｮ蜷・];
         if (!model) return;
         if (model.includes(MACHINE_KEYWORDS.hanahana)) hanahanaSet.add(model);
         if (model.includes(MACHINE_KEYWORDS.juggler)) jugglerSet.add(model);
@@ -26,26 +26,26 @@ function updateMachineGroups(data) {
     console.log('Dynamic MACHINE_GROUPS:', MACHINE_GROUPS);
 }
 
-// コスモジャパン大府店 設定推測用 コイン持ち・確率テーブル（仮値 ※後で実際の値に修正すること）
+// 繧ｳ繧ｹ繝｢繧ｸ繝｣繝代Φ螟ｧ蠎懷ｺ・險ｭ螳壽耳貂ｬ逕ｨ 繧ｳ繧､繝ｳ謖√■繝ｻ遒ｺ邇・ユ繝ｼ繝悶Ν・井ｻｮ蛟､ 窶ｻ蠕後〒螳滄圀縺ｮ蛟､縺ｫ菫ｮ豁｣縺吶ｋ縺薙→・・
 const MACHINE_PROBS = {
-    // ハナハナシリーズ
-    'ドラゴンハナハナ～閃光～‐30': { 1: { big: 256, reg: 642 }, 2: { big: 246, reg: 585 }, 3: { big: 235, reg: 537 }, 4: { big: 224, reg: 489 }, 5: { big: 212, reg: 442 }, 6: { big: 199, reg: 399 } },
-    'ニューキングハナハナV‐30': { 1: { big: 299, reg: 496 }, 2: { big: 291, reg: 471 }, 3: { big: 281, reg: 442 }, 4: { big: 268, reg: 409 }, 5: { big: 253, reg: 372 } },
-    'スターハナハナ‐30': { 1: { big: 270, reg: 387 }, 2: { big: 262, reg: 354 }, 3: { big: 252, reg: 322 }, 4: { big: 240, reg: 293 }, 5: { big: 229, reg: 267 }, 6: { big: 218, reg: 242 } },
-    // ジャグラーシリーズ
-    'ウルトラミラクルジャグラー': { 1: { big: 267.5, reg: 425.6 }, 2: { big: 261.1, reg: 402.1 }, 3: { big: 256.0, reg: 350.5 }, 4: { big: 242.7, reg: 322.8 }, 5: { big: 233.2, reg: 297.9 }, 6: { big: 216.3, reg: 277.7 } },
-    'ネオアイムジャグラーEX': { 1: { big: 273.1, reg: 439.8 }, 2: { big: 269.7, reg: 399.6 }, 3: { big: 269.7, reg: 331.0 }, 4: { big: 259.0, reg: 315.1 }, 5: { big: 259.0, reg: 255.0 }, 6: { big: 255.0, reg: 255.0 } },
-    'ゴーゴージャグラー3': { 1: { big: 259.0, reg: 354.2 }, 2: { big: 258.0, reg: 332.7 }, 3: { big: 257.0, reg: 306.2 }, 4: { big: 254.0, reg: 268.6 }, 5: { big: 247.3, reg: 247.3 }, 6: { big: 234.9, reg: 234.9 } },
-    'ジャグラーガールズ': { 1: { big: 273.1, reg: 381.0 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226.0, reg: 252.1 } },
-    'ミスタージャグラー': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331.0 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257.0 }, 6: { big: 237.4, reg: 237.4 } },
-    'ハッピージャグラーVIII': { 1: { big: 273.1, reg: 397.2 }, 2: { big: 270.8, reg: 362.1 }, 3: { big: 263.2, reg: 332.7 }, 4: { big: 254.0, reg: 300.6 }, 5: { big: 239.2, reg: 273.1 }, 6: { big: 226.0, reg: 256.0 } },
+    // 繝上リ繝上リ繧ｷ繝ｪ繝ｼ繧ｺ
+    '繝峨Λ繧ｴ繝ｳ繝上リ繝上リ・樣麻蜈会ｽ樞・0': { 1: { big: 256, reg: 642 }, 2: { big: 246, reg: 585 }, 3: { big: 235, reg: 537 }, 4: { big: 224, reg: 489 }, 5: { big: 212, reg: 442 }, 6: { big: 199, reg: 399 } },
+    '繝九Η繝ｼ繧ｭ繝ｳ繧ｰ繝上リ繝上リV窶・0': { 1: { big: 299, reg: 496 }, 2: { big: 291, reg: 471 }, 3: { big: 281, reg: 442 }, 4: { big: 268, reg: 409 }, 5: { big: 253, reg: 372 } },
+    '繧ｹ繧ｿ繝ｼ繝上リ繝上リ窶・0': { 1: { big: 270, reg: 387 }, 2: { big: 262, reg: 354 }, 3: { big: 252, reg: 322 }, 4: { big: 240, reg: 293 }, 5: { big: 229, reg: 267 }, 6: { big: 218, reg: 242 } },
+    // 繧ｸ繝｣繧ｰ繝ｩ繝ｼ繧ｷ繝ｪ繝ｼ繧ｺ
+    '繧ｦ繝ｫ繝医Λ繝溘Λ繧ｯ繝ｫ繧ｸ繝｣繧ｰ繝ｩ繝ｼ': { 1: { big: 267.5, reg: 425.6 }, 2: { big: 261.1, reg: 402.1 }, 3: { big: 256.0, reg: 350.5 }, 4: { big: 242.7, reg: 322.8 }, 5: { big: 233.2, reg: 297.9 }, 6: { big: 216.3, reg: 277.7 } },
+    '繝阪が繧｢繧､繝繧ｸ繝｣繧ｰ繝ｩ繝ｼEX': { 1: { big: 273.1, reg: 439.8 }, 2: { big: 269.7, reg: 399.6 }, 3: { big: 269.7, reg: 331.0 }, 4: { big: 259.0, reg: 315.1 }, 5: { big: 259.0, reg: 255.0 }, 6: { big: 255.0, reg: 255.0 } },
+    '繧ｴ繝ｼ繧ｴ繝ｼ繧ｸ繝｣繧ｰ繝ｩ繝ｼ3': { 1: { big: 259.0, reg: 354.2 }, 2: { big: 258.0, reg: 332.7 }, 3: { big: 257.0, reg: 306.2 }, 4: { big: 254.0, reg: 268.6 }, 5: { big: 247.3, reg: 247.3 }, 6: { big: 234.9, reg: 234.9 } },
+    '繧ｸ繝｣繧ｰ繝ｩ繝ｼ繧ｬ繝ｼ繝ｫ繧ｺ': { 1: { big: 273.1, reg: 381.0 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226.0, reg: 252.1 } },
+    '繝溘せ繧ｿ繝ｼ繧ｸ繝｣繧ｰ繝ｩ繝ｼ': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331.0 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257.0 }, 6: { big: 237.4, reg: 237.4 } },
+    '繝上ャ繝斐・繧ｸ繝｣繧ｰ繝ｩ繝ｼVIII': { 1: { big: 273.1, reg: 397.2 }, 2: { big: 270.8, reg: 362.1 }, 3: { big: 263.2, reg: 332.7 }, 4: { big: 254.0, reg: 300.6 }, 5: { big: 239.2, reg: 273.1 }, 6: { big: 226.0, reg: 256.0 } },
 };
 
 let rawData = [], layoutData = [], layoutLookup = {};
 let currentTab = 'all', currentPeriod = '3m', currentEventFilter = 'none', currentSection = 'summary-section';
 let charts = {}, activeDate = null, currentCumulFilter = 'all';
 let diffThresholds = { neg1: -2000, neg2: -1000, pos1: 1000, pos2: 2000 };
-// コスモ大府店はデータ分割なし（全期間使用）
+// 繧ｳ繧ｹ繝｢螟ｧ蠎懷ｺ励・繝・・繧ｿ蛻・牡縺ｪ縺暦ｼ亥・譛滄俣菴ｿ逕ｨ・・
 
 const tooltip = document.createElement('div');
 tooltip.className = 'custom-tooltip';
@@ -62,7 +62,7 @@ function percentile(arr, p) { if (!arr.length) return 0; const s = [...arr].sort
 function payout(diff, g) { return g > 0 ? (((3 * g) + diff) / (3 * g) * 100) : 0; }
 function formatVal(v) { if (v > 0) return `<span style="color:#38bdf8;font-weight:bold">+${Math.round(v).toLocaleString()}</span>`; if (v < 0) return `<span style="color:#ef4444;font-weight:bold">${Math.round(v).toLocaleString()}</span>`; return `<span style="color:#94a3b8;font-weight:bold">0</span>`; }
 function formatPct(v) { const n = parseFloat(v); if (n >= 100) return `<span style="color:#38bdf8;font-weight:bold">${n.toFixed(2)}%</span>`; return `<span style="color:#ef4444;font-weight:bold">${n.toFixed(2)}%</span>`; }
-function getPosLabel(num) { const l = layoutLookup[num]; if (!l) return '不明'; return l.pos === 0 ? '角' : l.pos === 1 ? '角2' : l.pos === 2 ? '角3' : 'その他'; }
+function getPosLabel(num) { const l = layoutLookup[num]; if (!l) return '荳肴・'; return l.pos === 0 ? '隗・ : l.pos === 1 ? '隗・' : l.pos === 2 ? '隗・' : '縺昴・莉・; }
 
 function isSignificant(digitVals, overallAvg) {
     if (digitVals.length < 3) return false;
@@ -182,7 +182,7 @@ function buildLayoutLookup() {
                 if (islandCells.length > 0) {
                     islandCells.sort((a, b) => parseInt(a) - parseInt(b));
                     const startNum = parseInt(islandCells[0]), endNum = parseInt(islandCells[islandCells.length - 1]);
-                    const islandName = `島 ${startNum}-${endNum}`;
+                    const islandName = `蟲ｶ ${startNum}-${endNum}`;
                     islandCells.forEach(cell => { layoutLookup[cell].islandId = islandName; layoutLookup[cell].islandMin = startNum; });
                 }
             }
@@ -192,7 +192,7 @@ function buildLayoutLookup() {
     for (const cell of Object.keys(layoutLookup)) {
         const numVal = parseInt(cell, 10);
         if (!layoutLookup[cell].islandId) {
-            layoutLookup[cell].islandId = `島 ${numVal}`; layoutLookup[cell].islandMin = numVal;
+            layoutLookup[cell].islandId = `蟲ｶ ${numVal}`; layoutLookup[cell].islandMin = numVal;
         }
     }
 }
@@ -269,12 +269,12 @@ function setupEventListeners() {
         btn.classList.add('active'); currentCumulFilter = btn.dataset.target;
         renderAnalysis(getFilteredData());
     });
-    // コスモ大府店は旧データトグルボタンなし
+    // 繧ｳ繧ｹ繝｢螟ｧ蠎懷ｺ励・譌ｧ繝・・繧ｿ繝医げ繝ｫ繝懊ち繝ｳ縺ｪ縺・
 }
 
 function openModal(date) {
     document.getElementById('date-detail-modal').style.display = 'flex';
-    document.getElementById('modal-date-title').textContent = date + ' 詳細';
+    document.getElementById('modal-date-title').textContent = date + ' 隧ｳ邏ｰ';
     document.body.classList.add('modal-open');
     renderDateDetail(date);
 }
@@ -291,22 +291,22 @@ function getFilteredData() {
     let f = rawData;
     if (currentTab !== 'all') {
         const m = currentTab === 'hanahana' ? MACHINE_GROUPS.hanahana : MACHINE_GROUPS.juggler;
-        f = f.filter(r => m.includes(r['機種名']));
+        f = f.filter(r => m.includes(r['讖溽ｨｮ蜷・]));
     }
     if (f.length) {
-        const dates = rawData.map(r => r['日付']).sort();
+        const dates = rawData.map(r => r['日付]).sort();
         const latestStr = dates[dates.length - 1];
         const latest = new Date(latestStr);
-        if (currentPeriod === 'latest') { f = f.filter(r => r['日付'] === latestStr); }
-        else if (currentPeriod === '3d') { const c = new Date(latest); c.setDate(c.getDate() - 2); f = f.filter(r => r['日付'] >= c.toISOString().split('T')[0]); }
-        else if (currentPeriod === '7d') { const c = new Date(latest); c.setDate(c.getDate() - 6); f = f.filter(r => r['日付'] >= c.toISOString().split('T')[0]); }
-        else if (currentPeriod === '1m') { const c = new Date(latest); c.setMonth(c.getMonth() - 1); f = f.filter(r => r['日付'] >= c.toISOString().split('T')[0]); }
-        else if (currentPeriod === '3m') { const c = new Date(latest); c.setMonth(c.getMonth() - 3); f = f.filter(r => r['日付'] >= c.toISOString().split('T')[0]); }
+        if (currentPeriod === 'latest') { f = f.filter(r => r['日付] === latestStr); }
+        else if (currentPeriod === '3d') { const c = new Date(latest); c.setDate(c.getDate() - 2); f = f.filter(r => r['日付] >= c.toISOString().split('T')[0]); }
+        else if (currentPeriod === '7d') { const c = new Date(latest); c.setDate(c.getDate() - 6); f = f.filter(r => r['日付] >= c.toISOString().split('T')[0]); }
+        else if (currentPeriod === '1m') { const c = new Date(latest); c.setMonth(c.getMonth() - 1); f = f.filter(r => r['日付] >= c.toISOString().split('T')[0]); }
+        else if (currentPeriod === '3m') { const c = new Date(latest); c.setMonth(c.getMonth() - 3); f = f.filter(r => r['日付] >= c.toISOString().split('T')[0]); }
     }
     if (currentEventFilter !== 'none') {
         f = f.filter(r => {
-            const d = new Date(r['日付']), day = d.getDate();
-            // 1の付く日: 1日, 11日, 21日, 31日
+            const d = new Date(r['日付]), day = d.getDate();
+            // 1縺ｮ莉倥￥譌･: 1譌･, 11譌･, 21譌･, 31譌･
             const isEvent = (day === 1 || day === 11 || day === 21 || day === 31);
             if (currentEventFilter === '1') return isEvent;
             if (currentEventFilter === 'not1') return !isEvent;
@@ -318,12 +318,12 @@ function getFilteredData() {
 
 function calculateDynamicThresholds(data) {
     if (!data.length) return;
-    // ヒートマップで表示されるのは台ごとの期間平均であるため、しきい値も台ごとの平均分布から算出する
+    // 繝偵・繝医・繝・・縺ｧ陦ｨ遉ｺ縺輔ｌ繧九・縺ｯ蜿ｰ縺斐→縺ｮ譛滄俣蟷ｳ蝮・〒縺ゅｋ縺溘ａ縲√＠縺阪＞蛟､繧ょ床縺斐→縺ｮ蟷ｳ蝮・・蟶・°繧臥ｮ怜・縺吶ｋ
     const machineStats = {};
     data.forEach(d => {
         const num = d['台番号'];
         if (!machineStats[num]) machineStats[num] = { total: 0, count: 0 };
-        machineStats[num].total += Number(d['最終差枚']) || 0;
+        machineStats[num].total += Number(d['譛邨ょｷｮ譫・]) || 0;
         machineStats[num].count++;
     });
     const diffs = Object.values(machineStats).map(s => Math.round(s.total / s.count));
@@ -419,8 +419,8 @@ function updateDashboard() {
 function renderSummary(data) {
     const daily = {}, monthly = {};
     data.forEach(row => {
-        const date = row['日付'], month = date.substring(0, 7);
-        const diff = Number(row['最終差枚']) || 0, g = Number(row['累計ゲーム']) || 0;
+        const date = row['日付], month = date.substring(0, 7);
+        const diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['累計ゲーム']) || 0;
         const num = normalizeNum(row['台番号']), lastDigit = parseInt(num.slice(-1));
         if (!daily[date]) daily[date] = { date, diff: 0, g: 0, count: 0, digits: Array(10).fill().map(() => []) };
         daily[date].diff += diff; daily[date].g += g; daily[date].count += 1;
@@ -448,7 +448,7 @@ function renderSummary(data) {
         d.payoutVal = payout(d.diff, d.g);
         let sigDigits = [];
         d.digits.forEach((vals, i) => { if (isSignificant(vals, d.avgDiff)) sigDigits.push(i); });
-        d.bias = sigDigits.length ? sigDigits.join(', ') : 'なし';
+        d.bias = sigDigits.length ? sigDigits.join(', ') : '縺ｪ縺・;
         chartLabels.push(d.date); chartData.push(d.avgDiff);
         const tr = document.createElement('tr');
         if (activeDate === d.date) tr.classList.add('selected');
@@ -496,13 +496,13 @@ function getHeatmapColor(v, t = diffThresholds) {
 
 function generateLegendHtml(t) {
     return `
-        <div class="legend-item"><span class="color-box" style="background:rgba(60,20,180,0.8)"></span>${Math.round(t.neg1)}以下</div>
-        <div class="legend-item"><span class="color-box" style="background:rgba(30,100,230,0.8)"></span>${Math.round(t.neg1)}〜${Math.round(t.neg2)}</div>
-        <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.8)"></span>${Math.round(t.neg2)}〜-1</div>
+        <div class="legend-item"><span class="color-box" style="background:rgba(60,20,180,0.8)"></span>${Math.round(t.neg1)}莉･荳・/div>
+        <div class="legend-item"><span class="color-box" style="background:rgba(30,100,230,0.8)"></span>${Math.round(t.neg1)}縲・{Math.round(t.neg2)}</div>
+        <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.8)"></span>${Math.round(t.neg2)}縲・1</div>
         <div class="legend-item"><span class="color-box" style="background:transparent;border:1px solid #ccc"></span>0</div>
-        <div class="legend-item"><span class="color-box" style="background:rgba(255,220,0,0.8)"></span>1〜${Math.round(t.pos1)}</div>
-        <div class="legend-item"><span class="color-box" style="background:rgba(255,130,0,0.8)"></span>${Math.round(t.pos1)}〜${Math.round(t.pos2)}</div>
-        <div class="legend-item"><span class="color-box" style="background:rgba(230,40,40,0.8)"></span>${Math.round(t.pos2)}以上</div>`;
+        <div class="legend-item"><span class="color-box" style="background:rgba(255,220,0,0.8)"></span>1縲・{Math.round(t.pos1)}</div>
+        <div class="legend-item"><span class="color-box" style="background:rgba(255,130,0,0.8)"></span>${Math.round(t.pos1)}縲・{Math.round(t.pos2)}</div>
+        <div class="legend-item"><span class="color-box" style="background:rgba(230,40,40,0.8)"></span>${Math.round(t.pos2)}莉･荳・/div>`;
 }
 
 function updateHeatmapLegends() {
@@ -514,7 +514,7 @@ function buildHeatmapGrid(wrapId, cellBuilder) {
     const wrap = document.getElementById(wrapId); wrap.innerHTML = '';
     const inner = document.createElement('div');
     inner.className = 'heatmap-inner';
-    // 末尾の全空行を除去して縦の空白を解消
+    // 譛ｫ蟆ｾ縺ｮ蜈ｨ遨ｺ陦後ｒ髯､蜴ｻ縺励※邵ｦ縺ｮ遨ｺ逋ｽ繧定ｧ｣豸・
     const trimmedData = [...layoutData];
     while (trimmedData.length > 0 && trimmedData[trimmedData.length - 1].every(c => c === '')) trimmedData.pop();
     trimmedData.forEach((row, rIdx) => {
@@ -532,13 +532,13 @@ function buildHeatmapGrid(wrapId, cellBuilder) {
 }
 
 function renderHeatmaps(data) {
-    const activeData = activeDate ? data.filter(d => d['日付'] === activeDate) : data;
+    const activeData = activeDate ? data.filter(d => d['日付] === activeDate) : data;
 
     const ms = {};
     activeData.forEach(row => {
         const num = normalizeNum(row['台番号']);
-        if (!ms[num]) ms[num] = { diff: 0, count: 0, big: 0, reg: 0, g: 0, model: row['機種名'] };
-        ms[num].diff += Number(row['最終差枚']) || 0; ms[num].big += Number(row['BIG']) || 0;
+        if (!ms[num]) ms[num] = { diff: 0, count: 0, big: 0, reg: 0, g: 0, model: row['讖溽ｨｮ蜷・] };
+        ms[num].diff += Number(row['譛邨ょｷｮ譫・]) || 0; ms[num].big += Number(row['BIG']) || 0;
         ms[num].reg += Number(row['REG']) || 0; ms[num].g += Number(row['累計ゲーム']) || 0; ms[num].count += 1;
     });
 
@@ -547,7 +547,7 @@ function renderHeatmaps(data) {
         if (!ms[num]) { el.style.backgroundColor = 'transparent'; el.style.border = '1px solid rgba(128,128,128,0.2)'; return; }
         const st = ms[num], avg = Math.round(st.diff / st.count);
         el.style.backgroundColor = getHeatmapColor(avg);
-        const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>機種: ${st.model}</div><div>位置: ${getPosLabel(num)}</div><div>平均差枚: ${formatVal(avg)}</div><div>対象日数: ${st.count}日</div></div>`;
+        const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>平均差枚 ${formatVal(avg)}</div><div>蟇ｾ雎｡譌･謨ｰ: ${st.count}譌･</div></div>`;
         el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
         el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
     });
@@ -559,10 +559,10 @@ function renderHeatmaps(data) {
         let sText = '';
         if (MACHINE_GROUPS.hanahana.includes(st.model) || MACHINE_GROUPS.juggler.includes(st.model)) {
             const est = estimateSetting(st.model, st.g, st.big, st.reg);
-            if (est) { el.style.backgroundColor = SETTING_COLORS[est.setting] || 'transparent'; sText = `推定設定:${est.setting}(${(est.prob * 100).toFixed(1)}%)`; }
+            if (est) { el.style.backgroundColor = SETTING_COLORS[est.setting] || 'transparent'; sText = `謗ｨ螳夊ｨｭ螳・${est.setting}(${(est.prob * 100).toFixed(1)}%)`; }
         }
         const avg = Math.round(st.diff / st.count);
-        const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>機種: ${st.model}</div><div>位置: ${getPosLabel(num)}</div><div>平均差枚: ${formatVal(avg)}</div>${sText ? `<div>${sText}</div>` : ''}</div>`;
+        const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>平均差枚 ${formatVal(avg)}</div>${sText ? `<div>${sText}</div>` : ''}</div>`;
         el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
         el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
     });
@@ -602,7 +602,7 @@ function renderHeatmaps(data) {
     const rowInner = document.createElement('div');
     rowInner.className = 'heatmap-inner';
 
-    // 末尾の空行を削除して縦方向の不自然な空白を解消
+    // 譛ｫ蟆ｾ縺ｮ遨ｺ陦後ｒ蜑企勁縺励※邵ｦ譁ｹ蜷代・荳崎・辟ｶ縺ｪ遨ｺ逋ｽ繧定ｧ｣豸・
     const trimmedLayout = [...layoutData];
     while (trimmedLayout.length > 0 && trimmedLayout[trimmedLayout.length - 1].every(c => c === '')) {
         trimmedLayout.pop();
@@ -621,11 +621,11 @@ function renderHeatmaps(data) {
                     el.style.backgroundColor = 'transparent';
                     el.style.border = '1px solid rgba(128,128,128,0.2)';
                 } else {
-                    const iId = layoutLookup[num] ? layoutLookup[num].islandId : '不明';
+                    const iId = layoutLookup[num] ? layoutLookup[num].islandId : '荳肴・';
                     el.dataset.islandId = iId;
                     const iAvg = islandAvgs[iId] || 0;
                     el.style.backgroundColor = getHeatmapColor(iAvg, islandThresholds);
-                    el.addEventListener('mouseenter', () => { tooltip.innerHTML = `<div class="tooltip-title">${iId}</div><div class="tooltip-body"><div>平均差枚: ${formatVal(iAvg)}</div></div>`; tooltip.classList.add('visible'); });
+                    el.addEventListener('mouseenter', () => { tooltip.innerHTML = `<div class="tooltip-title">${iId}</div><div class="tooltip-body"><div>平均差枚 ${formatVal(iAvg)}</div></div>`; tooltip.classList.add('visible'); });
                     el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
                 }
             }
@@ -645,7 +645,7 @@ function renderHeatmaps(data) {
     cCtx.parentElement.style.height = `${h}px`;
     charts['row-heatmap'] = new Chart(cCtx, {
         type: 'bar',
-        data: { labels, datasets: [{ label: '島平均差枚', data: vals, backgroundColor: vals.map(v => v > 0 ? 'rgba(59,130,246,0.7)' : 'rgba(239,68,68,0.7)'), borderRadius: 4 }] },
+        data: { labels, datasets: [{ label: '蟲ｶ平均差枚, data: vals, backgroundColor: vals.map(v => v > 0 ? 'rgba(59,130,246,0.7)' : 'rgba(239,68,68,0.7)'), borderRadius: 4 }] },
         options: {
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false }, datalabels: { display: false } },
@@ -678,9 +678,9 @@ function applyHeatmapCellSizes() {
     if (!layoutData.length) return;
     const numCols = layoutData[0].length;
     const isMobile = window.innerWidth <= 768;
-    const gapWidth = isMobile ? 1 : 2; // CSSのgap設定に合わせる
+    const gapWidth = isMobile ? 1 : 2; // CSS縺ｮgap險ｭ螳壹↓蜷医ｏ縺帙ｋ
 
-    // ヒートマップタブのメインヒートマップID
+    // 繝偵・繝医・繝・・繧ｿ繝悶・繝｡繧､繝ｳ繝偵・繝医・繝・・ID
     const mainIds = ['diff-heatmap-wrapper', 'setting-heatmap-wrapper', 'row-heatmap-wrapper', 'target-heatmap-wrapper'];
     const wrapIds = [...mainIds, 'modal-diff-hm', 'modal-set-hm', 'modal-streak-hm', 'modal-island-hm'];
 
@@ -693,13 +693,13 @@ function applyHeatmapCellSizes() {
         const minCell = 16;
         const cellSize = Math.max(minCell, Math.floor((availW - gap) / numCols));
 
-        // デフォルト設定（モバイル版やモーダル用）
+        // 繝・ヵ繧ｩ繝ｫ繝郁ｨｭ螳夲ｼ医Δ繝舌う繝ｫ迚医ｄ繝｢繝ｼ繝繝ｫ逕ｨ・・
         let maxCell = 44;
         let maxFont = 14;
 
-        // PC版のメインヒートマップのみ縮小して画面に収める
+        // PC迚医・繝｡繧､繝ｳ繝偵・繝医・繝・・縺ｮ縺ｿ邵ｮ蟆上＠縺ｦ逕ｻ髱｢縺ｫ蜿弱ａ繧・
         if (mainIds.includes(id) && !isMobile) {
-            maxCell = 19; // PC版メインタブをコンパクトにする
+            maxCell = 19; // PC迚医Γ繧､繝ｳ繧ｿ繝悶ｒ繧ｳ繝ｳ繝代け繝医↓縺吶ｋ
             maxFont = 8;
         }
 
@@ -707,7 +707,7 @@ function applyHeatmapCellSizes() {
             wrap.style.setProperty('--cell-size', maxCell + 'px');
             wrap.style.setProperty('--cell-font-size', maxFont + 'px');
         } else {
-            // セルが上限より小さくなる場合は、計算されたcellSizeを使用して画面に収める
+            // 繧ｻ繝ｫ縺御ｸ企剞繧医ｊ蟆上＆縺上↑繧句ｴ蜷医・縲∬ｨ育ｮ励＆繧後◆cellSize繧剃ｽｿ逕ｨ縺励※逕ｻ髱｢縺ｫ蜿弱ａ繧・
             const fontSize = Math.max(4, Math.floor(cellSize * 0.4));
             wrap.style.setProperty('--cell-size', cellSize + 'px');
             wrap.style.setProperty('--cell-font-size', fontSize + 'px');
@@ -733,7 +733,7 @@ function enableHeatmapPinchZoom(id) {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    // ピンチ中心点をwrapper画面上の相対座標で取得
+    // 繝斐Φ繝∽ｸｭ蠢・せ繧蜘rapper逕ｻ髱｢荳翫・逶ｸ蟇ｾ蠎ｧ讓吶〒蜿門ｾ・
     function getMidPoint(touches) {
         const rect = wrap.getBoundingClientRect();
         const mx = (touches[0].clientX + touches[1].clientX) / 2;
@@ -744,10 +744,10 @@ function enableHeatmapPinchZoom(id) {
     function updateZoom() {
         const inner = wrap.querySelector('.heatmap-inner');
         if (!inner) return;
-        // 常に左上を基準に拡大することで、端が見えなくなる問題と余白問題を解決
+        // 蟶ｸ縺ｫ蟾ｦ荳翫ｒ蝓ｺ貅悶↓諡｡螟ｧ縺吶ｋ縺薙→縺ｧ縲∫ｫｯ縺瑚ｦ九∴縺ｪ縺上↑繧句撫鬘後→菴咏區蝠城｡後ｒ隗｣豎ｺ
         inner.style.transformOrigin = `0 0`;
         inner.style.transform = `scale(${state.scale})`;
-        // スクロール可能領域をスケールに合わせて拡張
+        // 繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ蜿ｯ閭ｽ鬆伜沺繧偵せ繧ｱ繝ｼ繝ｫ縺ｫ蜷医ｏ縺帙※諡｡蠑ｵ
         if (!state.origW) {
             state.origW = inner.offsetWidth;
             state.origH = inner.offsetHeight;
@@ -755,7 +755,7 @@ function enableHeatmapPinchZoom(id) {
         inner.style.marginRight = (state.origW * (state.scale - 1)) + 'px';
         inner.style.marginBottom = (state.origH * (state.scale - 1)) + 'px';
 
-        // margin反映後にスクロール位置を調整
+        // margin蜿肴丐蠕後↓繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ菴咲ｽｮ繧定ｪｿ謨ｴ
         wrap.scrollLeft = state.targetScrollX;
         wrap.scrollTop = state.targetScrollY;
 
@@ -772,7 +772,7 @@ function enableHeatmapPinchZoom(id) {
                     state.origH = inner.offsetHeight;
                 }
                 const mid = getMidPoint(e.touches);
-                // ピンチ中心の、オリジナルの(scale=1)時のinner上の座標を記録
+                // 繝斐Φ繝∽ｸｭ蠢・・縲√が繝ｪ繧ｸ繝翫Ν縺ｮ(scale=1)譎ゅ・inner荳翫・蠎ｧ讓吶ｒ險倬鹸
                 state.originX = (mid.x + wrap.scrollLeft) / state.scale;
                 state.originY = (mid.y + wrap.scrollTop) / state.scale;
             }
@@ -785,7 +785,7 @@ function enableHeatmapPinchZoom(id) {
             const dist = getDist(e.touches);
             if (state.lastDist && state.lastDist > 0) {
                 const delta = dist / state.lastDist;
-                // 最小scale=1（applyHeatmapCellSizesがfit-to-widthを保証）
+                // 譛蟆峻cale=1・・pplyHeatmapCellSizes縺掲it-to-width繧剃ｿ晁ｨｼ・・
                 state.scale = Math.min(4, Math.max(1, state.scale * delta));
 
                 const mid = getMidPoint(e.touches);
@@ -829,16 +829,16 @@ function resetHeatmapZoom(id) {
 
 
 // ==========================================
-// MACHINE TAB (台番号別差枚)
+// MACHINE TAB (台番号蛻･蟾ｮ譫・
 // ==========================================
 
-// 除外する機種名
-const EXCLUDED_MODELS = ['ｽﾏｰﾄ沖ｽﾛ+ﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV'];
+// 髯､螟悶☆繧区ｩ溽ｨｮ蜷・
+const EXCLUDED_MODELS = ['・ｽ・擾ｽｰ・・ｲ厄ｽｽ・・・・ｽｭ・ｰ・ｷ・晢ｽｸ・橸ｾ奇ｾ・ｾ奇ｾ・'];
 
 function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, axisCanvasId, items, opts = {}, chartKey = 'machine') {
     const step = opts.step || 500;
     const initRange = opts.initRange || 4000;
-    const rowH = opts.rowH || 22; // 少し広げて視認性を向上
+    const rowH = opts.rowH || 22; // 蟆代＠蠎・￡縺ｦ隕冶ｪ肴ｧ繧貞髄荳・
     const fontSize = opts.fontSize || 11;
     const labelRatio = 0.4;
 
@@ -847,7 +847,7 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, axisCan
     const dataMax = vals.reduce((a, b) => Math.max(a, b), 0);
     const dataMin = vals.reduce((a, b) => Math.min(a, b), 0);
 
-    // 0点を中心（センター）にするための軸計算
+    // 0轤ｹ繧剃ｸｭ蠢・ｼ医そ繝ｳ繧ｿ繝ｼ・峨↓縺吶ｋ縺溘ａ縺ｮ霆ｸ險育ｮ・
     const rawMax = Math.max(initRange, Math.ceil(Math.abs(dataMax) / step) * step);
     const rawMin = Math.max(initRange, Math.ceil(Math.abs(dataMin) / step) * step);
     const absMax = Math.max(rawMax, rawMin);
@@ -855,7 +855,7 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, axisCan
     const axisMin = -absMax;
 
     const n = items.length;
-    // 上部余白を5pxに設定
+    // 荳企Κ菴咏區繧・px縺ｫ險ｭ螳・
     const topPad = 5;
     const bottomPad = 10;
     const h = n * rowH + topPad + bottomPad;
@@ -1014,7 +1014,7 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, axisCan
         type: 'bar',
         data: {
             labels: items.map(i => i.label), datasets: [{
-                label: '差枚', data: vals,
+                label: '蟾ｮ譫・, data: vals,
                 backgroundColor: vals.map(v => v > 0 ? posColor : negColor), borderRadius: 2
             }]
         },
@@ -1026,7 +1026,7 @@ function renderSplitBarChart(splitWrapperId, labelCanvasId, barCanvasId, axisCan
                 tooltip: {
                     enabled: true, animation: false,
                     position: 'nearest',
-                    callbacks: { label: (ctx) => `[${items[ctx.dataIndex].num}] ${ctx.raw.toLocaleString()}枚` }
+                    callbacks: { label: (ctx) => `[${items[ctx.dataIndex].num}] ${ctx.raw.toLocaleString()}譫啻 }
                 }
             },
             scales: {
@@ -1078,14 +1078,14 @@ function renderMachineTab(data) {
     // Build per-machine history to find latest model per machine number
     const machineModels = {};
     data.forEach(row => {
-        const num = normalizeNum(row['台番号']), model = row['機種名'], date = row['日付'];
-        // 除外機種をスキップ
+        const num = normalizeNum(row['台番号']), model = row['讖溽ｨｮ蜷・], date = row['日付];
+        // 髯､螟匁ｩ溽ｨｮ繧偵せ繧ｭ繝・・
         if (EXCLUDED_MODELS.includes(model)) return;
         if (!machineModels[num]) machineModels[num] = { latestDate: '', latestModel: '', entries: {} };
         if (date > machineModels[num].latestDate) { machineModels[num].latestDate = date; machineModels[num].latestModel = model; }
         const key = model;
         if (!machineModels[num].entries[key]) machineModels[num].entries[key] = { diff: 0, g: 0, count: 0, latestDate: '' };
-        machineModels[num].entries[key].diff += Number(row['最終差枚']) || 0;
+        machineModels[num].entries[key].diff += Number(row['譛邨ょｷｮ譫・]) || 0;
         machineModels[num].entries[key].g += Number(row['累計ゲーム']) || 0;
         machineModels[num].entries[key].count += 1;
         if (date > machineModels[num].entries[key].latestDate) machineModels[num].entries[key].latestDate = date;
@@ -1179,7 +1179,7 @@ function computeCumulDiffByDate(allRawData) {
     allRawData.forEach(row => {
         const num = normalizeNum(row['台番号']);
         if (!byMachine[num]) byMachine[num] = [];
-        byMachine[num].push({ date: row['日付'], diff: Number(row['最終差枚']) || 0, g: Number(row['累計ゲーム']) || 0 });
+        byMachine[num].push({ date: row['日付], diff: Number(row['譛邨ょｷｮ譫・]) || 0, g: Number(row['累計ゲーム']) || 0 });
     });
 
     // For each date, gather how many machines' prev cumul we know
@@ -1204,25 +1204,25 @@ function computeCumulDiffByDate(allRawData) {
 }
 
 function getBucket(v, step, min, max) {
-    if (v <= min) return `${min}以下`;
-    if (v >= max) return `${max}以上`;
+    if (v <= min) return `${min}莉･荳義;
+    if (v >= max) return `${max}莉･荳柿;
     const b = Math.floor((v - min) / step) * step + min;
-    return `${b}〜${b + step}`;
+    return `${b}縲・{b + step}`;
 }
 
 function renderAnalysis(data) {
     const digits = Array(10).fill().map(() => ({ diff: 0, g: 0, c: 0 }));
     const ndays = Array(10).fill().map(() => ({ diff: 0, g: 0, c: 0 }));
-    const wdNames = ['日', '月', '火', '水', '木', '金', '土'];
+    const wdNames = ['譌･', '譛・, '轣ｫ', '豌ｴ', '譛ｨ', '驥・, '蝨・];
     const wdays = Array(7).fill().map(() => ({ diff: 0, g: 0, c: 0 }));
     const models = {};
-    const positions = { '角': { diff: 0, c: 0 }, '角2': { diff: 0, c: 0 }, '角3': { diff: 0, c: 0 }, 'その他': { diff: 0, c: 0 } };
+    const positions = { '隗・: { diff: 0, c: 0 }, '隗・': { diff: 0, c: 0 }, '隗・': { diff: 0, c: 0 }, '縺昴・莉・: { diff: 0, c: 0 } };
     const mHistory = {};
     const dayOfMonth = Array(32).fill().map(() => ({ diff: 0, g: 0, c: 0 }));// index=day 1-31
 
     data.forEach(row => {
-        const d = row['日付'], diff = Number(row['最終差枚']) || 0, g = Number(row['累計ゲーム']) || 0;
-        const num = normalizeNum(row['台番号']), model = row['機種名'];
+        const d = row['日付], diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['累計ゲーム']) || 0;
+        const num = normalizeNum(row['台番号']), model = row['讖溽ｨｮ蜷・];
         const digit = parseInt(num.slice(-1));
         if (!isNaN(digit)) { digits[digit].diff += diff; digits[digit].g += g; digits[digit].c++; }
         const dayStr = d.split('-')[2], nday = parseInt(dayStr.slice(-1));
@@ -1232,7 +1232,7 @@ function renderAnalysis(data) {
         models[model].diff += diff; models[model].g += g; models[model].c++;
         const loc = layoutLookup[num];
         if (loc) {
-            const pk = loc.pos === 0 ? '角' : loc.pos === 1 ? '角2' : loc.pos === 2 ? '角3' : 'その他';
+            const pk = loc.pos === 0 ? '隗・ : loc.pos === 1 ? '隗・' : loc.pos === 2 ? '隗・' : '縺昴・莉・;
             positions[pk].diff += diff; positions[pk].c++;
         }
         if (!mHistory[num]) mHistory[num] = [];
@@ -1244,19 +1244,19 @@ function renderAnalysis(data) {
 
     const buildCD = obj => { let labels = [], dDiff = [], dPayout = []; for (const [k, v] of Object.entries(obj)) { if (v.c === 0) continue; labels.push(k); dDiff.push(v.diff / v.c); dPayout.push(payout(v.diff, v.g)); } return { labels, dDiff, dPayout }; };
 
-    drawBar('chart-digit', buildCD(digits).labels, buildCD(digits).dDiff, '平均差枚');
-    drawBar('chart-nday', buildCD(ndays).labels, buildCD(ndays).dDiff, '平均差枚');
+    drawBar('chart-digit', buildCD(digits).labels, buildCD(digits).dDiff, '平均差枚);
+    drawBar('chart-nday', buildCD(ndays).labels, buildCD(ndays).dDiff, '平均差枚);
     const wdOrder = [1, 2, 3, 4, 5, 6, 0];
     const ordW = wdOrder.map(i => ({ ...wdays[i], name: wdNames[i] }));
-    drawBar('chart-weekday', ordW.filter(w => w.c > 0).map(w => w.name), ordW.filter(w => w.c > 0).map(w => w.diff / w.c), '平均差枚');
-    drawBar('chart-position', buildCD(positions).labels, buildCD(positions).dDiff, '平均差枚');
-    drawBar('chart-model', buildCD(models).labels, buildCD(models).dDiff, '平均差枚', { dynamicWidth: true });
+    drawBar('chart-weekday', ordW.filter(w => w.c > 0).map(w => w.name), ordW.filter(w => w.c > 0).map(w => w.diff / w.c), '平均差枚);
+    drawBar('chart-position', buildCD(positions).labels, buildCD(positions).dDiff, '平均差枚);
+    drawBar('chart-model', buildCD(models).labels, buildCD(models).dDiff, '平均差枚, { dynamicWidth: true });
 
     // Day of month (1-31) bar charts
     const domLabels = [], domDiff = [], domPayout = [];
-    for (let i = 1; i <= 31; i++) { if (dayOfMonth[i].c > 0) { domLabels.push(`${i}日`); domDiff.push(dayOfMonth[i].diff / dayOfMonth[i].c); domPayout.push(payout(dayOfMonth[i].diff, dayOfMonth[i].g)); } }
-    drawBar('chart-dayofmonth-diff', domLabels, domDiff, '平均差枚');
-    drawDotChart('chart-dayofmonth-payout', domLabels, domPayout, '出率(%)');
+    for (let i = 1; i <= 31; i++) { if (dayOfMonth[i].c > 0) { domLabels.push(`${i}譌･`); domDiff.push(dayOfMonth[i].diff / dayOfMonth[i].c); domPayout.push(payout(dayOfMonth[i].diff, dayOfMonth[i].g)); } }
+    drawBar('chart-dayofmonth-diff', domLabels, domDiff, '平均差枚);
+    drawDotChart('chart-dayofmonth-payout', domLabels, domPayout, '蜃ｺ邇・%)');
 
     // Consecutive & Neighbor analysis
     const consNeg = Array(7).fill().map(() => ({ diff: 0, c: 0 }));
@@ -1269,10 +1269,10 @@ function renderAnalysis(data) {
 
     const matrix = {};
     for (const [m, hist] of Object.entries(mHistory)) {
-        hist.forEach(r => { if (!matrix[r['日付']]) matrix[r['日付']] = {}; matrix[r['日付']][m] = r; });
+        hist.forEach(r => { if (!matrix[r['日付]]) matrix[r['日付]] = {}; matrix[r['日付]][m] = r; });
     }
     for (const [m, hist] of Object.entries(mHistory)) {
-        hist.sort((a, b) => a['日付'].localeCompare(b['日付']));
+        hist.sort((a, b) => a['日付].localeCompare(b['日付]));
         let negS = 0, posS = 0;
         for (const row of hist) {
             const diff = row.diff, g = Number(row['累計ゲーム']) || 0;
@@ -1282,11 +1282,11 @@ function renderAnalysis(data) {
             if (diff < 0) { negS++; posS = 0; } else if (diff > 0) { posS++; negS = 0; } else { negS = 0; posS = 0; }
             const loc = layoutLookup[m];
             if (loc) {
-                const dmap = matrix[row['日付']];
+                const dmap = matrix[row['日付]];
                 let lM = null, rM = null;
                 layoutData[loc.row_idx].forEach(c => { if (c === '') return; const nc = normalizeNum(c); const cl = layoutLookup[nc]; if (cl && cl.col_idx === loc.col_idx - 1) lM = nc; if (cl && cl.col_idx === loc.col_idx + 1) rM = nc; });
                 const rL = lM ? dmap[lM] : null, rR = rM ? dmap[rM] : null;
-                const cSet = r => { if (!r) return null; const e = estimateSetting(r['機種名'], r['累計ゲーム'] || 0, r['BIG'] || 0, r['REG'] || 0); return e ? e.setting : null; };
+                const cSet = r => { if (!r) return null; const e = estimateSetting(r['讖溽ｨｮ蜷・], r['累計ゲーム'] || 0, r['BIG'] || 0, r['REG'] || 0); return e ? e.setting : null; };
                 const mySet = cSet(row);
                 [rL, rR].forEach(nR => {
                     if (!nR) return;
@@ -1300,12 +1300,12 @@ function renderAnalysis(data) {
             }
         }
     }
-    drawBar('chart-cons-neg', ['0日', '1日', '2日', '3日', '4日', '5日', '6日以上'], consNeg.map(v => v.c ? v.diff / v.c : 0), '翌日平均差枚');
-    drawBar('chart-cons-pos', ['0日', '1日', '2日', '3日', '4日', '5日', '6日以上'], consPos.map(v => v.c ? v.diff / v.c : 0), '翌日平均差枚');
-    drawBar('chart-neighbor-diff', buildCD(neiDiffBuckets).labels, buildCD(neiDiffBuckets).dDiff, '平均差枚');
-    drawBar('chart-neighbor-setting', buildCD(neiSetBuckets).labels, buildCD(neiSetBuckets).dDiff, '自台平均設定');
-    drawBar('chart-both-neighbor-diff', buildCD(bothDiffBuckets).labels, buildCD(bothDiffBuckets).dDiff, '平均差枚');
-    drawBar('chart-both-neighbor-setting', buildCD(bothSetBuckets).labels, buildCD(bothSetBuckets).dDiff, '自台平均設定');
+    drawBar('chart-cons-neg', ['0譌･', '1譌･', '2譌･', '3譌･', '4譌･', '5譌･', '6譌･莉･荳・], consNeg.map(v => v.c ? v.diff / v.c : 0), '鄙梧律平均差枚);
+    drawBar('chart-cons-pos', ['0譌･', '1譌･', '2譌･', '3譌･', '4譌･', '5譌･', '6譌･莉･荳・], consPos.map(v => v.c ? v.diff / v.c : 0), '鄙梧律平均差枚);
+    drawBar('chart-neighbor-diff', buildCD(neiDiffBuckets).labels, buildCD(neiDiffBuckets).dDiff, '平均差枚);
+    drawBar('chart-neighbor-setting', buildCD(neiSetBuckets).labels, buildCD(neiSetBuckets).dDiff, '閾ｪ蜿ｰ蟷ｳ蝮・ｨｭ螳・);
+    drawBar('chart-both-neighbor-diff', buildCD(bothDiffBuckets).labels, buildCD(bothDiffBuckets).dDiff, '平均差枚);
+    drawBar('chart-both-neighbor-setting', buildCD(bothSetBuckets).labels, buildCD(bothSetBuckets).dDiff, '閾ｪ蜿ｰ蟷ｳ蝮・ｨｭ螳・);
 
     // Monthly cumulative analysis
     renderCumulAnalysis(data);
@@ -1318,8 +1318,8 @@ function renderCumulAnalysis(data) {
     // 1. Group data by date to get daily total diff and total g
     const daily = {};
     data.forEach(row => {
-        const date = row['日付'];
-        const diff = Number(row['最終差枚']) || 0;
+        const date = row['日付];
+        const diff = Number(row['譛邨ょｷｮ譫・]) || 0;
         const g = Number(row['累計ゲーム']) || 0;
         if (!daily[date]) daily[date] = { date, diff: 0, g: 0, count: 0 };
         daily[date].diff += diff;
@@ -1365,7 +1365,7 @@ function renderCumulAnalysis(data) {
     if (currentCumulFilter === 'first_week') pts = pts.filter(p => p.isFirstWeek);
     else if (currentCumulFilter === 'last_week') pts = pts.filter(p => p.isLastWeek);
 
-    // (棒グラフ削除済み — 散布図のみ残す)
+    // (譽偵げ繝ｩ繝募炎髯､貂医∩ 窶・謨｣蟶・峙縺ｮ縺ｿ谿九☆)
 
     // Scatter plot: prevCumul(x) vs diff(y) with regression line
     const scatterData = pts.map(p => ({ x: p.prevCumul, y: p.diff, date: p.date }));
@@ -1392,19 +1392,19 @@ function renderCumulAnalysis(data) {
         charts['cumul-scatter'] = new Chart(sCtx, {
             data: {
                 datasets: [
-                    { type: 'scatter', label: '各日', data: scatterData, backgroundColor: 'rgba(99,179,237,0.8)', pointRadius: 5 },
-                    { type: 'line', label: `回帰直線 (r=${r.toFixed(3)}, slope=${slope.toFixed(4)})`, data: regLine, borderColor: 'rgba(248,113,113,0.9)', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2 }
+                    { type: 'scatter', label: '蜷・律', data: scatterData, backgroundColor: 'rgba(99,179,237,0.8)', pointRadius: 5 },
+                    { type: 'line', label: `蝗槫ｸｰ逶ｴ邱・(r=${r.toFixed(3)}, slope=${slope.toFixed(4)})`, data: regLine, borderColor: 'rgba(248,113,113,0.9)', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2 }
                 ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: true, labels: { font: { size: 13 }, color: '#f1f5f9' } }, datalabels: { display: false },
-                    tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? `${ctx.raw.date} | 累積差枚:${ctx.parsed.x.toLocaleString()} / 当日差枚:${ctx.parsed.y.toLocaleString()}` : ctx.dataset.label } }
+                    tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? `${ctx.raw.date} | 邏ｯ遨榊ｷｮ譫・${ctx.parsed.x.toLocaleString()} / 蠖捺律蟾ｮ譫・${ctx.parsed.y.toLocaleString()}` : ctx.dataset.label } }
                 },
                 scales: {
-                    x: { title: { display: true, text: '前日までの月累積差枚', font: { size: 13 } }, grid: { color: 'rgba(128,128,128,0.2)' } },
-                    y: { title: { display: true, text: '当日差枚', font: { size: 13 } }, grid: { color: 'rgba(128,128,128,0.2)' } }
+                    x: { title: { display: true, text: '蜑肴律縺ｾ縺ｧ縺ｮ譛育ｴｯ遨榊ｷｮ譫・, font: { size: 13 } }, grid: { color: 'rgba(128,128,128,0.2)' } },
+                    y: { title: { display: true, text: '蠖捺律蟾ｮ譫・, font: { size: 13 } }, grid: { color: 'rgba(128,128,128,0.2)' } }
                 }
             }
         });
@@ -1417,11 +1417,11 @@ function renderCumulAnalysis(data) {
 // ==========================================
 function renderDateDetail(date) {
     const body = document.getElementById('modal-body'); body.innerHTML = '';
-    const dayData = rawData.filter(r => r['日付'] === date);
+    const dayData = rawData.filter(r => r['日付] === date);
 
     // Compute consecutive streaks per machine UP TO this date
     const streakMap = {};
-    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
+    const allDates = [...new Set(rawData.map(r => r['日付]))].sort();
     const dateIdx = allDates.indexOf(date);
     rawData.forEach(row => {
         const num = normalizeNum(row['台番号']);
@@ -1429,10 +1429,10 @@ function renderDateDetail(date) {
     });
     // Build per-machine date-sorted history up to (not including) target date
     const mHist = {};
-    rawData.filter(r => r['日付'] < date).forEach(row => {
+    rawData.filter(r => r['日付] < date).forEach(row => {
         const num = normalizeNum(row['台番号']);
         if (!mHist[num]) mHist[num] = [];
-        mHist[num].push({ date: row['日付'], diff: Number(row['最終差枚']) || 0 });
+        mHist[num].push({ date: row['日付], diff: Number(row['譛邨ょｷｮ譫・]) || 0 });
     });
     for (const [num, hist] of Object.entries(mHist)) {
         hist.sort((a, b) => a.date.localeCompare(b.date));
@@ -1443,44 +1443,44 @@ function renderDateDetail(date) {
 
     // ---- Section: Heatmaps ----
     const hmSec = document.createElement('div'); hmSec.className = 'modal-section';
-    hmSec.innerHTML = `<h3>差枚・設定ヒートマップ (${date})</h3>`;
+    hmSec.innerHTML = `<h3>蟾ｮ譫壹・險ｭ螳壹ヲ繝ｼ繝医・繝・・ (${date})</h3>`;
     const ms = {};
     dayData.forEach(row => {
         const num = normalizeNum(row['台番号']);
-        if (!ms[num]) ms[num] = { diff: 0, count: 0, big: 0, reg: 0, g: 0, model: row['機種名'] };
-        ms[num].diff += Number(row['最終差枚']) || 0; ms[num].big += Number(row['BIG']) || 0;
+        if (!ms[num]) ms[num] = { diff: 0, count: 0, big: 0, reg: 0, g: 0, model: row['讖溽ｨｮ蜷・] };
+        ms[num].diff += Number(row['譛邨ょｷｮ譫・]) || 0; ms[num].big += Number(row['BIG']) || 0;
         ms[num].reg += Number(row['REG']) || 0; ms[num].g += Number(row['累計ゲーム']) || 0; ms[num].count += 1;
     });
 
     // Diff heatmap for this date
     const diffWrapId = 'modal-diff-hm', setWrapId = 'modal-set-hm', streakWrapId = 'modal-streak-hm', islandWrapId = 'modal-island-hm';
     hmSec.innerHTML += `
-        <div style="margin-bottom:0.5rem"><strong>差枚ヒートマップ</strong></div>
+        <div style="margin-bottom:0.5rem"><strong>蟾ｮ譫壹ヲ繝ｼ繝医・繝・・</strong></div>
         <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem" id="modal-diff-legend"></div>
         <div class="heatmap-wrapper" id="${diffWrapId}" style="margin-bottom:1rem"></div>
-        <div style="margin-bottom:0.5rem"><strong>推定設定ヒートマップ</strong></div>
+        <div style="margin-bottom:0.5rem"><strong>謗ｨ螳夊ｨｭ螳壹ヲ繝ｼ繝医・繝・・</strong></div>
         <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem">
-            <div class="legend-item"><span class="color-box" style="background:rgba(60,20,180,0.8)"></span>設定1</div>
-            <div class="legend-item"><span class="color-box" style="background:rgba(30,100,230,0.8)"></span>設定2</div>
-            <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.8)"></span>設定3</div>
-            <div class="legend-item"><span class="color-box" style="background:rgba(255,220,0,0.8)"></span>設定4</div>
-            <div class="legend-item"><span class="color-box" style="background:rgba(255,130,0,0.8)"></span>設定5</div>
-            <div class="legend-item"><span class="color-box" style="background:rgba(230,40,40,0.8)"></span>設定6</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(60,20,180,0.8)"></span>險ｭ螳・</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(30,100,230,0.8)"></span>險ｭ螳・</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.8)"></span>險ｭ螳・</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(255,220,0,0.8)"></span>險ｭ螳・</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(255,130,0,0.8)"></span>險ｭ螳・</div>
+            <div class="legend-item"><span class="color-box" style="background:rgba(230,40,40,0.8)"></span>險ｭ螳・</div>
         </div>
         <div class="heatmap-wrapper" id="${setWrapId}" style="margin-bottom:1rem"></div>
-        <div style="margin-bottom:0.5rem"><strong>島平均差枚ヒートマップ</strong></div>
+        <div style="margin-bottom:0.5rem"><strong>蟲ｶ蟷ｳ蝮・ｷｮ譫壹ヲ繝ｼ繝医・繝・・</strong></div>
         <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem" id="modal-island-legend"></div>
         <div class="heatmap-wrapper" id="${islandWrapId}" style="margin-bottom:1rem"></div>
-        <div style="margin-bottom:0.5rem"><strong>連続凹み・凸日数ヒートマップ</strong>
-          <span style="font-size:0.8rem;color:var(--text-muted);margin-left:0.5rem">（青=凹み継続、赤=凸継続）</span>
+        <div style="margin-bottom:0.5rem"><strong>騾｣邯壼・縺ｿ繝ｻ蜃ｸ譌･謨ｰ繝偵・繝医・繝・・</strong>
+          <span style="font-size:0.8rem;color:var(--text-muted);margin-left:0.5rem">・磯搨=蜃ｹ縺ｿ邯咏ｶ壹∬ｵ､=蜃ｸ邯咏ｶ夲ｼ・/span>
         </div>
         <div class="heatmap-legend" style="font-size:0.85rem;gap:0.5rem;margin-bottom:0.5rem">
-          <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.5)"></span>凹み1日</div>
-          <div class="legend-item"><span class="color-box" style="background:rgba(30,100,230,0.7)"></span>凹み2日</div>
-          <div class="legend-item"><span class="color-box" style="background:rgba(60,20,180,0.85)"></span>凹み3日以上</div>
-          <div class="legend-item"><span class="color-box" style="background:rgba(255,220,0,0.5)"></span>凸1日</div>
-          <div class="legend-item"><span class="color-box" style="background:rgba(255,130,0,0.7)"></span>凸2日</div>
-          <div class="legend-item"><span class="color-box" style="background:rgba(230,40,40,0.85)"></span>凸3日以上</div>
+          <div class="legend-item"><span class="color-box" style="background:rgba(0,190,255,0.5)"></span>蜃ｹ縺ｿ1譌･</div>
+          <div class="legend-item"><span class="color-box" style="background:rgba(30,100,230,0.7)"></span>蜃ｹ縺ｿ2譌･</div>
+          <div class="legend-item"><span class="color-box" style="background:rgba(60,20,180,0.85)"></span>蜃ｹ縺ｿ3譌･莉･荳・/div>
+          <div class="legend-item"><span class="color-box" style="background:rgba(255,220,0,0.5)"></span>蜃ｸ1譌･</div>
+          <div class="legend-item"><span class="color-box" style="background:rgba(255,130,0,0.7)"></span>蜃ｸ2譌･</div>
+          <div class="legend-item"><span class="color-box" style="background:rgba(230,40,40,0.85)"></span>蜃ｸ3譌･莉･荳・/div>
         </div>
         <div class="heatmap-wrapper" id="${streakWrapId}"></div>`;
     body.appendChild(hmSec);
@@ -1503,7 +1503,7 @@ function renderDateDetail(date) {
             if (!ms[num]) { el.style.background = 'transparent'; el.style.border = '1px solid rgba(128,128,128,0.2)'; return; }
             const st = ms[num], avg = Math.round(st.diff / st.count);
             el.style.backgroundColor = getHeatmapColor(avg, localT);
-            const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>機種: ${st.model}</div><div>位置: ${getPosLabel(num)}</div><div>差枚: ${formatVal(avg)}</div></div>`;
+            const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>蟾ｮ譫・ ${formatVal(avg)}</div></div>`;
             el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
             el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
         });
@@ -1513,9 +1513,9 @@ function renderDateDetail(date) {
             const st = ms[num]; let sText = '';
             if (MACHINE_GROUPS.hanahana.includes(st.model) || MACHINE_GROUPS.juggler.includes(st.model)) {
                 const est = estimateSetting(st.model, st.g, st.big, st.reg);
-                if (est) { el.style.backgroundColor = SETTING_COLORS[est.setting]; sText = `推定設定:${est.setting}(${(est.prob * 100).toFixed(1)}%)`; }
+                if (est) { el.style.backgroundColor = SETTING_COLORS[est.setting]; sText = `謗ｨ螳夊ｨｭ螳・${est.setting}(${(est.prob * 100).toFixed(1)}%)`; }
             }
-            const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>機種: ${st.model}</div><div>位置: ${getPosLabel(num)}</div>${sText ? `<div>${sText}</div>` : ''}</div>`;
+            const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${st.model}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div>${sText ? `<div>${sText}</div>` : ''}</div>`;
             el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
             el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
         });
@@ -1540,7 +1540,7 @@ function renderDateDetail(date) {
             const iId = layoutLookup[num] ? layoutLookup[num].islandId : null;
             const ia = iId ? (iAvg2[iId] || 0) : 0;
             el.style.backgroundColor = getHeatmapColor(ia, iT2);
-            const t = `<div class="tooltip-title">${iId || num}</div><div class="tooltip-body"><div>島平均差枚: ${formatVal(ia)}</div></div>`;
+            const t = `<div class="tooltip-title">${iId || num}</div><div class="tooltip-body"><div>蟲ｶ平均差枚 ${formatVal(ia)}</div></div>`;
             el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
             el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
         });
@@ -1548,12 +1548,12 @@ function renderDateDetail(date) {
         buildModalHeatmap(streakWrapId, (el, num) => {
             const sk = streakMap[num] || { neg: 0, pos: 0 };
             el.classList.add('streak-cell'); let streakText = '';
-            if (sk.neg > 0) { const lvl = sk.neg >= 3 ? 3 : sk.neg; el.style.backgroundColor = ['', 'rgba(0,190,255,0.5)', 'rgba(30,100,230,0.7)', 'rgba(60,20,180,0.85)'][lvl]; streakText = `凹${sk.neg}日`; }
-            else if (sk.pos > 0) { const lvl = sk.pos >= 3 ? 3 : sk.pos; el.style.backgroundColor = ['', 'rgba(255,220,0,0.5)', 'rgba(255,130,0,0.7)', 'rgba(230,40,40,0.85)'][lvl]; streakText = `凸${sk.pos}日`; }
+            if (sk.neg > 0) { const lvl = sk.neg >= 3 ? 3 : sk.neg; el.style.backgroundColor = ['', 'rgba(0,190,255,0.5)', 'rgba(30,100,230,0.7)', 'rgba(60,20,180,0.85)'][lvl]; streakText = `蜃ｹ${sk.neg}譌･`; }
+            else if (sk.pos > 0) { const lvl = sk.pos >= 3 ? 3 : sk.pos; el.style.backgroundColor = ['', 'rgba(255,220,0,0.5)', 'rgba(255,130,0,0.7)', 'rgba(230,40,40,0.85)'][lvl]; streakText = `蜃ｸ${sk.pos}譌･`; }
             if (streakText) {
                 el.textContent = `${num}\n${streakText}`;
-                const m = ms[num] ? ms[num].model : '不明';
-                const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>機種: ${m}</div><div>位置: ${getPosLabel(num)}</div><div>継続: ${streakText}</div></div>`;
+                const m = ms[num] ? ms[num].model : '荳肴・';
+                const t = `<div class="tooltip-title">台番号: ${num}</div><div class="tooltip-body"><div>讖溽ｨｮ: ${m}</div><div>菴咲ｽｮ: ${getPosLabel(num)}</div><div>邯咏ｶ・ ${streakText}</div></div>`;
                 el.addEventListener('mouseenter', () => { tooltip.innerHTML = t; tooltip.classList.add('visible'); });
                 el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
             }
@@ -1562,15 +1562,15 @@ function renderDateDetail(date) {
 
     // ---- Section: Machine summary ----
     const mSec = document.createElement('div'); mSec.className = 'modal-section';
-    mSec.innerHTML = '<h3>機種別データ（平均差枚降順）</h3>';
+    mSec.innerHTML = '<h3>讖溽ｨｮ蛻･繝・・繧ｿ・亥ｹｳ蝮・ｷｮ譫夐剄鬆・ｼ・/h3>';
     const modelStats = {};
     dayData.forEach(row => {
-        const m = row['機種名'], diff = Number(row['最終差枚']) || 0, g = Number(row['累計ゲーム']) || 0;
+        const m = row['讖溽ｨｮ蜷・], diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['累計ゲーム']) || 0;
         if (!modelStats[m]) modelStats[m] = { diff: 0, g: 0, c: 0, win: 0 };
         modelStats[m].diff += diff; modelStats[m].g += g; modelStats[m].c++;
         if (diff > 0) modelStats[m].win++;
     });
-    let mHtml = '<div class="table-container"><table class="modal-compact-table"><thead><tr><th>機種名</th><th>台数</th><th>平均差枚</th><th>平均G数</th><th>勝率</th></tr></thead><tbody>';
+    let mHtml = '<div class="table-container"><table class="modal-compact-table"><thead><tr><th>讖溽ｨｮ蜷・/th><th>蜿ｰ謨ｰ</th><th>平均差枚/th><th>蟷ｳ蝮⑧謨ｰ</th><th>蜍晉紫</th></tr></thead><tbody>';
     Object.entries(modelStats).sort((a, b) => b[1].diff / b[1].c - a[1].diff / a[1].c).forEach(([m, st]) => {
         const avg = Math.round(st.diff / st.c), avgG = Math.round(st.g / st.c);
         mHtml += `<tr><td style="text-align:left">${m}</td><td>${st.c}</td><td>${formatVal(avg)}</td><td>${avgG.toLocaleString()}</td><td>${(st.win / st.c * 100).toFixed(1)}%</td></tr>`;
@@ -1580,15 +1580,15 @@ function renderDateDetail(date) {
 
     // ---- Section: Ending digit summary ----
     const dSec = document.createElement('div'); dSec.className = 'modal-section';
-    dSec.innerHTML = '<h3>末尾別データ</h3>';
+    dSec.innerHTML = '<h3>譛ｫ蟆ｾ蛻･繝・・繧ｿ</h3>';
     const digitStats = Array(10).fill().map(() => ({ diff: 0, g: 0, c: 0, win: 0 }));
     dayData.forEach(row => {
         const num = normalizeNum(row['台番号']), d = parseInt(num.slice(-1));
         if (isNaN(d)) return;
-        const diff = Number(row['最終差枚']) || 0, g = Number(row['累計ゲーム']) || 0;
+        const diff = Number(row['譛邨ょｷｮ譫・]) || 0, g = Number(row['累計ゲーム']) || 0;
         digitStats[d].diff += diff; digitStats[d].g += g; digitStats[d].c++; if (diff > 0) digitStats[d].win++;
     });
-    let dHtml = '<div class="table-container"><table class="modal-compact-table"><thead><tr><th>末尾</th><th>台数</th><th>平均差枚</th><th>平均G数</th><th>出率</th><th>勝率</th></tr></thead><tbody>';
+    let dHtml = '<div class="table-container"><table class="modal-compact-table"><thead><tr><th>譛ｫ蟆ｾ</th><th>蜿ｰ謨ｰ</th><th>平均差枚/th><th>蟷ｳ蝮⑧謨ｰ</th><th>蜃ｺ邇・/th><th>蜍晉紫</th></tr></thead><tbody>';
     digitStats.forEach((st, i) => {
         if (st.c === 0) return;
         const avg = Math.round(st.diff / st.c), avgG = Math.round(st.g / st.c);
@@ -1599,7 +1599,7 @@ function renderDateDetail(date) {
 
     // ---- Section: Per-machine bar chart (split: labels fixed, bars scroll) ----
     const cSec = document.createElement('div'); cSec.className = 'modal-section';
-    cSec.innerHTML = '<h3>台番号別 差枚棒グラフ</h3>';
+    cSec.innerHTML = '<h3>台番号蛻･ 蟾ｮ譫壽｣偵げ繝ｩ繝・/h3>';
     const splitW = document.createElement('div'); splitW.className = 'split-chart-wrapper';
     splitW.innerHTML = `
         <div class="split-chart-body">
@@ -1622,8 +1622,8 @@ function renderDateDetail(date) {
     setTimeout(() => {
         const items = [];
         dayData.forEach(row => {
-            const num = normalizeNum(row['台番号']), diff = Number(row['最終差枚']) || 0;
-            items.push({ label: `[ ${num} ] ${row['機種名']}`, avg: diff, num });
+            const num = normalizeNum(row['台番号']), diff = Number(row['譛邨ょｷｮ譫・]) || 0;
+            items.push({ label: `[ ${num} ] ${row['讖溽ｨｮ蜷・]}`, avg: diff, num });
         });
         items.sort((a, b) => parseInt(a.num) - parseInt(b.num));
         if (charts['modal-machine']) charts['modal-machine'].destroy();
@@ -1649,10 +1649,10 @@ function buildModalHeatmap(wrapId, cellBuilder) {
         inner.appendChild(rowEl);
     });
     wrap.appendChild(inner);
-    // セルサイズをモバイルに合わせて自動調整してからピンチズーム有効化
+    // 繧ｻ繝ｫ繧ｵ繧､繧ｺ繧偵Δ繝舌う繝ｫ縺ｫ蜷医ｏ縺帙※閾ｪ蜍戊ｪｿ謨ｴ縺励※縺九ｉ繝斐Φ繝√ぜ繝ｼ繝譛牙柑蛹・
     requestAnimationFrame(() => {
         applyHeatmapCellSizes();
-        // pinchEnabledをリセットして再初期化可能にする
+        // pinchEnabled繧偵Μ繧ｻ繝・ヨ縺励※蜀榊・譛溷喧蜿ｯ閭ｽ縺ｫ縺吶ｋ
         delete wrap.dataset.pinchEnabled;
         if (_heatmapZoom[wrapId]) {
             _heatmapZoom[wrapId].scale = 1;
@@ -1677,7 +1677,7 @@ function computeLatestStreaks() {
     rawData.forEach(row => {
         const num = normalizeNum(row['台番号']);
         if (!byMachine[num]) byMachine[num] = [];
-        byMachine[num].push({ date: row['日付'], diff: Number(row['最終差枚']) || 0 });
+        byMachine[num].push({ date: row['日付], diff: Number(row['譛邨ょｷｮ譫・]) || 0 });
     });
     for (const [num, hist] of Object.entries(byMachine)) {
         hist.sort((a, b) => a.date.localeCompare(b.date));
@@ -1699,7 +1699,7 @@ function getLatestRecords() {
     const latest = {};// num -> row
     rawData.forEach(row => {
         const num = normalizeNum(row['台番号']);
-        if (!latest[num] || row['日付'] > latest[num]['日付']) latest[num] = row;
+        if (!latest[num] || row['日付] > latest[num]['日付]) latest[num] = row;
     });
     return latest;
 }
@@ -1732,7 +1732,7 @@ function computeMachineAvgFromFiltered(filteredData) {
     filteredData.forEach(row => {
         const num = normalizeNum(row['台番号']);
         if (!ms[num]) ms[num] = { diff: 0, count: 0 };
-        ms[num].diff += Number(row['最終差枚']) || 0; ms[num].count++;
+        ms[num].diff += Number(row['譛邨ょｷｮ譫・]) || 0; ms[num].count++;
     });
     const result = {};
     for (const [num, st] of Object.entries(ms)) {
@@ -1747,10 +1747,10 @@ function computeMachineAvgFromFiltered(filteredData) {
 function computeModelAvgFromFiltered(filteredData) {
     const ms = {};
     filteredData.forEach(row => {
-        const model = row['機種名'];
+        const model = row['讖溽ｨｮ蜷・];
         if (!model) return;
         if (!ms[model]) ms[model] = { diff: 0, count: 0 };
-        ms[model].diff += Number(row['最終差枚']) || 0; ms[model].count++;
+        ms[model].diff += Number(row['譛邨ょｷｮ譫・]) || 0; ms[model].count++;
     });
     const result = {};
     for (const [model, st] of Object.entries(ms)) {
@@ -1760,7 +1760,7 @@ function computeModelAvgFromFiltered(filteredData) {
 }
 
 /**
- * Determine position category (0=角,1=角2,2=角3,'other')
+ * Determine position category (0=隗・1=隗・,2=隗・,'other')
  */
 function getPosCategory(num) {
     const l = layoutLookup[num];
@@ -1773,7 +1773,7 @@ function getPosCategory(num) {
 
 /**
  * Get condition colors for N total conditions (gradient blue->red).
- * Returns array of length N+1: index 0=無色, index N=赤
+ * Returns array of length N+1: index 0=辟｡濶ｲ, index N=襍､
  */
 function getConditionColors(n) {
     if (n === 0) return ['transparent'];
@@ -1855,7 +1855,7 @@ function setupExclusionToggle() {
         grid.style.display = isOpen ? 'none' : 'grid';
         toggle.classList.toggle('active');
         const icon = document.getElementById('exclude-toggle-icon');
-        if (icon) icon.textContent = isOpen ? '+' : '−';
+        if (icon) icon.textContent = isOpen ? '+' : '竏・;
     });
 }
 
@@ -1894,7 +1894,7 @@ function renderTargetSupport(filteredData) {
     const modelAvg = computeModelAvgFromFiltered(filteredData);
     // 3. Get latest records for hover info
     const latestRec = getLatestRecords();
-    const latestDate = Object.values(latestRec).map(r => r['日付']).sort().slice(-1)[0] || '';
+    const latestDate = Object.values(latestRec).map(r => r['日付]).sort().slice(-1)[0] || '';
     const now = new Date();
     const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -1916,7 +1916,7 @@ function renderTargetSupport(filteredData) {
             enabled: document.getElementById('cond-digit-enabled').checked,
             vals: [...document.querySelectorAll('.digit-chk:checked')].map(c => parseInt(c.value))
         },
-        // 差枚系条件：有効／no threshold, sort-only
+        // 蟾ｮ譫夂ｳｻ譚｡莉ｶ・壽怏蜉ｹ・熟o threshold, sort-only
         islandAvg: {
             enabled: document.getElementById('cond-island-avg-enabled').checked
         },
@@ -2001,14 +2001,14 @@ function renderTargetSupport(filteredData) {
     // 5. Evaluate each machine in layoutLookup
     const condKeyMap = { consNeg: 'cons-neg', consPos: 'cons-pos', position: 'position', digit: 'digit', islandAvg: 'island-avg', machineAvg: 'machine-avg', modelAvg: 'model-avg', pastGame: 'past-game' };
     const machines = [];
-    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
+    const allDates = [...new Set(rawData.map(r => r['日付]))].sort();
     const dateIdxMap = {};
     allDates.forEach((d, i) => dateIdxMap[d] = i);
     const mHist = {};
     rawData.forEach(row => {
         const num = normalizeNum(row['台番号']);
         if (!mHist[num]) mHist[num] = {};
-        mHist[num][row['日付']] = Number(row['累計ゲーム']) || 0;
+        mHist[num][row['日付]] = Number(row['累計ゲーム']) || 0;
     });
 
     for (const num of Object.keys(layoutLookup)) {
@@ -2017,7 +2017,7 @@ function renderTargetSupport(filteredData) {
         if ((numVal >= 987 && numVal <= 998) || (numVal >= 1370 && numVal <= 1385)) continue;
 
         const rec = latestRec[num] || null;
-        const model = rec ? rec['機種名'] : (layoutLookup[num] ? layoutLookup[num].model : null);
+        const model = rec ? rec['讖溽ｨｮ蜷・] : (layoutLookup[num] ? layoutLookup[num].model : null);
 
         if (selectedModels.length > 0 && (!model || !selectedModels.includes(model))) {
             continue;
@@ -2089,7 +2089,7 @@ function renderTargetSupport(filteredData) {
         checkCond('consPos', conds.consPos.vals.length === 0 || conds.consPos.vals.some(v => v === 7 ? sk.pos >= 7 : sk.pos === v));
         checkCond('position', conds.position.vals.length === 0 || conds.position.vals.includes(posVal));
         checkCond('digit', conds.digit.vals.length === 0 || conds.digit.vals.includes(digit));
-        // 差枚系：データがあれば常に「合致」（フィルタなし、ソートのみ）
+        // 蟾ｮ譫夂ｳｻ・壹ョ繝ｼ繧ｿ縺後≠繧後・蟶ｸ縺ｫ縲悟粋閾ｴ縲搾ｼ医ヵ繧｣繝ｫ繧ｿ縺ｪ縺励√た繝ｼ繝医・縺ｿ・・
         checkCond('islandAvg', iAvg !== null);
         checkCond('machineAvg', mAvg !== null);
         checkCond('modelAvg', modelAvg[model] !== undefined);
@@ -2140,8 +2140,8 @@ function renderTargetSupport(filteredData) {
 
     // 6. Sort (ranking)
     machines.sort((a, b) => {
-        const aD1 = diffPriority === 'machine' ? (a.mAvg ?? -Infinity) : (diffPriority === 'island' ? (a.iAvg ?? -Infinity) : (modelAvg[a.rec?.['機種名']] ?? -Infinity));
-        const bD1 = diffPriority === 'machine' ? (b.mAvg ?? -Infinity) : (diffPriority === 'island' ? (b.iAvg ?? -Infinity) : (modelAvg[b.rec?.['機種名']] ?? -Infinity));
+        const aD1 = diffPriority === 'machine' ? (a.mAvg ?? -Infinity) : (diffPriority === 'island' ? (a.iAvg ?? -Infinity) : (modelAvg[a.rec?.['讖溽ｨｮ蜷・]] ?? -Infinity));
+        const bD1 = diffPriority === 'machine' ? (b.mAvg ?? -Infinity) : (diffPriority === 'island' ? (b.iAvg ?? -Infinity) : (modelAvg[b.rec?.['讖溽ｨｮ蜷・]] ?? -Infinity));
         const aD2 = diffPriority === 'machine' ? (a.iAvg ?? -Infinity) : (a.mAvg ?? -Infinity);
         const bD2 = diffPriority === 'machine' ? (b.iAvg ?? -Infinity) : (b.mAvg ?? -Infinity);
 
@@ -2187,7 +2187,7 @@ function renderTargetSupport(filteredData) {
         if (!colors[i] || colors[i] === 'transparent') box.style.border = '1px solid #ccc';
         item.appendChild(box);
         const txt = document.createElement('span');
-        txt.textContent = i === 0 ? '0条件合致（無色）' : `${i}条件合致`;
+        txt.textContent = i === 0 ? '0譚｡莉ｶ蜷郁・・育┌濶ｲ・・ : `${i}譚｡莉ｶ蜷郁・`;
         item.appendChild(txt);
         legendEl.appendChild(item);
     }
@@ -2196,22 +2196,22 @@ function renderTargetSupport(filteredData) {
     const rankEl = document.getElementById('target-ranking-list'); rankEl.innerHTML = '';
     const top30 = machines.filter(m => m.totalMatch > 0).slice(0, 30);
     if (top30.length === 0) {
-        rankEl.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">条件に合致する台がありませんでした。条件を緩めてみてください。</p>';
+        rankEl.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">譚｡莉ｶ縺ｫ蜷郁・縺吶ｋ蜿ｰ縺後≠繧翫∪縺帙ｓ縺ｧ縺励◆縲よ擅莉ｶ繧堤ｷｩ繧√※縺ｿ縺ｦ縺上□縺輔＞縲・/p>';
     } else {
         const tbl = document.createElement('table');
         tbl.innerHTML = `<thead><tr>
-            <th>順位</th><th>台番号</th><th>機種</th><th>合致数</th>
-            ${activeConds.includes('consNeg') ? '<th>連続凹み</th>' : ''}
-            ${activeConds.includes('consPos') ? '<th>連続凸</th>' : ''}
-            ${activeConds.includes('machineAvg') ? '<th>台平均差枚</th>' : ''}
-            ${activeConds.includes('islandAvg') ? '<th>島平均差枚</th>' : ''}
-            ${activeConds.includes('modelAvg') ? '<th>機種平均差枚</th>' : ''}
-            ${activeConds.includes('pastGame') ? '<th>過去G平均</th>' : ''}
-            ${activeConds.includes('position') ? '<th>位置</th>' : ''}
+            <th>鬆・ｽ・/th><th>台番号</th><th>讖溽ｨｮ</th><th>蜷郁・謨ｰ</th>
+            ${activeConds.includes('consNeg') ? '<th>騾｣邯壼・縺ｿ</th>' : ''}
+            ${activeConds.includes('consPos') ? '<th>騾｣邯壼・</th>' : ''}
+            ${activeConds.includes('machineAvg') ? '<th>蜿ｰ平均差枚/th>' : ''}
+            ${activeConds.includes('islandAvg') ? '<th>蟲ｶ平均差枚/th>' : ''}
+            ${activeConds.includes('modelAvg') ? '<th>讖溽ｨｮ平均差枚/th>' : ''}
+            ${activeConds.includes('pastGame') ? '<th>驕主悉G蟷ｳ蝮・/th>' : ''}
+            ${activeConds.includes('position') ? '<th>菴咲ｽｮ</th>' : ''}
         </tr></thead>`;
         const tbody = document.createElement('tbody');
         top30.forEach((m, i) => {
-            const model = m.rec ? m.rec['機種名'] : '-';
+            const model = m.rec ? m.rec['讖溽ｨｮ蜷・] : '-';
             const tr = document.createElement('tr');
             tr.style.borderLeft = `4px solid ${colorMap[m.num] === 'transparent' ? '#444' : colorMap[m.num]}`;
             tr.classList.add('clickable');
@@ -2226,31 +2226,31 @@ function renderTargetSupport(filteredData) {
                 <td style="font-weight:bold">${parseInt(m.num)}</td>
                 <td style="text-align:left;font-size:0.85em">${model}</td>
                 <td><span style="background:${colorMap[m.num] === 'transparent' ? '#444' : colorMap[m.num]};padding:2px 8px;border-radius:10px;font-weight:bold">${m.totalMatch}/${totalConds}</span></td>
-                ${activeConds.includes('consNeg') ? `<td style="${mc.includes('consNeg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.sk.neg > 0 ? `凹${m.sk.neg}日` : '–'}</td>` : ''}
-                ${activeConds.includes('consPos') ? `<td style="${mc.includes('consPos') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.sk.pos > 0 ? `凸${m.sk.pos}日` : '–'}</td>` : ''}
-                ${activeConds.includes('machineAvg') ? `<td style="${mc.includes('machineAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${mAvgVal !== null ? formatVal(mAvgVal) : '–'}</td>` : ''}
-                ${activeConds.includes('islandAvg') ? `<td style="${mc.includes('islandAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${iAvgVal !== null ? formatVal(iAvgVal) : '–'}</td>` : ''}
-                ${activeConds.includes('modelAvg') ? `<td style="${mc.includes('modelAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${modAvgVal !== null ? formatVal(modAvgVal) : '–'}</td>` : ''}
-                ${activeConds.includes('pastGame') ? `<td style="${mc.includes('pastGame') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '–'}</td>` : ''}
+                ${activeConds.includes('consNeg') ? `<td style="${mc.includes('consNeg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.sk.neg > 0 ? `蜃ｹ${m.sk.neg}譌･` : '窶・}</td>` : ''}
+                ${activeConds.includes('consPos') ? `<td style="${mc.includes('consPos') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.sk.pos > 0 ? `蜃ｸ${m.sk.pos}譌･` : '窶・}</td>` : ''}
+                ${activeConds.includes('machineAvg') ? `<td style="${mc.includes('machineAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${mAvgVal !== null ? formatVal(mAvgVal) : '窶・}</td>` : ''}
+                ${activeConds.includes('islandAvg') ? `<td style="${mc.includes('islandAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${iAvgVal !== null ? formatVal(iAvgVal) : '窶・}</td>` : ''}
+                ${activeConds.includes('modelAvg') ? `<td style="${mc.includes('modelAvg') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${modAvgVal !== null ? formatVal(modAvgVal) : '窶・}</td>` : ''}
+                ${activeConds.includes('pastGame') ? `<td style="${mc.includes('pastGame') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '窶・}</td>` : ''}
                 ${activeConds.includes('position') ? `<td style="${mc.includes('position') ? 'background:rgba(255,215,0,0.15);font-weight:bold;' : ''}">${getPosLabel(m.num)}</td>` : ''}
             `;
 
-            // --- 修正後のクリックイベント処理 ---
+            // --- 菫ｮ豁｣蠕後・繧ｯ繝ｪ繝・け繧､繝吶Φ繝亥・逅・---
             tr.addEventListener('click', () => {
                 const cell = document.querySelector(`#target-heatmap-wrapper .heatmap-cell[data-num="${m.num}"]`);
                 if (cell) {
-                    // 他のハイライトを解除
+                    // 莉悶・繝上う繝ｩ繧､繝医ｒ隗｣髯､
                     document.querySelectorAll('#target-heatmap-wrapper .highlight-machine').forEach(c => {
                         c.classList.remove('highlight-machine');
                     });
                     
-                    // ハイライト用クラスを追加 (!importantがあるためインラインスタイルより優先される)
+                    // 繝上う繝ｩ繧､繝育畑繧ｯ繝ｩ繧ｹ繧定ｿｽ蜉 (!important縺後≠繧九◆繧√う繝ｳ繝ｩ繧､繝ｳ繧ｹ繧ｿ繧､繝ｫ繧医ｊ蜆ｪ蜈医＆繧後ｋ)
                     cell.classList.add('highlight-machine');
                     
-                    // スムーズスクロール
+                    // 繧ｹ繝繝ｼ繧ｺ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ
                     cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
                     
-                    // 強制再描画（アニメーションを即時開始させるため）
+                    // 蠑ｷ蛻ｶ蜀肴緒逕ｻ・医い繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ繧貞叉譎る幕蟋九＆縺帙ｋ縺溘ａ・・
                     void cell.offsetWidth;
                 }
             });
@@ -2288,28 +2288,28 @@ function renderTargetSupport(filteredData) {
 
                 // Build info for tooltip/popup
                 const rec = m ? m.rec : null;
-                const latestDiff = rec ? Number(rec['最終差枚']) || 0 : null;
+                const latestDiff = rec ? Number(rec['譛邨ょｷｮ譫・]) || 0 : null;
                 const latestG = rec ? Number(rec['累計ゲーム']) || 0 : null;
                 const latestBig = rec ? Number(rec['BIG']) || 0 : null;
                 const latestReg = rec ? Number(rec['REG']) || 0 : null;
-                const model = rec ? rec['機種名'] : '不明';
+                const model = rec ? rec['讖溽ｨｮ蜷・] : '荳肴・';
                 const sk = m ? m.sk : { neg: 0, pos: 0 };
 
                 let estTxt = '';
                 if (rec && (MACHINE_GROUPS.hanahana.includes(model) || MACHINE_GROUPS.juggler.includes(model))) {
                     const est = estimateSetting(model, latestG, latestBig, latestReg);
-                    if (est) estTxt = `推定設定:${est.setting}（${(est.prob * 100).toFixed(1)}%）`;
+                    if (est) estTxt = `謗ｨ螳夊ｨｭ螳・${est.setting}・・{(est.prob * 100).toFixed(1)}%・荏;
                 }
-                const bigProb = latestG && latestBig ? `1/${Math.round(latestG / latestBig)}` : '–';
-                const regProb = latestG && latestReg ? `1/${Math.round(latestG / latestReg)}` : '–';
-                const synProb = latestG && (latestBig + latestReg) ? `1/${Math.round(latestG / (latestBig + latestReg))}` : '–';
-                const streakTxt = sk.neg > 0 ? `凹み${sk.neg}日連続` : sk.pos > 0 ? `凸${sk.pos}日連続` : 'なし';
-                const mAvgTxt = m && m.mAvg !== null ? `${Math.round(m.mAvg).toLocaleString()}枚` : '–';
-                const iAvgTxt = m && m.iAvg !== null ? `${Math.round(m.iAvg).toLocaleString()}枚` : '–';
-                const pastGAvgTxt = m && m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '–';
+                const bigProb = latestG && latestBig ? `1/${Math.round(latestG / latestBig)}` : '窶・;
+                const regProb = latestG && latestReg ? `1/${Math.round(latestG / latestReg)}` : '窶・;
+                const synProb = latestG && (latestBig + latestReg) ? `1/${Math.round(latestG / (latestBig + latestReg))}` : '窶・;
+                const streakTxt = sk.neg > 0 ? `蜃ｹ縺ｿ${sk.neg}譌･騾｣邯啻 : sk.pos > 0 ? `蜃ｸ${sk.pos}譌･騾｣邯啻 : '縺ｪ縺・;
+                const mAvgTxt = m && m.mAvg !== null ? `${Math.round(m.mAvg).toLocaleString()}譫啻 : '窶・;
+                const iAvgTxt = m && m.iAvg !== null ? `${Math.round(m.iAvg).toLocaleString()}譫啻 : '窶・;
+                const pastGAvgTxt = m && m.avgG !== null && m.avgG !== undefined ? `${Math.round(m.avgG).toLocaleString()}G` : '窶・;
                 const dataUrl = `https://cosmojapan.pt.teramoba2.com/obu/standgraph/?rack_no=${parseInt(num)}&dai_hall_id=2648&target_date=${todayDate}`;
 
-                const matchStr = m ? m.matchedConds.map(k => ({ consNeg: '連続凹み', consPos: '連続凸', position: '角位置', digit: '台末尾', islandAvg: '島平均差枚', machineAvg: '台平均差枚', pastGame: '過去G数平均' }[k] || k)).join('・') : '–';
+                const matchStr = m ? m.matchedConds.map(k => ({ consNeg: '騾｣邯壼・縺ｿ', consPos: '騾｣邯壼・', position: '隗剃ｽ咲ｽｮ', digit: '蜿ｰ譛ｫ蟆ｾ', islandAvg: '蟲ｶ平均差枚, machineAvg: '蜿ｰ平均差枚, pastGame: '驕主悉G謨ｰ蟷ｳ蝮・ }[k] || k)).join('繝ｻ') : '窶・;
 
                 if (isMobile) {
                     // Mobile: tap to show popup
@@ -2320,18 +2320,18 @@ function renderTargetSupport(filteredData) {
                         const link = document.getElementById('target-mobile-link');
                         cont.innerHTML = `
                             <div class="tm-title">台番号 ${parseInt(num)} <span class="tm-model">${model}</span></div>
-                            <div class="tm-badge" style="background:${color === 'transparent' ? '#444' : color}">${m ? m.totalMatch : 0}/${totalConds} 条件合致</div>
-                            <div class="tm-row"><span>最新日差枚</span><span>${latestDiff !== null ? formatVal(latestDiff) : '–'}</span></div>
-                            <div class="tm-row"><span>推定設定</span><span>${estTxt || '–'}</span></div>
-                            <div class="tm-row"><span>BIG確率</span><span>${bigProb}</span></div>
-                            <div class="tm-row"><span>REG確率</span><span>${regProb}</span></div>
-                            <div class="tm-row"><span>合成確率</span><span>${synProb}</span></div>
-                            <div class="tm-row"><span>総G数</span><span>${latestG !== null ? latestG.toLocaleString() : '–'}</span></div>
-                            <div class="tm-row"><span>連続凹み/凸</span><span>${streakTxt}</span></div>
-                            <div class="tm-row"><span>台平均差枚</span><span>${mAvgTxt}</span></div>
-                            <div class="tm-row"><span>島平均差枚</span><span>${iAvgTxt}</span></div>
-                            <div class="tm-row"><span>過去G数平均</span><span>${pastGAvgTxt}</span></div>
-                            <div class="tm-row"><span>合致条件</span><span>${matchStr}</span></div>
+                            <div class="tm-badge" style="background:${color === 'transparent' ? '#444' : color}">${m ? m.totalMatch : 0}/${totalConds} 譚｡莉ｶ蜷郁・</div>
+                            <div class="tm-row"><span>譛譁ｰ譌･蟾ｮ譫・/span><span>${latestDiff !== null ? formatVal(latestDiff) : '窶・}</span></div>
+                            <div class="tm-row"><span>謗ｨ螳夊ｨｭ螳・/span><span>${estTxt || '窶・}</span></div>
+                            <div class="tm-row"><span>BIG遒ｺ邇・/span><span>${bigProb}</span></div>
+                            <div class="tm-row"><span>REG遒ｺ邇・/span><span>${regProb}</span></div>
+                            <div class="tm-row"><span>蜷域・遒ｺ邇・/span><span>${synProb}</span></div>
+                            <div class="tm-row"><span>邱秀謨ｰ</span><span>${latestG !== null ? latestG.toLocaleString() : '窶・}</span></div>
+                            <div class="tm-row"><span>騾｣邯壼・縺ｿ/蜃ｸ</span><span>${streakTxt}</span></div>
+                            <div class="tm-row"><span>蜿ｰ平均差枚/span><span>${mAvgTxt}</span></div>
+                            <div class="tm-row"><span>蟲ｶ平均差枚/span><span>${iAvgTxt}</span></div>
+                            <div class="tm-row"><span>驕主悉G謨ｰ蟷ｳ蝮・/span><span>${pastGAvgTxt}</span></div>
+                            <div class="tm-row"><span>蜷郁・譚｡莉ｶ</span><span>${matchStr}</span></div>
                         `;
                         link.href = dataUrl;
                         pop.style.display = 'flex';
@@ -2342,15 +2342,15 @@ function renderTargetSupport(filteredData) {
                     const tipHtml = `
                         <div class="tooltip-title">台番号: ${parseInt(num)} ${model}</div>
                         <div class="tooltip-body">
-                            <div><b>${m ? m.totalMatch : 0}/${totalConds} 条件合致</b>${matchStr ? ` (${matchStr})` : ''}  </div>
-                            <div>最新日差枚: ${latestDiff !== null ? formatVal(latestDiff) : '–'}</div>
+                            <div><b>${m ? m.totalMatch : 0}/${totalConds} 譚｡莉ｶ蜷郁・</b>${matchStr ? ` (${matchStr})` : ''}  </div>
+                            <div>譛譁ｰ譌･蟾ｮ譫・ ${latestDiff !== null ? formatVal(latestDiff) : '窶・}</div>
                             ${estTxt ? `<div>${estTxt}</div>` : ''}
-                            <div>BIG: ${bigProb} / REG: ${regProb} / 合成: ${synProb}</div>
-                            <div>総G数: ${latestG !== null ? latestG.toLocaleString() : '–'}</div>
-                            <div>連続: ${streakTxt}</div>
-                            <div>台平均: ${mAvgTxt} / 島平均: ${iAvgTxt}</div>
-                            <div>過去G平均: ${pastGAvgTxt}</div>
-                            <div style="margin-top:4px;font-size:0.85em;color:#93c5fd">クリックでデータサイトへ</div>
+                            <div>BIG: ${bigProb} / REG: ${regProb} / 蜷域・: ${synProb}</div>
+                            <div>邱秀謨ｰ: ${latestG !== null ? latestG.toLocaleString() : '窶・}</div>
+                            <div>騾｣邯・ ${streakTxt}</div>
+                            <div>蜿ｰ蟷ｳ蝮・ ${mAvgTxt} / 蟲ｶ蟷ｳ蝮・ ${iAvgTxt}</div>
+                            <div>驕主悉G蟷ｳ蝮・ ${pastGAvgTxt}</div>
+                            <div style="margin-top:4px;font-size:0.85em;color:#93c5fd">繧ｯ繝ｪ繝・け縺ｧ繝・・繧ｿ繧ｵ繧､繝医∈</div>
                         </div>`;
                     el.addEventListener('mouseenter', () => { tooltip.innerHTML = tipHtml; tooltip.classList.add('visible'); });
                     el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
@@ -2372,7 +2372,7 @@ function renderTargetSupport(filteredData) {
 function populateTargetModelFilter() {
     const filterContainer = document.getElementById('target-model-filter-list');
     if (!filterContainer) return;
-    const models = new Set(rawData.map(r => r['機種名']).filter(Boolean));
+    const models = new Set(rawData.map(r => r['讖溽ｨｮ蜷・]).filter(Boolean));
     const sortedModels = Array.from(models).sort();
 
     filterContainer.innerHTML = '';
@@ -2436,7 +2436,7 @@ function setupTargetSection() {
             if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
         });
     });
-    // 機種平均のリスナーも追加
+    // 讖溽ｨｮ蟷ｳ蝮・・繝ｪ繧ｹ繝翫・繧りｿｽ蜉
     document.getElementById('cond-model-avg-enabled').addEventListener('change', () => {
         saveTargetConditions();
         const res = document.getElementById('target-results');
@@ -2484,7 +2484,7 @@ function setupTargetSection() {
         });
     });
 
-    // 除外条件：過去G数平均のリスナー
+    // 髯､螟匁擅莉ｶ・夐℃蜴ｻG謨ｰ蟷ｳ蝮・・繝ｪ繧ｹ繝翫・
     document.querySelectorAll('.ex-period-chk, .ex-range-chk').forEach(el => {
         el.addEventListener('change', () => {
             saveTargetConditions();
@@ -2496,7 +2496,7 @@ function setupTargetSection() {
     // --- Mobile Tap Support for cards ---
     document.querySelectorAll('.target-condition-card').forEach(card => {
         card.addEventListener('click', (e) => {
-            // Checkboxやラベル、中身を直接触った場合は何もしない
+            // Checkbox繧・Λ繝吶Ν縲∽ｸｭ霄ｫ繧堤峩謗･隗ｦ縺｣縺溷ｴ蜷医・菴輔ｂ縺励↑縺・
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL' || e.target.closest('.cond-body')) return;
             
             const mainCb = card.querySelector('.cond-header input[type="checkbox"]');
@@ -2682,7 +2682,7 @@ function renderGameCountAnalysis() {
     const periodBtn = document.querySelector('#game-count-period-tabs .tab-btn.active');
     const period = parseInt(periodBtn ? periodBtn.dataset.period : '1');
 
-    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
+    const allDates = [...new Set(rawData.map(r => r['日付]))].sort();
     if (allDates.length < 2) return;
 
     const dateIdxMap = {};
@@ -2692,7 +2692,7 @@ function renderGameCountAnalysis() {
     rawData.forEach(row => {
         const num = normalizeNum(row['台番号']);
         if (!mHist[num]) mHist[num] = {};
-        mHist[num][row['日付']] = Number(row['累計ゲーム']) || 0;
+        mHist[num][row['日付]] = Number(row['累計ゲーム']) || 0;
     });
 
     const targetData = getFilteredData();
@@ -2700,8 +2700,8 @@ function renderGameCountAnalysis() {
 
     targetData.forEach(row => {
         const num = normalizeNum(row['台番号']);
-        const targetDate = row['日付'];
-        const targetDiff = Number(row['最終差枚']) || 0;
+        const targetDate = row['日付];
+        const targetDiff = Number(row['譛邨ょｷｮ譫・]) || 0;
 
         const currentIdx = dateIdxMap[targetDate];
         if (currentIdx === undefined) return;
@@ -2741,11 +2741,12 @@ function renderGameCountAnalysis() {
     const posColor = 'rgba(59,130,246,0.8)';
     const negColor = 'rgba(239,68,68,0.8)';
 
-    drawBar('chart-game-count-diff', labels, values, '平均差枚', {
+    drawBar('chart-game-count-diff', labels, values, '平均差枚, {
         datasetExtras: {
             backgroundColor: values.map(v => v > 0 ? posColor : negColor)
         }
     });
 }
+
 
 
