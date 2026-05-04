@@ -31,14 +31,13 @@ const MACHINE_PROBS = {
     // ハナハナシリーズ
     'ドラゴンハナハナ～閃光～‐30': { 1: { big: 256, reg: 642 }, 2: { big: 246, reg: 585 }, 3: { big: 235, reg: 537 }, 4: { big: 224, reg: 489 }, 5: { big: 212, reg: 442 }, 6: { big: 199, reg: 399 } },
     'ニューキングハナハナV‐30': { 1: { big: 299, reg: 496 }, 2: { big: 291, reg: 471 }, 3: { big: 281, reg: 442 }, 4: { big: 268, reg: 409 }, 5: { big: 253, reg: 372 } },
-    'スターハナハナ‐30': { 1: { big: 270, reg: 387 }, 2: { big: 262, reg: 354 }, 3: { big: 252, reg: 322 }, 4: { big: 240, reg: 293 }, 5: { big: 229, reg: 267 }, 6: { big: 218, reg: 242 } },
+    'キングハナハナ-30': { 1: { big: 292, reg: 489 }, 2: { big: 280, reg: 452 }, 3: { big: 268, reg: 420 }, 4: { big: 257, reg: 390 }, 5: { big: 244, reg: 360 }, 6: { big: 232, reg: 332 } },
     // ジャグラーシリーズ
-    'ウルトラミラクルジャグラー': { 1: { big: 267.5, reg: 425.6 }, 2: { big: 261.1, reg: 402.1 }, 3: { big: 256.0, reg: 350.5 }, 4: { big: 242.7, reg: 322.8 }, 5: { big: 233.2, reg: 297.9 }, 6: { big: 216.3, reg: 277.7 } },
     'ネオアイムジャグラーEX': { 1: { big: 273.1, reg: 439.8 }, 2: { big: 269.7, reg: 399.6 }, 3: { big: 269.7, reg: 331.0 }, 4: { big: 259.0, reg: 315.1 }, 5: { big: 259.0, reg: 255.0 }, 6: { big: 255.0, reg: 255.0 } },
-    'ゴーゴージャグラー3': { 1: { big: 259.0, reg: 354.2 }, 2: { big: 258.0, reg: 332.7 }, 3: { big: 257.0, reg: 306.2 }, 4: { big: 254.0, reg: 268.6 }, 5: { big: 247.3, reg: 247.3 }, 6: { big: 234.9, reg: 234.9 } },
-    'ジャグラーガールズ': { 1: { big: 273.1, reg: 381.0 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226.0, reg: 252.1 } },
-    'ミスタージャグラー': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331.0 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257.0 }, 6: { big: 237.4, reg: 237.4 } },
-    'ハッピージャグラーVIII': { 1: { big: 273.1, reg: 397.2 }, 2: { big: 270.8, reg: 362.1 }, 3: { big: 263.2, reg: 332.7 }, 4: { big: 254.0, reg: 300.6 }, 5: { big: 239.2, reg: 273.1 }, 6: { big: 226.0, reg: 256.0 } },
+    'ジャグラーガールズ': { 1: { big: 273.1, reg: 381 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226, reg: 252.1 } },
+    'ミスタージャグラー': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257 }, 6: { big: 237.4, reg: 237.4 } },
+    'マイジャグラーV': { 1: { big: 273.1, reg: 409.6 }, 2: { big: 270.8, reg: 385.5 }, 3: { big: 266.4, reg: 336.1 }, 4: { big: 254.0, reg: 290.1 }, 5: { big: 240.1, reg: 268.6 }, 6: { big: 229.1, reg: 229.1 } },
+    'ハッピージャグラーVIII': { 1: { big: 273.1, reg: 397.2 }, 2: { big: 270.8, reg: 362.1 }, 3: { big: 263.2, reg: 332.7 }, 4: { big: 254.0, reg: 300.6 }, 5: { big: 239.2, reg: 273.1 }, 6: { big: 226.0, reg: 256.0 } }
 };
 
 let rawData = [], layoutData = [], layoutLookup = {};
@@ -51,7 +50,14 @@ const tooltip = document.createElement('div');
 tooltip.className = 'custom-tooltip';
 document.body.appendChild(tooltip);
 document.addEventListener('mousemove', e => {
-    if (tooltip.classList.contains('visible')) { tooltip.style.left = e.pageX + 15 + 'px'; tooltip.style.top = e.pageY + 15 + 'px'; }
+    if (tooltip.classList.contains('visible')) {
+        let left = e.pageX + 15;
+        if (left + tooltip.offsetWidth > window.innerWidth) {
+            left = e.pageX - tooltip.offsetWidth - 15;
+        }
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = e.pageY + 15 + 'px';
+    }
 });
 
 // ==========================================
@@ -62,7 +68,13 @@ function percentile(arr, p) { if (!arr.length) return 0; const s = [...arr].sort
 function payout(diff, g) { return g > 0 ? (((3 * g) + diff) / (3 * g) * 100) : 0; }
 function formatVal(v) { if (v > 0) return `<span style="color:#38bdf8;font-weight:bold">+${Math.round(v).toLocaleString()}</span>`; if (v < 0) return `<span style="color:#ef4444;font-weight:bold">${Math.round(v).toLocaleString()}</span>`; return `<span style="color:#94a3b8;font-weight:bold">0</span>`; }
 function formatPct(v) { const n = parseFloat(v); if (n >= 100) return `<span style="color:#38bdf8;font-weight:bold">${n.toFixed(2)}%</span>`; return `<span style="color:#ef4444;font-weight:bold">${n.toFixed(2)}%</span>`; }
-function getPosLabel(num) { const l = layoutLookup[num]; if (!l) return '不明'; return l.pos === 0 ? '角' : l.pos === 1 ? '角2' : l.pos === 2 ? '角3' : 'その他'; }
+function getPosLabel(num) {
+    const l = layoutLookup[num];
+    if (!l) return '不明';
+    const n = parseInt(num, 10);
+    if (n >= 1185 && n <= 1203) return '円形島';
+    return l.pos === 0 ? '角' : l.pos === 1 ? '角2' : l.pos === 2 ? '角3' : l.pos === null ? '円形島' : 'その他';
+}
 
 function isSignificant(digitVals, overallAvg) {
     if (digitVals.length < 3) return false;
@@ -135,10 +147,12 @@ function buildLayoutLookup() {
             else if (vT + vB > 0) { dist = Math.min(vT, vB); dir = 'vertical'; }
             else { dist = 0; }
 
-            // 除外設定：円形島や作図上の折れ曲がりを角判定から外す
+            // 除外・円形島設定
             const n = parseInt(numStr, 10);
-            if ((n >= 1006 && n <= 1010) || (n >= 1177 && n <= 1181) || (n >= 1185 && n <= 1203)) {
-                if (dist === 0) dist = 9; // 角(0)なら「その他」扱いにする
+            if (n >= 1185 && n <= 1203) {
+                dist = null; // 円形島
+            } else if ((n >= 1006 && n <= 1010) || (n >= 1177 && n <= 1181)) {
+                dist = 9; // その他（角除外）
             }
 
             layoutLookup[numStr] = { row_idx: rIdx, col_idx: cIdx, pos: dist, direction: dir, islandId: '' };
@@ -198,7 +212,16 @@ function buildLayoutLookup() {
 
     for (const cell of Object.keys(layoutLookup)) {
         const numVal = parseInt(cell, 10);
-        if (!layoutLookup[cell].islandId) {
+        if (numVal >= 1001 && numVal <= 1030) {
+            layoutLookup[cell].islandId = '島 1001-1030';
+            layoutLookup[cell].islandMin = 1001;
+        } else if (numVal >= 1173 && numVal <= 1184) {
+            layoutLookup[cell].islandId = '島 1173-1184';
+            layoutLookup[cell].islandMin = 1173;
+        } else if (numVal >= 1185 && numVal <= 1203) {
+            layoutLookup[cell].islandId = '円形島';
+            layoutLookup[cell].islandMin = 1185;
+        } else if (!layoutLookup[cell].islandId) {
             layoutLookup[cell].islandId = `島 ${numVal}`; layoutLookup[cell].islandMin = numVal;
         }
     }
@@ -313,9 +336,9 @@ function getFilteredData() {
     if (currentEventFilter !== 'none') {
         f = f.filter(r => {
             const d = new Date(r['日付']), day = d.getDate();
-            // 1の付く日: 1日, 11日, 21日, 31日
-            const isEvent = (day === 1 || day === 11 || day === 21 || day === 31);
-            if (currentEventFilter === '1') return isEvent;
+            // 6の付く日: 6日, 16日, 26日
+            const isEvent = (day === 6 || day === 16 || day === 26);
+            if (currentEventFilter === '6') return isEvent;
             if (currentEventFilter === 'not1') return !isEvent;
             return true;
         });
@@ -1857,13 +1880,18 @@ function setupExclusionToggle() {
     const toggle = document.getElementById('exclude-cond-toggle');
     const grid = document.getElementById('exclude-conditions-grid');
     if (!toggle || !grid) return;
-    toggle.addEventListener('click', () => {
-        const isOpen = grid.style.display !== 'none';
+    
+    // タップ・クリック両方に対応し、伝播を適切に処理
+    const handleToggle = (e) => {
+        if (e) e.preventDefault();
+        const isOpen = grid.style.display === 'grid';
         grid.style.display = isOpen ? 'none' : 'grid';
         toggle.classList.toggle('active');
         const icon = document.getElementById('exclude-toggle-icon');
         if (icon) icon.textContent = isOpen ? '+' : '−';
-    });
+    };
+    
+    toggle.addEventListener('click', handleToggle);
 }
 
 function setupTargetSearchBtn() {

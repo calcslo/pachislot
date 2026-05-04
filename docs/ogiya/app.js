@@ -45,7 +45,14 @@ const tooltip = document.createElement('div');
 tooltip.className = 'custom-tooltip';
 document.body.appendChild(tooltip);
 document.addEventListener('mousemove', e => {
-    if (tooltip.classList.contains('visible')) { tooltip.style.left = e.pageX + 15 + 'px'; tooltip.style.top = e.pageY + 15 + 'px'; }
+    if (tooltip.classList.contains('visible')) {
+        let left = e.pageX + 15;
+        if (left + tooltip.offsetWidth > window.innerWidth) {
+            left = e.pageX - tooltip.offsetWidth - 15;
+        }
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = e.pageY + 15 + 'px';
+    }
 });
 
 // ==========================================
@@ -1872,13 +1879,18 @@ function setupExclusionToggle() {
     const toggle = document.getElementById('exclude-cond-toggle');
     const grid = document.getElementById('exclude-conditions-grid');
     if (!toggle || !grid) return;
-    toggle.addEventListener('click', () => {
-        const isOpen = grid.style.display !== 'none';
+    
+    // タップ・クリック両方に対応し、伝播を適切に処理
+    const handleToggle = (e) => {
+        if (e) e.preventDefault();
+        const isOpen = grid.style.display === 'grid';
         grid.style.display = isOpen ? 'none' : 'grid';
         toggle.classList.toggle('active');
         const icon = document.getElementById('exclude-toggle-icon');
         if (icon) icon.textContent = isOpen ? '+' : '−';
-    });
+    };
+    
+    toggle.addEventListener('click', handleToggle);
 }
 
 function setupTargetSearchBtn() {

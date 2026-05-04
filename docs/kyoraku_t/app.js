@@ -29,16 +29,13 @@ function updateMachineGroups(data) {
 // kyoraku東海店 設定推測用 コイン持ち・確率テーブル（仮値 ※後で実際の値に修正すること）
 const MACHINE_PROBS = {
     // ハナハナシリーズ
-    'ドラゴンハナハナ～閃光～‐30': { 1: { big: 256, reg: 642 }, 2: { big: 246, reg: 585 }, 3: { big: 235, reg: 537 }, 4: { big: 224, reg: 489 }, 5: { big: 212, reg: 442 }, 6: { big: 199, reg: 399 } },
-    'ニューキングハナハナV‐30': { 1: { big: 299, reg: 496 }, 2: { big: 291, reg: 471 }, 3: { big: 281, reg: 442 }, 4: { big: 268, reg: 409 }, 5: { big: 253, reg: 372 } },
-    'スターハナハナ‐30': { 1: { big: 270, reg: 387 }, 2: { big: 262, reg: 354 }, 3: { big: 252, reg: 322 }, 4: { big: 240, reg: 293 }, 5: { big: 229, reg: 267 }, 6: { big: 218, reg: 242 } },
+    'キングハナハナ-30': { 1: { big: 292, reg: 489 }, 2: { big: 280, reg: 452 }, 3: { big: 268, reg: 420 }, 4: { big: 257, reg: 390 }, 5: { big: 244, reg: 360 }, 6: { big: 232, reg: 332 } },
+    'スマート沖スロ ドラゴンハナハナ～閃光～': { 1: { big: 256, reg: 642 }, 2: { big: 246, reg: 585 }, 3: { big: 235, reg: 537 }, 4: { big: 224, reg: 489 }, 5: { big: 212, reg: 442 }, 6: { big: 199, reg: 399 } },
     // ジャグラーシリーズ
-    'ウルトラミラクルジャグラー': { 1: { big: 267.5, reg: 425.6 }, 2: { big: 261.1, reg: 402.1 }, 3: { big: 256.0, reg: 350.5 }, 4: { big: 242.7, reg: 322.8 }, 5: { big: 233.2, reg: 297.9 }, 6: { big: 216.3, reg: 277.7 } },
     'ネオアイムジャグラーEX': { 1: { big: 273.1, reg: 439.8 }, 2: { big: 269.7, reg: 399.6 }, 3: { big: 269.7, reg: 331.0 }, 4: { big: 259.0, reg: 315.1 }, 5: { big: 259.0, reg: 255.0 }, 6: { big: 255.0, reg: 255.0 } },
     'ゴーゴージャグラー3': { 1: { big: 259.0, reg: 354.2 }, 2: { big: 258.0, reg: 332.7 }, 3: { big: 257.0, reg: 306.2 }, 4: { big: 254.0, reg: 268.6 }, 5: { big: 247.3, reg: 247.3 }, 6: { big: 234.9, reg: 234.9 } },
-    'ジャグラーガールズ': { 1: { big: 273.1, reg: 381.0 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226.0, reg: 252.1 } },
-    'ミスタージャグラー': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331.0 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257.0 }, 6: { big: 237.4, reg: 237.4 } },
-    'ハッピージャグラーVIII': { 1: { big: 273.1, reg: 397.2 }, 2: { big: 270.8, reg: 362.1 }, 3: { big: 263.2, reg: 332.7 }, 4: { big: 254.0, reg: 300.6 }, 5: { big: 239.2, reg: 273.1 }, 6: { big: 226.0, reg: 256.0 } },
+    'マイジャグラーV': { 1: { big: 273.1, reg: 409.6 }, 2: { big: 270.8, reg: 385.5 }, 3: { big: 266.4, reg: 336.1 }, 4: { big: 254.0, reg: 290.1 }, 5: { big: 240.1, reg: 268.6 }, 6: { big: 229.1, reg: 229.1 } },
+    'ファンキージャグラー2': { 1: { big: 266.4, reg: 439.8 }, 2: { big: 259.0, reg: 407.1 }, 3: { big: 256.0, reg: 366.1 }, 4: { big: 249.2, reg: 322.8 }, 5: { big: 240.1, reg: 299.3 }, 6: { big: 219.9, reg: 262.1 } }
 };
 
 let rawData = [], layoutData = [], layoutLookup = {};
@@ -51,7 +48,14 @@ const tooltip = document.createElement('div');
 tooltip.className = 'custom-tooltip';
 document.body.appendChild(tooltip);
 document.addEventListener('mousemove', e => {
-    if (tooltip.classList.contains('visible')) { tooltip.style.left = e.pageX + 15 + 'px'; tooltip.style.top = e.pageY + 15 + 'px'; }
+    if (tooltip.classList.contains('visible')) {
+        let left = e.pageX + 15;
+        if (left + tooltip.offsetWidth > window.innerWidth) {
+            left = e.pageX - tooltip.offsetWidth - 15;
+        }
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = e.pageY + 15 + 'px';
+    }
 });
 
 // ==========================================
@@ -62,7 +66,13 @@ function percentile(arr, p) { if (!arr.length) return 0; const s = [...arr].sort
 function payout(diff, g) { return g > 0 ? (((3 * g) + diff) / (3 * g) * 100) : 0; }
 function formatVal(v) { if (v > 0) return `<span style="color:#38bdf8;font-weight:bold">+${Math.round(v).toLocaleString()}</span>`; if (v < 0) return `<span style="color:#ef4444;font-weight:bold">${Math.round(v).toLocaleString()}</span>`; return `<span style="color:#94a3b8;font-weight:bold">0</span>`; }
 function formatPct(v) { const n = parseFloat(v); if (n >= 100) return `<span style="color:#38bdf8;font-weight:bold">${n.toFixed(2)}%</span>`; return `<span style="color:#ef4444;font-weight:bold">${n.toFixed(2)}%</span>`; }
-function getPosLabel(num) { const l = layoutLookup[num]; if (!l) return '不明'; return l.pos === 0 ? '角' : l.pos === 1 ? '角2' : l.pos === 2 ? '角3' : 'その他'; }
+function getPosLabel(num) {
+    const l = layoutLookup[num];
+    if (!l) return '不明';
+    const n = parseInt(num, 10);
+    if (n >= 1080 && n <= 1105) return '円形島';
+    return l.pos === 0 ? '角' : l.pos === 1 ? '角2' : l.pos === 2 ? '角3' : l.pos === null ? '円形島' : 'その他';
+}
 
 function isSignificant(digitVals, overallAvg) {
     if (digitVals.length < 3) return false;
@@ -135,10 +145,10 @@ function buildLayoutLookup() {
             else if (vT + vB > 0) { dist = Math.min(vT, vB); dir = 'vertical'; }
             else { dist = 0; }
 
-            // 除外設定：円形島を角判定から外す
+            // 円形島設定：1080〜1105を「円形島」扱いにする
             const n = parseInt(numStr, 10);
-            if (n >= 1081 && n <= 1105) {
-                if (dist === 0) dist = 9; // 角(0)なら「その他」扱いにする
+            if (n >= 1080 && n <= 1105) {
+                dist = null;
             }
 
             layoutLookup[numStr] = { row_idx: rIdx, col_idx: cIdx, pos: dist, direction: dir, islandId: '' };
@@ -198,7 +208,10 @@ function buildLayoutLookup() {
 
     for (const cell of Object.keys(layoutLookup)) {
         const numVal = parseInt(cell, 10);
-        if (!layoutLookup[cell].islandId) {
+        if (numVal >= 1080 && numVal <= 1105) {
+            layoutLookup[cell].islandId = '円形島';
+            layoutLookup[cell].islandMin = 1080;
+        } else if (!layoutLookup[cell].islandId) {
             layoutLookup[cell].islandId = `島 ${numVal}`; layoutLookup[cell].islandMin = numVal;
         }
     }
@@ -313,9 +326,9 @@ function getFilteredData() {
     if (currentEventFilter !== 'none') {
         f = f.filter(r => {
             const d = new Date(r['日付']), day = d.getDate();
-            // 1の付く日: 1日, 11日, 21日, 31日
-            const isEvent = (day === 1 || day === 11 || day === 21 || day === 31);
-            if (currentEventFilter === '1') return isEvent;
+            // 9の付く日 (9,19,29) + 15日
+            const isEvent = (day === 9 || day === 19 || day === 29 || day === 15);
+            if (currentEventFilter === '9_15') return isEvent;
             if (currentEventFilter === 'not1') return !isEvent;
             return true;
         });
@@ -1811,6 +1824,28 @@ function setupPrioLimit() {
     });
 }
 
+// ==========================================
+// Theme & Events
+// ==========================================
+
+function setupExclusionToggle() {
+    const toggle = document.getElementById('exclude-cond-toggle');
+    const grid = document.getElementById('exclude-conditions-grid');
+    if (!toggle || !grid) return;
+    
+    // タップ・クリック両方に対応し、伝播を適切に処理
+    const handleToggle = (e) => {
+        if (e) e.preventDefault();
+        const isOpen = grid.style.display === 'grid';
+        grid.style.display = isOpen ? 'none' : 'grid';
+        toggle.classList.toggle('active');
+        const icon = document.getElementById('exclude-toggle-icon');
+        if (icon) icon.textContent = isOpen ? '+' : '−';
+    };
+    
+    toggle.addEventListener('click', handleToggle);
+}
+
 function setupCondBadges() {
     const pairs = [
         ['cond-cons-neg-enabled', 'cond-cons-neg-badge', 'cond-card-cons-neg'],
@@ -1995,7 +2030,7 @@ function renderTargetSupport(filteredData) {
     const prioConds = [...document.querySelectorAll('.prio-chk:checked')].map(c => c.value);
     // diff priority
     const diffPriority = document.querySelector('input[name="diff-priority"]:checked')?.value || 'machine';
-    
+
     // Sort by match count checkbox
     const sortByMatchCount = document.getElementById('sort-by-match-count')?.checked;
 
@@ -2041,7 +2076,7 @@ function renderTargetSupport(filteredData) {
         // --- Exclusion Logic (Highest Priority) ---
         const ex = conds.exclude;
         let isExcluded = false;
-        
+
         if (ex.consNeg.enabled && (ex.consNeg.vals.length === 0 || ex.consNeg.vals.some(v => v === 7 ? sk.neg >= 7 : sk.neg === v))) isExcluded = true;
         if (ex.consPos.enabled && (ex.consPos.vals.length === 0 || ex.consPos.vals.some(v => v === 7 ? sk.pos >= 7 : sk.pos === v))) isExcluded = true;
         if (ex.position.enabled && (ex.position.vals.length === 0 || ex.position.vals.includes(posVal))) isExcluded = true;
@@ -2049,7 +2084,7 @@ function renderTargetSupport(filteredData) {
         if (ex.islandAvg.enabled && iAvg !== null && iAvg > 0) isExcluded = true;
         if (ex.machineAvg.enabled && mAvg !== null && mAvg > 0) isExcluded = true;
         if (ex.modelAvg.enabled && modelAvg[model] !== undefined && modelAvg[model] > 0) isExcluded = true;
-        
+
         if (ex.pastGame.enabled && ex.pastGame.periods.length > 0) {
             const latestIdx = dateIdxMap[latestDate];
             if (latestIdx !== undefined) {
@@ -2124,7 +2159,7 @@ function renderTargetSupport(filteredData) {
                     let bucket = 0;
                     if (avgG > 10000) bucket = 10;
                     else if (avgG > 0) bucket = Math.floor((avgG - 1) / 1000);
-                    
+
                     results.push(pCond.ranges.length === 0 || pCond.ranges.includes(bucket));
                 }
                 if (conds.pastGame.logic === 'and') {
@@ -2222,7 +2257,7 @@ function renderTargetSupport(filteredData) {
             const tr = document.createElement('tr');
             tr.style.borderLeft = `4px solid ${colorMap[m.num] === 'transparent' ? '#444' : colorMap[m.num]}`;
             tr.classList.add('clickable');
-            
+
             const mc = m.matchedConds;
             const mAvgVal = m.mAvg !== null ? Math.round(m.mAvg) : null;
             const iAvgVal = m.iAvg !== null ? Math.round(m.iAvg) : null;
@@ -2250,13 +2285,13 @@ function renderTargetSupport(filteredData) {
                     document.querySelectorAll('#target-heatmap-wrapper .highlight-machine').forEach(c => {
                         c.classList.remove('highlight-machine');
                     });
-                    
+
                     // ハイライト用クラスを追加 (!importantがあるためインラインスタイルより優先される)
                     cell.classList.add('highlight-machine');
-                    
+
                     // スムーズスクロール
                     cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-                    
+
                     // 強制再描画（アニメーションを即時開始させるため）
                     void cell.offsetWidth;
                 }
@@ -2449,7 +2484,7 @@ function setupTargetSection() {
         const res = document.getElementById('target-results');
         if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
     });
-    
+
     document.querySelectorAll('.period-all-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             const row = e.target.closest('.past-game-period-row');
@@ -2471,7 +2506,7 @@ function setupTargetSection() {
             if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
         });
     });
-    
+
     // Add listeners for other conditions
     const otherSelectors = [
         '#cond-cons-neg-enabled', '#cond-cons-pos-enabled', '#cond-position-enabled', '#cond-digit-enabled',
@@ -2505,7 +2540,7 @@ function setupTargetSection() {
         card.addEventListener('click', (e) => {
             // Checkboxやラベル、中身を直接触った場合は何もしない
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL' || e.target.closest('.cond-body')) return;
-            
+
             const mainCb = card.querySelector('.cond-header input[type="checkbox"]');
             if (mainCb) {
                 mainCb.checked = !mainCb.checked;
@@ -2598,7 +2633,7 @@ function loadTargetConditions() {
             setEnabled('cond-machine-avg-enabled', config.enabled.machineAvg);
             setEnabled('cond-model-avg-enabled', config.enabled.modelAvg);
             setEnabled('cond-past-game-enabled', config.enabled.pastGame);
-            
+
             setEnabled('ex-cond-cons-neg-enabled', config.enabled.exConsNeg);
             setEnabled('ex-cond-cons-pos-enabled', config.enabled.exConsPos);
             setEnabled('ex-cond-position-enabled', config.enabled.exPosition);
@@ -2616,7 +2651,7 @@ function loadTargetConditions() {
             setChecks('.pos-chk', config.vals.position);
             setChecks('.digit-chk', config.vals.digit);
             setChecks('.prio-chk', config.vals.prioConds);
-            
+
             setChecks('.ex-cons-neg-chk', config.vals.exConsNeg);
             setChecks('.ex-cons-pos-chk', config.vals.exConsPos);
             setChecks('.ex-pos-chk', config.vals.exPosition);
