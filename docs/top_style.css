@@ -1,0 +1,57 @@
+/* top_style.css */
+:root {
+    --color-bg: #F4F4F0;
+    --color-primary: #FF3B30; /* Vivid Red */
+    --color-secondary: #007AFF; /* Vivid Blue */
+    --color-accent: #FFCC00; /* Vivid Yellow */
+    --color-text: #1C1C1E;
+    --color-white: #FFFFFF;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Typography */
+h1, h2, h3, h4 {
+    font-weight: 900;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+p {
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+/* React Root Container */
+#root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Basic utilities for layout to assist React inline styles if needed */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Disable selection for draggable elements */
+.no-select {
+    user-select: none;
+    -webkit-user-select: none;
+}

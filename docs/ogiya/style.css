@@ -215,6 +215,38 @@ body.modal-open {
     transition: 0.2s;
 }
 
+.store-nav-btn {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.2rem;
+    background: #ffffff;
+    color: #000000;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.store-nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    background: #000000;
+    color: #ffffff;
+    border-color: #000000;
+}
+
+.store-nav-btn:active {
+    transform: translateY(0);
+}
+
+.dark-theme .store-nav-btn {
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.05);
+}
+
 /* Controls */
 .controls {
     display: grid;
