@@ -222,3 +222,184 @@ Traceback (most recent call last):
     self._sock.shutdown(socket.SHUT_RDWR)
 ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
 INFO:     connection closed
+INFO:     Started server process [9728]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     100.109.8.4:64203 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-02T05:31:39.843150700Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-02T05:31:39.848449400Z][Docker Desktop.exe] backend process started
+INFO:     connection closed
+INFO:     100.109.8.4:63671 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:55785 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:55956 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+[2026-05-02 15:14:46] WARNING: Attempt 1 failed: Response.all_headers: The object has been collected to prevent unbounded heap growth.. Retrying in 1s...
+2026-05-02 15:14:46,705 - scrapling - WARNING - Attempt 1 failed: Response.all_headers: The object has been collected to prevent unbounded heap growth.. Retrying in 1s...
+INFO:     100.109.8.4:50166 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+[2026-05-02 15:43:21] INFO: Fetched (502) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#7;1092.800048828125> (referer: https://www.google.com/)
+2026-05-02 15:43:21,968 - scrapling - INFO - Fetched (502) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#7;1092.800048828125> (referer: https://www.google.com/)
+INFO:     100.109.8.4:61166 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-05-02 23:34:20,839 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+2026-05-02 23:34:21,320 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+INFO:     Started server process [32052]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     100.109.8.4:63966 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:63968 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:64302 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+[2026-05-03 12:28:47] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#7;446> (referer: https://www.google.com/)
+2026-05-03 12:28:47,569 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#7;446> (referer: https://www.google.com/)
+INFO:     100.109.8.4:57491 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:49593 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     Started server process [19804]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     100.105.6.2:51754 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-04T08:06:48.726302100Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-04T08:06:48.741050700Z][Docker Desktop.exe] backend process started
+[2026-05-04 17:18:43] ERROR: Error executing page_action: Page.screenshot: Timeout 30000ms exceeded.
+Call log:
+  - taking page screenshot
+  - waiting for fonts to load...
+  - fonts loaded
+
+2026-05-04 17:18:43,578 - scrapling - ERROR - Error executing page_action: Page.screenshot: Timeout 30000ms exceeded.
+Call log:
+  - taking page screenshot
+  - waiting for fonts to load...
+  - fonts loaded
+
+[2026-05-04 17:18:44] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v06-001.php?cd_dai=0432> (referer: https://www.google.com/)
+2026-05-04 17:18:44,102 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v06-001.php?cd_dai=0432> (referer: https://www.google.com/)
+ERROR:    data transfer failed
+Traceback (most recent call last):
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 940, in transfer_data
+    message = await self.read_message()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1010, in read_message
+    frame = await self.read_data_frame(max_size=self.max_size)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1087, in read_data_frame
+    frame = await self.read_frame(max_size)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1144, in read_frame
+    frame = await Frame.read(
+            ^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\framing.py", line 70, in read
+    data = await reader(2)
+           ^^^^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\streams.py", line 752, in readexactly
+    await self._wait_for_data('readexactly')
+  File "D:\Program Files\Python\Python312\Lib\asyncio\streams.py", line 545, in _wait_for_data
+    await self._waiter
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 286, in _loop_reading
+    length = fut.result()
+             ^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\windows_events.py", line 803, in _poll
+    value = callback(transferred, key, ov)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\windows_events.py", line 462, in finish_socket_func
+    return ov.getresult()
+           ^^^^^^^^^^^^^^
+OSError: [WinError 121] セマフォがタイムアウトしました。
+INFO:     connection closed
+INFO:     100.105.6.2:60997 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.105.6.2:64735 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-04T08:29:39.814056000Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-04T08:29:39.817204900Z][Docker Desktop.exe] backend process started
+INFO:     connection closed
+INFO:     100.105.6.2:55958 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-04 17:51:47] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#7;660.7999877929688> (referer: https://www.google.com/)
+2026-05-04 17:51:47,849 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#7;660.7999877929688> (referer: https://www.google.com/)
+ERROR:    data transfer failed
+Traceback (most recent call last):
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 940, in transfer_data
+    message = await self.read_message()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1010, in read_message
+    frame = await self.read_data_frame(max_size=self.max_size)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1087, in read_data_frame
+    frame = await self.read_frame(max_size)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1144, in read_frame
+    frame = await Frame.read(
+            ^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\framing.py", line 70, in read
+    data = await reader(2)
+           ^^^^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\streams.py", line 752, in readexactly
+    await self._wait_for_data('readexactly')
+  File "D:\Program Files\Python\Python312\Lib\asyncio\streams.py", line 545, in _wait_for_data
+    await self._waiter
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 286, in _loop_reading
+    length = fut.result()
+             ^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\windows_events.py", line 803, in _poll
+    value = callback(transferred, key, ov)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\windows_events.py", line 462, in finish_socket_func
+    return ov.getresult()
+           ^^^^^^^^^^^^^^
+OSError: [WinError 121] セマフォがタイムアウトしました。
+INFO:     connection closed
+INFO:     100.105.6.2:63204 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-04T09:40:21.099465300Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-04T09:40:21.102675800Z][Docker Desktop.exe] backend process started
+[2026-05-04 18:54:32] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=e%25E9%25AD%2594%25E6%25B3%2595%25E5%25B0%2591%25E5%25A5%25B3%25E3%2581%25BE%25E3%2581%25A9%25E3%2581%258B%25EF%25BE%258F%25EF%25BD%25B7%25EF%25BE%259E%25EF%25BD%25B63LPM1#98.4000015258789> (referer: https://www.google.com/)
+2026-05-04 18:54:32,855 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=e%25E9%25AD%2594%25E6%25B3%2595%25E5%25B0%2591%25E5%25A5%25B3%25E3%2581%25BE%25E3%2581%25A9%25E3%2581%258B%25EF%25BE%258F%25EF%25BD%25B7%25EF%25BE%259E%25EF%25BD%25B63LPM1#98.4000015258789> (referer: https://www.google.com/)
+[2026-05-04T09:54:47.908462200Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-04T09:54:47.911049800Z][Docker Desktop.exe] backend process started
+[2026-05-04 18:57:07] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=P%25EF%25BD%25BD%25EF%25BD%25B0%25EF%25BE%258A%25EF%25BE%259F%25EF%25BD%25B0%25E6%25B5%25B7%25E7%2589%25A9%25E8%25AA%259EIN%25E6%25B2%2596%25E7%25B8%25846+LTP#313> (referer: https://www.google.com/)
+2026-05-04 18:57:07,912 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=P%25EF%25BD%25BD%25EF%25BD%25B0%25EF%25BE%258A%25EF%25BE%259F%25EF%25BD%25B0%25E6%25B5%25B7%25E7%2589%25A9%25E8%25AA%259EIN%25E6%25B2%2596%25E7%25B8%25846+LTP#313> (referer: https://www.google.com/)
+[2026-05-04T10:26:36.176687500Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-04T10:26:36.179256200Z][Docker Desktop.exe] backend process started
+INFO:     connection closed
+INFO:     100.105.6.2:49176 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-04 19:31:21] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=P%25EF%25BD%25BD%25EF%25BD%25B0%25EF%25BE%258A%25EF%25BE%259F%25EF%25BD%25B0%25E6%25B5%25B7%25E7%2589%25A9%25E8%25AA%259EIN%25E6%25B2%2596%25E7%25B8%25846+LTP#1473> (referer: https://www.google.com/)
+2026-05-04 19:31:21,762 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=P%25EF%25BD%25BD%25EF%25BD%25B0%25EF%25BE%258A%25EF%25BE%259F%25EF%25BD%25B0%25E6%25B5%25B7%25E7%2589%25A9%25E8%25AA%259EIN%25E6%25B2%2596%25E7%25B8%25846+LTP#1473> (referer: https://www.google.com/)
+INFO:     connection closed

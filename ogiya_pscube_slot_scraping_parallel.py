@@ -15,6 +15,7 @@ import datetime
 import sqlite3
 import argparse
 import sys
+import threading
 from playwright.sync_api import Page
 from scrapling.fetchers import StealthyFetcher
 
@@ -34,6 +35,15 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ==========================================
+# 並列処理・排他制御用
+# ==========================================
+proxy_restart_lock = threading.Lock()
+is_restarting_proxy = False
+
+processing_lock = threading.Lock()
+processing_machines = set()
 
 class QueueHandler(logging.Handler):
     def __init__(self, log_queue):
@@ -170,13 +180,19 @@ def ensure_docker_desktop_running():
     except:
         pass
 
-    logger.info("Docker Desktopを起動します...")
-    docker_path = r"C:\Program Files\Docker\Docker\Docker Desktop.exe"
-    if os.path.exists(docker_path):
-        subprocess.Popen([docker_path], shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    logger.info("Docker Desktopのプロセスを確認します...")
+    # プロセスが存在するか確認
+    res = subprocess.run('tasklist | findstr "Docker Desktop.exe"', shell=True, capture_output=True, text=True)
+    if "Docker Desktop.exe" in res.stdout:
+        logger.info("Docker Desktopのプロセスは存在します。再起動中または起動中のため少し待ちます。")
     else:
-        logger.error(f"Docker Desktopが見つかりません: {docker_path}")
-        return False
+        logger.info("Docker Desktopを起動します...")
+        docker_path = r"C:\Program Files\Docker\Docker\Docker Desktop.exe"
+        if os.path.exists(docker_path):
+            subprocess.Popen([docker_path], shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        else:
+            logger.error(f"Docker Desktopが見つかりません: {docker_path}")
+            return False
 
     for i in range(24):
         time.sleep(5)
@@ -267,6 +283,26 @@ def restart_proxy() -> bool:
         return False
 
     return setup_docker_proxy(force_restart_docker=True)
+
+def safe_restart_proxy() -> bool:
+    """
+    スレッドセーフなプロキシ再起動関数。
+    すでに他のスレッドが再起動中の場合は完了を待機する。
+    """
+    global is_restarting_proxy
+    
+    logger.info("プロキシ再起動のロック取得を待機中...")
+    with proxy_restart_lock:
+        if is_proxy_working():
+            logger.info("プロキシは既に他のスレッドによって復旧済みです。再起動をスキップします。")
+            return True
+        
+        is_restarting_proxy = True
+        try:
+            logger.info("排他ロックを取得しました。プロキシ再起動を開始します。")
+            return restart_proxy()
+        finally:
+            is_restarting_proxy = False
 
 def setup_docker_proxy(force_restart_docker: bool = False) -> bool:
     """
@@ -1119,14 +1155,14 @@ def scrape_site1_scrapling():
         locale="ja-JP"
     )
 
-def scrape_missing_machines_action(page: Page, missing_machines: list):
-    logger.info(f"欠損データ {len(missing_machines)} 台の直接スクレイピングを開始します。")
+def scrape_worker_action(page: Page, machine_list: list, thread_name: str):
+    logger.info(f"[{thread_name}] 欠損データ {len(machine_list)} 台の直接スクレイピングを開始します。")
     processed_count = 0
     page.set_viewport_size({"width": 390, "height": 844})
     
     # 事前に DB から「台番号」(整数扱い)と直近の「機種名」の対応を取得
     machine_model_map = {}
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, timeout=10.0)
     c = conn.cursor()
     c.execute("SELECT CAST(台番号 AS INTEGER), 機種名 FROM slot_data GROUP BY CAST(台番号 AS INTEGER) ORDER BY 日付 DESC")
     for row in c.fetchall():
@@ -1138,7 +1174,7 @@ def scrape_missing_machines_action(page: Page, missing_machines: list):
     day1_str = (today_dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     day2_str = (today_dt - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
 
-    for idx, machine_num in enumerate(missing_machines):
+    for idx, machine_num in enumerate(machine_list):
         try:
             m_int = int(machine_num)
         except ValueError:
@@ -1146,92 +1182,106 @@ def scrape_missing_machines_action(page: Page, missing_machines: list):
             
         cd_dai_str = f"{m_int:04d}" 
 
-        logger.info(f"リトライ [{idx+1}/{len(missing_machines)}]: 台番号 {cd_dai_str} に直接アクセスします。")
+        with processing_lock:
+            if m_int in processing_machines:
+                continue
+            processing_machines.add(m_int)
+
+        logger.info(f"[{thread_name}] リトライ [{idx+1}/{len(machine_list)}]: 台番号 {cd_dai_str} に直接アクセスします。")
         machine_url = f"https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v06-001.php?cd_dai={cd_dai_str}"
         
-        try:
-            page.goto(machine_url, wait_until="networkidle")
-            check_page_health(page)
-            human_like_delay(2.0, 3.5)
-            handle_interstitial(page)
-            check_page_health(page)
-
-            # 機種名の取得
-            model_name = machine_model_map.get(m_int, "不明")
-            if model_name == "不明":
-                title = page.title()
-                if "｜" in title:
-                    model_name = title.split("｜")[-1].strip()
-            
-            completed_dates_for_machine = get_completed_dates_for_machine(model_name, cd_dai_str)
-
-            dates_to_scrape = {}
-            if today_date_str not in completed_dates_for_machine: dates_to_scrape['本日'] = today_date_str
-            if day1_str not in completed_dates_for_machine: dates_to_scrape['1日前'] = day1_str
-            if day2_str not in completed_dates_for_machine: dates_to_scrape['2日前'] = day2_str
-
-            if not dates_to_scrape:
-                logger.info(f"台番号 {cd_dai_str} はすでにデータが揃っています。")
-                continue
-
-            table_data = extract_slot_table(page)
-            graph_results = extract_pscube_graph_data_all_days(page, today_date_str)
-
-            for day_label, actual_date in dates_to_scrape.items():
-                sasamai = graph_results.get(day_label, "取得失敗")
-                
-                conn_local = sqlite3.connect(DB_FILE)
-                cursor_local = conn_local.cursor()
-                try:
-                    bonus = table_data.get(day_label, {}).get("BONUS", 0)
-                    big = table_data.get(day_label, {}).get("BIG", 0)
-                    reg = table_data.get(day_label, {}).get("REG", 0)
-                    games = table_data.get(day_label, {}).get("累計ゲーム", 0)
-
-                    games_int = int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0
-
-                    if games_int == 0:
-                        sasamai_final = 0
-                        if isinstance(sasamai, (int, float)) and sasamai != 0:
-                            logger.warning(f"台番号 {cd_dai_str} 累計G=0のため差枚0に補正")
-                    else:
-                        sasamai_final = sasamai if isinstance(sasamai, (int, float)) else 0
-
-                    record_tuple = (
-                        actual_date, model_name, cd_dai_str,
-                        int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
-                        int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
-                        int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
-                        games_int,
-                        sasamai_final
-                    )
-                    
-                    cursor_local.execute('''
-                        INSERT OR REPLACE INTO slot_data (日付, 機種名, 台番号, BONUS, BIG, REG, 累計ゲーム, 最終差枚)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', record_tuple)
-                    conn_local.commit()
-                    logger.info(f"リトライ: 台番号 {cd_dai_str} ({actual_date}) 保存成功")
-                    
-                    processed_count += 1
-                    if processed_count % 10 == 0:
-                        logger.info(f"リトライ分 10台のスクレイピングが完了しました（合計: {processed_count}台）。中間アップロードを実行します。")
-                        export_and_upload_to_github()
-                finally:
-                    conn_local.close()
-
-        except Exception as e:
-            logger.error(f"リトライ中の台番号 {cd_dai_str} でエラー: {e}")
+        max_retries_per_machine = 2
+        for r_idx in range(max_retries_per_machine):
             try:
-                page.screenshot(path=f"error_retry_{cd_dai_str}.png")
-            except:
-                pass
-            raise e
+                page.goto(machine_url, wait_until="networkidle")
+                check_page_health(page)
+                human_like_delay(2.0, 3.5)
+                handle_interstitial(page)
+                check_page_health(page)
 
-def scrape_missing_machines_scrapling(missing_machines: list):
-    logger.info("欠損データに対して scrapling (StealthyFetcher) を使用して直接取得します")
+                # 機種名の取得
+                model_name = machine_model_map.get(m_int, "不明")
+                if model_name == "不明":
+                    title = page.title()
+                    if "｜" in title:
+                        model_name = title.split("｜")[-1].strip()
+                
+                completed_dates_for_machine = get_completed_dates_for_machine(model_name, cd_dai_str)
+
+                dates_to_scrape = {}
+                if today_date_str not in completed_dates_for_machine: dates_to_scrape['本日'] = today_date_str
+                if day1_str not in completed_dates_for_machine: dates_to_scrape['1日前'] = day1_str
+                if day2_str not in completed_dates_for_machine: dates_to_scrape['2日前'] = day2_str
+
+                if not dates_to_scrape:
+                    logger.info(f"[{thread_name}] 台番号 {cd_dai_str} はすでにデータが揃っています。")
+                    break # リトライループを抜ける
+
+                table_data = extract_slot_table(page)
+                graph_results = extract_pscube_graph_data_all_days(page, today_date_str)
+
+                for day_label, actual_date in dates_to_scrape.items():
+                    sasamai = graph_results.get(day_label, "取得失敗")
+                    
+                    conn_local = sqlite3.connect(DB_FILE, timeout=10.0)
+                    cursor_local = conn_local.cursor()
+                    try:
+                        bonus = table_data.get(day_label, {}).get("BONUS", 0)
+                        big = table_data.get(day_label, {}).get("BIG", 0)
+                        reg = table_data.get(day_label, {}).get("REG", 0)
+                        games = table_data.get(day_label, {}).get("累計ゲーム", 0)
+
+                        games_int = int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0
+
+                        if games_int == 0:
+                            sasamai_final = 0
+                            if isinstance(sasamai, (int, float)) and sasamai != 0:
+                                logger.warning(f"[{thread_name}] 台番号 {cd_dai_str} 累計G=0のため差枚0に補正")
+                        else:
+                            sasamai_final = sasamai if isinstance(sasamai, (int, float)) else 0
+
+                        record_tuple = (
+                            actual_date, model_name, cd_dai_str,
+                            int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
+                            int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
+                            int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
+                            games_int,
+                            sasamai_final
+                        )
+                        
+                        cursor_local.execute('''
+                            INSERT OR REPLACE INTO slot_data (日付, 機種名, 台番号, BONUS, BIG, REG, 累計ゲーム, 最終差枚)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', record_tuple)
+                        conn_local.commit()
+                        logger.info(f"[{thread_name}] リトライ: 台番号 {cd_dai_str} ({actual_date}) 保存成功")
+                        
+                        processed_count += 1
+                        if processed_count % 10 == 0:
+                            logger.info(f"[{thread_name}] リトライ分 10台のスクレイピングが完了しました（合計: {processed_count}台）。中間アップロードを実行します。")
+                            export_and_upload_to_github()
+                    finally:
+                        conn_local.close()
+
+                break # 成功したらリトライループを抜ける
+            except Exception as e:
+                logger.error(f"[{thread_name}] リトライ中の台番号 {cd_dai_str} でエラー: {e}")
+                try:
+                    page.screenshot(path=f"error_retry_{cd_dai_str}_{thread_name}.png")
+                except:
+                    pass
+                
+                if r_idx < max_retries_per_machine - 1:
+                    logger.info(f"[{thread_name}] プロキシ再起動を試みて再試行します...")
+                    safe_restart_proxy()
+                else:
+                    logger.error(f"[{thread_name}] 最大リトライ回数に達したため、台番号 {cd_dai_str} をスキップします。")
+                    break
+
+def scrape_worker_scrapling(machine_list: list, thread_name: str):
+    logger.info(f"[{thread_name}] scrapling (StealthyFetcher) を使用して直接取得します")
     def action_wrapper(page: Page):
-        scrape_missing_machines_action(page, missing_machines)
+        scrape_worker_action(page, machine_list, thread_name)
 
     StealthyFetcher.fetch(
         SITE1_URL, 
@@ -1240,6 +1290,27 @@ def scrape_missing_machines_scrapling(missing_machines: list):
         proxy=PROXY_SERVER,
         locale="ja-JP"
     )
+
+def run_parallel_scraping(missing_machines: list):
+    global processing_machines
+    
+    with processing_lock:
+        processing_machines.clear()
+        
+    logger.info(f"並列スクレイピングを開始します。対象台数: {len(missing_machines)}台")
+    
+    thread1 = threading.Thread(target=scrape_worker_scrapling, args=(missing_machines, "Forward"))
+    
+    reversed_machines = list(reversed(missing_machines))
+    thread2 = threading.Thread(target=scrape_worker_scrapling, args=(reversed_machines, "Reverse"))
+    
+    thread1.start()
+    time.sleep(3) # ブラウザの同時起動による干渉を避けるため少し待機
+    thread2.start()
+    
+    thread1.join()
+    thread2.join()
+    logger.info("並列スクレイピングスレッドが両方完了しました。")
 
 def export_and_upload_to_github():
     # データのエクスポート処理とGitHubへの自動アップロード
@@ -1313,7 +1384,7 @@ def main(skip_scraping: bool = False):
                             break
                         
                         if retry_i == 0:
-                            logger.info(f"初回チェック: {len(missing)} 台のデータが不足しています。直接取得を開始します。")
+                            logger.info(f"初回チェック: {len(missing)} 台のデータが不足しています。並列スクレイピングを開始します。")
                         else:
                             logger.warning(f"データ欠損を確認しました (残り {len(missing)} 台): {missing}")
                             logger.info(f"欠損データの再取得を開始します (追加試行 {retry_i}/3)...")
@@ -1321,7 +1392,7 @@ def main(skip_scraping: bool = False):
                             if not setup_docker_proxy(force_restart_docker=True):
                                 logger.warning("プロキシの切り替えに失敗しましたが、続行します。")
                         
-                        scrape_missing_machines_scrapling(missing)
+                        run_parallel_scraping(missing)
                     
                     # 最終チェック
                     final_missing = check_missing_machines(expected)

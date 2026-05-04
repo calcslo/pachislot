@@ -31,6 +31,16 @@ OGIYA_BORDER_DICT = {
     "PA大海物語5 HLD": 16.8,
 }
 
+# 有楽住吉北店用機種リスト (P's Cube表記)
+SUMIYOSHI_KITA_BORDER_DICT = {
+    "eｴｲﾃｨｼｯｸｽMAM2": 17.0,
+    "P大海物語4ｽﾍﾟｼｬﾙSCA": 17.6,
+    "P大海物語5 HCL": 17.7,
+    "PA新海物語ARBB": 17.6,
+    "PAｽｰﾊﾟｰ海物語地中海2HLA": 17.6,
+    "PAわんわんｾﾚﾌﾞﾚｰｼｮﾝAGBD": 17.6,
+}
+
 # コスモジャパン大府店用機種リスト (テラモバ2表記)
 COSMO_BORDER_DICT = {
     #"e ソードアート・オンライン 閃光の軌跡": 16.5,
@@ -79,7 +89,7 @@ COSMO_MACHINE_MAP = {
 }
 
 # 全店統合リスト (計算用)
-BORDER_DICT = {**OGIYA_BORDER_DICT, **COSMO_BORDER_DICT}
+BORDER_DICT = {**OGIYA_BORDER_DICT, **SUMIYOSHI_KITA_BORDER_DICT, **COSMO_BORDER_DICT}
 
 # 機種ごとのST/時短設定 (Min, Med, Max の計算に使用)
 # key: machine_name or partial name
@@ -263,6 +273,33 @@ ST_CONFIG = {
         "min": {"big": 35, "special_low": 35, "special_high": 110},
         "max": {"big": 0, "special_low": 35, "special_high": 110},
     },
+    # 有楽住吉北店追加機種
+    "eｴｲﾃｨｼｯｸｽMAM2": {
+        "med": {"big_low": 90, "big_high": 140, "special": 140, "big_dedama": 800},
+        "min": {"big_low": 140, "big_high": 140, "special": 140, "big_dedama": 800},
+        "max": {"big_low": 0, "big_high": 140, "special": 140, "big_dedama": 800},
+    },
+    "P大海物語4ｽﾍﾟｼｬﾙSCA": {
+        "all": {"big": 100, "special": 100}
+    },
+    "P大海物語5 HCL": {
+        "all": {"big": 100, "special": 100}
+    },
+    "PA新海物語ARBB": {
+        "med": {"big": 47, "special": 74},
+        "min": {"big": 74, "special": 74},
+        "max": {"big": 20, "special": 74},
+    },
+    "PAｽｰﾊﾟｰ海物語地中海2HLA": {
+        "med": {"big": 47, "special": 74},
+        "min": {"big": 74, "special": 74},
+        "max": {"big": 20, "special": 74},
+    },
+    "PAわんわんｾﾚﾌﾞﾚｰｼｮﾝAGBD": {
+        "med": {"big": 47, "special": 74},
+        "min": {"big": 74, "special": 74},
+        "max": {"big": 20, "special": 74},
+    },
 }
 
 def normalize_machine_name(name):
@@ -405,7 +442,7 @@ def calculate_decrease_start_agnes(df, final_start, mode):
             
     return decrease_start
 
-def calculate_expected_value(start, dedama, shubetu, final_start, machine_name, final_diff_ball):
+def calculate_expected_value(start, dedama, shubetu, final_start, machine_name, final_diff_ball, upward_sum=None):
     """
     大当たり履歴と最終差玉から期待値等を計算する (Min, Med, Maxの3パターン)
     """
@@ -471,7 +508,7 @@ def calculate_expected_value(start, dedama, shubetu, final_start, machine_name, 
             if df.empty:
                 nomal_start = final_start
                 special_start = 0
-                dedama_sum = 0
+                dedama_sum = upward_sum if upward_sum is not None else 0
             else:
                 if machine_name == "PA大海物語5 ARBC":
                     decrease_start = calculate_decrease_start_agnes(df, final_start, mode)
@@ -480,7 +517,7 @@ def calculate_expected_value(start, dedama, shubetu, final_start, machine_name, 
                 
                 nomal_start = df["スタート"].sum() + final_start - decrease_start
                 special_start = decrease_start
-                dedama_sum = df["出玉"].sum()
+                dedama_sum = upward_sum if upward_sum is not None else df["出玉"].sum()
                 print(final_start,nomal_start,special_start,dedama_sum,decrease_start)
 
             # 回転率の計算

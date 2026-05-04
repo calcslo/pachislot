@@ -15,6 +15,7 @@ import datetime
 import sqlite3
 import argparse
 import sys
+import threading
 from playwright.sync_api import Page
 from scrapling.fetchers import StealthyFetcher
 
@@ -35,6 +36,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ==========================================
+# 並列処理・排他制御用
+# ==========================================
+proxy_restart_lock = threading.Lock()
+is_restarting_proxy = False
+
+processing_lock = threading.Lock()
+processing_machines = set()
+
 class QueueHandler(logging.Handler):
     def __init__(self, log_queue):
         super().__init__()
@@ -51,7 +61,7 @@ class QueueHandler(logging.Handler):
 # 設定値
 # ==========================================
 # --- Site 1 Settings ---
-SITE1_URL = "https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/"
+SITE1_URL = "https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c719303/"
 SITE1_SLOT_BTN = "body > div.nc-main > div.nc-box.nc-box-inset.nc-background-b.nc-border-a > table > tbody > tr:nth-child(1) > td:nth-child(2) > a"
 SITE1_MODEL_LIST = "a.btn-ki"
 SITE1_MACHINE_LINK = "a.btn-dai"
@@ -62,8 +72,8 @@ CONTAINER_NAME = "vpngate-proxy"
 
 # --- DB・進捗ファイル設定 ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(SCRIPT_DIR, "slot_data.db")
-PROGRESS_FILE = os.path.join(SCRIPT_DIR, "slot_scraping_progress.pkl")
+DB_FILE = os.path.join(SCRIPT_DIR, "slot_data_king666_t.db")
+PROGRESS_FILE = os.path.join(SCRIPT_DIR, "slot_scraping_progress_king666_t.pkl")
 
 # ==========================================
 # データ管理
@@ -118,8 +128,8 @@ def get_completed_dates_for_machine(model_name: str, machine_num: str) -> list:
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
-    # パフォーマンス向上のため、過去5日分程度の履歴のみを検索対象とする
-    min_date = (datetime.datetime.now() - datetime.timedelta(days=5)).strftime("%Y-%m-%d")
+    # パフォーマンス向上のため、過去7日分程度の履歴のみを検索対象とする
+    min_date = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
     
     c.execute('SELECT 日付 FROM slot_data WHERE 機種名=? AND 台番号=? AND 日付 >= ?', (model_name, machine_num, min_date))
     dates = [row[0] for row in c.fetchall()]
@@ -267,6 +277,26 @@ def restart_proxy() -> bool:
         return False
 
     return setup_docker_proxy(force_restart_docker=True)
+
+def safe_restart_proxy() -> bool:
+    """
+    スレッドセーフなプロキシ再起動関数。
+    すでに他のスレッドが再起動中の場合は完了を待機する。
+    """
+    global is_restarting_proxy
+
+    logger.info("プロキシ再起動のロック取得を待機中...")
+    with proxy_restart_lock:
+        if is_proxy_working():
+            logger.info("プロキシは既に他のスレッドによって復旧済みです。再起動をスキップします。")
+            return True
+
+        is_restarting_proxy = True
+        try:
+            logger.info("排他ロックを取得しました。プロキシ再起動を開始します。")
+            return restart_proxy()
+        finally:
+            is_restarting_proxy = False
 
 def setup_docker_proxy(force_restart_docker: bool = False) -> bool:
     """
@@ -704,24 +734,30 @@ def _extract_last_diff_from_active_chart(page: Page, chart_date_id: str) -> int 
 
 def extract_pscube_graph_data_all_days(page: Page, today_date_str: str) -> dict:
     """
-    スランプグラフから本日・1日前・2日前の最終差枚を取得して辞書で返す。
+    スランプグラフから本日・1日前・2日前・3日前・4日前の最終差枚を取得して辞書で返す。
 
     Returns:
         {
             '本日': <int | str>,
             '1日前': <int | str>,
             '2日前': <int | str>,
+            '3日前': <int | str>,
+            '4日前': <int | str>,
         }
     """
     today_dt = datetime.datetime.strptime(today_date_str, "%Y-%m-%d")
     day1_dt = today_dt - datetime.timedelta(days=1)
     day2_dt = today_dt - datetime.timedelta(days=2)
+    day3_dt = today_dt - datetime.timedelta(days=3)
+    day4_dt = today_dt - datetime.timedelta(days=4)
 
     # チャートコンテナのIDは「CHART-YYYYMMDD」形式
     chart_ids = {
         '本日':  f"CHART-{today_dt.strftime('%Y%m%d')}",
         '1日前': f"CHART-{day1_dt.strftime('%Y%m%d')}",
         '2日前': f"CHART-{day2_dt.strftime('%Y%m%d')}",
+        '3日前': f"CHART-{day3_dt.strftime('%Y%m%d')}",
+        '4日前': f"CHART-{day4_dt.strftime('%Y%m%d')}",
     }
 
     # タブボタンのdata-ymd属性も同形式
@@ -729,11 +765,13 @@ def extract_pscube_graph_data_all_days(page: Page, today_date_str: str) -> dict:
         '本日':  today_dt.strftime('%Y%m%d'),
         '1日前': day1_dt.strftime('%Y%m%d'),
         '2日前': day2_dt.strftime('%Y%m%d'),
+        '3日前': day3_dt.strftime('%Y%m%d'),
+        '4日前': day4_dt.strftime('%Y%m%d'),
     }
 
     results = {}
 
-    for day_label in ['本日', '1日前', '2日前']:
+    for day_label in ['本日', '1日前', '2日前', '3日前', '4日前']:
         chart_id = chart_ids[day_label]
         tab_ymd  = tab_ymds[day_label]
 
@@ -773,21 +811,14 @@ def get_today_date(page: Page = None) -> str:
 
 def extract_slot_table(page: Page) -> dict:
     """
-    ユーザー指定のセレクタ (#tblDAb) からデータを抽出する。
-    1行目: BONUS, 2行目: BIG, 3行目: REG, 9行目: 累計ゲーム
-    各行の td(1):本日, td(2):1日前, td(3):2日前
+    スロットデータテーブルからデータを抽出する。
+    #tblDAb を主に参照し、見つからない場合はページ内の全テーブルを走査する。
+    各行の td(1):本日, td(2):1日前, td(3):2日前, td(4):3日前, td(5):4日前
     """
     return page.evaluate(r'''() => {
-        const table = document.querySelector('#tblDAb');
-        const data = { '本日': {}, '1日前': {}, '2日前': {} };
-        if (!table) return data;
-        
-        const rows = Array.from(table.querySelectorAll('tr'));
-        
+        const data = { '本日': {}, '1日前': {}, '2日前': {}, '3日前': {}, '4日前': {} };
+
         // 項目名（ラベル）によるマッピング
-        // exactMatch: trueの項目は完全一致、falseは部分一致
-        // ※ BIG/REGはincludes()だと「BIG確率」「REG確率」にもマッチし
-        //   確率値(1/xxx)で上書きされてしまうため完全一致にする
         const labelMap = [
             { target: 'BONUS',  key: 'BONUS',    exactMatch: true },
             { target: 'BIG',    key: 'BIG',      exactMatch: true },
@@ -795,37 +826,62 @@ def extract_slot_table(page: Page) -> dict:
             { target: '累計', key: '累計ゲーム', exactMatch: false }
         ];
 
-        for (const row of rows) {
-            const cells = Array.from(row.querySelectorAll('td, th'));
-            if (cells.length < 2) continue;
-
-            const rowLabel = cells[0].innerText.trim();
-            
-            for (const {target, key, exactMatch} of labelMap) {
-                const matched = exactMatch ? (rowLabel === target) : rowLabel.includes(target);
-                if (matched) {
-                    // 数値セル（本日, 1日前, 2日前）を取得
-                    // cells[0]はラベルなので、数値はcells[1]〜cells[3]
-                    if (cells.length >= 4) {
-                        data['本日'][key] = cells[1].innerText.replace(/,/g, '').trim();
-                        data['1日前'][key] = cells[2].innerText.replace(/,/g, '').trim();
-                        data['2日前'][key] = cells[3].innerText.replace(/,/g, '').trim();
-                    } else if (cells.length === 3) {
-                        // 2日前までしかない場合の予備
-                        data['本日'][key] = cells[0].innerText.replace(/,/g, '').trim();
-                        data['1日前'][key] = cells[1].innerText.replace(/,/g, '').trim();
-                        data['2日前'][key] = cells[2].innerText.replace(/,/g, '').trim();
+        function processRows(rows) {
+            for (const row of rows) {
+                const cells = Array.from(row.querySelectorAll('td, th'));
+                if (cells.length < 2) continue;
+                const rowLabel = cells[0].innerText.trim();
+                for (const {target, key, exactMatch} of labelMap) {
+                    if (data['本日'][key]) continue; // 取得済みはスキップ
+                    const matched = exactMatch ? (rowLabel === target) : rowLabel.includes(target);
+                    if (matched) {
+                        const getInner = (cell) => {
+                            const inner = cell.querySelector('div.inner');
+                            return (inner ? inner.innerText : cell.innerText).replace(/,/g, '').trim();
+                        };
+                        if (cells.length >= 6) {
+                            data['本日'][key]  = getInner(cells[1]);
+                            data['1日前'][key] = getInner(cells[2]);
+                            data['2日前'][key] = getInner(cells[3]);
+                            data['3日前'][key] = getInner(cells[4]);
+                            data['4日前'][key] = getInner(cells[5]);
+                        } else if (cells.length >= 4) {
+                            data['本日'][key]  = getInner(cells[1]);
+                            data['1日前'][key] = getInner(cells[2]);
+                            data['2日前'][key] = getInner(cells[3]);
+                        } else if (cells.length === 3) {
+                            data['本日'][key]  = getInner(cells[1]);
+                            data['1日前'][key] = getInner(cells[2]);
+                        }
+                        break;
                     }
-                    break; // 1行は1ラベルにのみマッチさせる
                 }
             }
         }
+
+        // まず #tblDAb を探す
+        const mainTable = document.querySelector('#tblDAb');
+        if (mainTable) {
+            processRows(Array.from(mainTable.querySelectorAll('tr')));
+        }
+
+        // 未取得項目があれば全テーブルを走査
+        const allFilled = labelMap.every(({key}) => data['本日'][key]);
+        if (!allFilled) {
+            const allTables = document.querySelectorAll('table');
+            for (const tbl of allTables) {
+                if (tbl === mainTable) continue;
+                processRows(Array.from(tbl.querySelectorAll('tr')));
+                if (labelMap.every(({key}) => data['本日'][key])) break;
+            }
+        }
+
         return data;
     }''')
 
 def get_expected_machines_from_layout():
     """layout.jsonから期待される台番号のリストを取得する"""
-    layout_path = os.path.join(SCRIPT_DIR, "docs", "ogiya", "layout.json")
+    layout_path = os.path.join(SCRIPT_DIR, "docs", "king666_t", "layout.json")
     if not os.path.exists(layout_path):
         logger.warning(f"layout.jsonが見つかりません: {layout_path}")
         return set()
@@ -859,7 +915,9 @@ def check_missing_machines(expected_machines):
     target_dates = [
         now.strftime("%Y-%m-%d"),
         (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
-        (now - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+        (now - datetime.timedelta(days=2)).strftime("%Y-%m-%d"),
+        (now - datetime.timedelta(days=3)).strftime("%Y-%m-%d"),
+        (now - datetime.timedelta(days=4)).strftime("%Y-%m-%d")
     ]
     
     conn = sqlite3.connect(DB_FILE)
@@ -873,8 +931,8 @@ def check_missing_machines(expected_machines):
             continue
             
         # layout.json は '690'、DBは '0690' などフォーマットが異なる場合があるため、数値として比較する
-        c.execute("SELECT COUNT(*) FROM slot_data WHERE CAST(台番号 AS INTEGER)=? AND 日付 IN (?, ?, ?)", (m_int, *target_dates))
-        if c.fetchone()[0] < 3:
+        c.execute("SELECT COUNT(*) FROM slot_data WHERE CAST(台番号 AS INTEGER)=? AND 日付 IN (?, ?, ?, ?, ?)", (m_int, *target_dates))
+        if c.fetchone()[0] < 5:
             missing.append(m)
     conn.close()
     return missing
@@ -972,10 +1030,12 @@ def site1_action(page: Page) -> None:
                 expected_today = now.strftime("%Y-%m-%d")
                 expected_day1 = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
                 expected_day2 = (now - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+                expected_day3 = (now - datetime.timedelta(days=3)).strftime("%Y-%m-%d")
+                expected_day4 = (now - datetime.timedelta(days=4)).strftime("%Y-%m-%d")
 
                 completed_dates = get_completed_dates_for_machine(model_name, machine_num)
-                if expected_today in completed_dates and expected_day1 in completed_dates and expected_day2 in completed_dates:
-                    logger.debug(f"Site 1: 台番号 {machine_num} は本日、1日前、2日前のデータがDBに揃っているためスキップ。")
+                if all(d in completed_dates for d in [expected_today, expected_day1, expected_day2, expected_day3, expected_day4]):
+                    logger.debug(f"Site 1: 台番号 {machine_num} は本日〜4日前のデータがDBに揃っているためスキップ。")
                     continue
 
                 # 何月の何の機種かをログに表示
@@ -997,6 +1057,8 @@ def site1_action(page: Page) -> None:
                         today_dt = datetime.datetime.strptime(today_date_str, "%Y-%m-%d")
                         day1_str = (today_dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
                         day2_str = (today_dt - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+                        day3_str = (today_dt - datetime.timedelta(days=3)).strftime("%Y-%m-%d")
+                        day4_str = (today_dt - datetime.timedelta(days=4)).strftime("%Y-%m-%d")
 
                         completed_dates_for_machine = get_completed_dates_for_machine(model_name, machine_num)
 
@@ -1004,6 +1066,8 @@ def site1_action(page: Page) -> None:
                         if today_date_str not in completed_dates_for_machine: dates_to_scrape['本日'] = today_date_str
                         if day1_str not in completed_dates_for_machine: dates_to_scrape['1日前'] = day1_str
                         if day2_str not in completed_dates_for_machine: dates_to_scrape['2日前'] = day2_str
+                        if day3_str not in completed_dates_for_machine: dates_to_scrape['3日前'] = day3_str
+                        if day4_str not in completed_dates_for_machine: dates_to_scrape['4日前'] = day4_str
 
                         if not dates_to_scrape:
                             logger.info(f"Site 1: 台番号 {machine_num} の全日付が記録済みのためスキップします。")
@@ -1119,14 +1183,14 @@ def scrape_site1_scrapling():
         locale="ja-JP"
     )
 
-def scrape_missing_machines_action(page: Page, missing_machines: list):
-    logger.info(f"欠損データ {len(missing_machines)} 台の直接スクレイピングを開始します。")
+def scrape_worker_action(page: Page, machine_list: list, thread_name: str):
+    logger.info(f"[{thread_name}] 欠損データ {len(machine_list)} 台の直接スクレイピングを開始します。")
     processed_count = 0
     page.set_viewport_size({"width": 390, "height": 844})
-    
-    # 事前に DB から「台番号」(整数扱い)と直近の「機種名」の対応を取得
+
+    # 事前に DB から「台番号」と直近の「機種名」の対応を取得
     machine_model_map = {}
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, timeout=10.0)
     c = conn.cursor()
     c.execute("SELECT CAST(台番号 AS INTEGER), 機種名 FROM slot_data GROUP BY CAST(台番号 AS INTEGER) ORDER BY 日付 DESC")
     for row in c.fetchall():
@@ -1137,116 +1201,155 @@ def scrape_missing_machines_action(page: Page, missing_machines: list):
     today_dt = datetime.datetime.strptime(today_date_str, "%Y-%m-%d")
     day1_str = (today_dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     day2_str = (today_dt - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+    day3_str = (today_dt - datetime.timedelta(days=3)).strftime("%Y-%m-%d")
+    day4_str = (today_dt - datetime.timedelta(days=4)).strftime("%Y-%m-%d")
 
-    for idx, machine_num in enumerate(missing_machines):
+    for idx, machine_num in enumerate(machine_list):
         try:
             m_int = int(machine_num)
         except ValueError:
             continue
-            
-        cd_dai_str = f"{m_int:04d}" 
 
-        logger.info(f"リトライ [{idx+1}/{len(missing_machines)}]: 台番号 {cd_dai_str} に直接アクセスします。")
-        machine_url = f"https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v06-001.php?cd_dai={cd_dai_str}"
-        
-        try:
-            page.goto(machine_url, wait_until="networkidle")
-            check_page_health(page)
-            human_like_delay(2.0, 3.5)
-            handle_interstitial(page)
-            check_page_health(page)
+        cd_dai_str = f"{m_int:04d}"
 
-            # 機種名の取得
-            model_name = machine_model_map.get(m_int, "不明")
-            if model_name == "不明":
-                title = page.title()
-                if "｜" in title:
-                    model_name = title.split("｜")[-1].strip()
-            
-            completed_dates_for_machine = get_completed_dates_for_machine(model_name, cd_dai_str)
-
-            dates_to_scrape = {}
-            if today_date_str not in completed_dates_for_machine: dates_to_scrape['本日'] = today_date_str
-            if day1_str not in completed_dates_for_machine: dates_to_scrape['1日前'] = day1_str
-            if day2_str not in completed_dates_for_machine: dates_to_scrape['2日前'] = day2_str
-
-            if not dates_to_scrape:
-                logger.info(f"台番号 {cd_dai_str} はすでにデータが揃っています。")
+        with processing_lock:
+            if m_int in processing_machines:
                 continue
+            processing_machines.add(m_int)
 
-            table_data = extract_slot_table(page)
-            graph_results = extract_pscube_graph_data_all_days(page, today_date_str)
+        logger.info(f"[{thread_name}] リトライ [{idx+1}/{len(machine_list)}]: 台番号 {cd_dai_str} に直接アクセスします。")
+        machine_url = f"https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c719303/cgi-bin/nc-v06-001.php?cd_dai={cd_dai_str}"
 
-            for day_label, actual_date in dates_to_scrape.items():
-                sasamai = graph_results.get(day_label, "取得失敗")
-                
-                conn_local = sqlite3.connect(DB_FILE)
-                cursor_local = conn_local.cursor()
-                try:
-                    bonus = table_data.get(day_label, {}).get("BONUS", 0)
-                    big = table_data.get(day_label, {}).get("BIG", 0)
-                    reg = table_data.get(day_label, {}).get("REG", 0)
-                    games = table_data.get(day_label, {}).get("累計ゲーム", 0)
-
-                    games_int = int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0
-
-                    if games_int == 0:
-                        sasamai_final = 0
-                        if isinstance(sasamai, (int, float)) and sasamai != 0:
-                            logger.warning(f"台番号 {cd_dai_str} 累計G=0のため差枚0に補正")
-                    else:
-                        sasamai_final = sasamai if isinstance(sasamai, (int, float)) else 0
-
-                    record_tuple = (
-                        actual_date, model_name, cd_dai_str,
-                        int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
-                        int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
-                        int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
-                        games_int,
-                        sasamai_final
-                    )
-                    
-                    cursor_local.execute('''
-                        INSERT OR REPLACE INTO slot_data (日付, 機種名, 台番号, BONUS, BIG, REG, 累計ゲーム, 最終差枚)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', record_tuple)
-                    conn_local.commit()
-                    logger.info(f"リトライ: 台番号 {cd_dai_str} ({actual_date}) 保存成功")
-                    
-                    processed_count += 1
-                    if processed_count % 10 == 0:
-                        logger.info(f"リトライ分 10台のスクレイピングが完了しました（合計: {processed_count}台）。中間アップロードを実行します。")
-                        export_and_upload_to_github()
-                finally:
-                    conn_local.close()
-
-        except Exception as e:
-            logger.error(f"リトライ中の台番号 {cd_dai_str} でエラー: {e}")
+        max_retries_per_machine = 2
+        for r_idx in range(max_retries_per_machine):
             try:
-                page.screenshot(path=f"error_retry_{cd_dai_str}.png")
-            except:
-                pass
-            raise e
+                page.goto(machine_url, wait_until="networkidle")
+                check_page_health(page)
+                human_like_delay(2.0, 3.5)
+                handle_interstitial(page)
+                check_page_health(page)
 
-def scrape_missing_machines_scrapling(missing_machines: list):
-    logger.info("欠損データに対して scrapling (StealthyFetcher) を使用して直接取得します")
+                # 機種名の取得
+                model_name = machine_model_map.get(m_int, "不明")
+                if model_name == "不明":
+                    title = page.title()
+                    if "｜" in title:
+                        model_name = title.split("｜")[-1].strip()
+
+                completed_dates_for_machine = get_completed_dates_for_machine(model_name, cd_dai_str)
+
+                dates_to_scrape = {}
+                if today_date_str not in completed_dates_for_machine: dates_to_scrape['本日'] = today_date_str
+                if day1_str not in completed_dates_for_machine: dates_to_scrape['1日前'] = day1_str
+                if day2_str not in completed_dates_for_machine: dates_to_scrape['2日前'] = day2_str
+                if day3_str not in completed_dates_for_machine: dates_to_scrape['3日前'] = day3_str
+                if day4_str not in completed_dates_for_machine: dates_to_scrape['4日前'] = day4_str
+
+                if not dates_to_scrape:
+                    logger.info(f"[{thread_name}] 台番号 {cd_dai_str} はすでにデータが揃っています。")
+                    break
+
+                table_data = extract_slot_table(page)
+                graph_results = extract_pscube_graph_data_all_days(page, today_date_str)
+
+                for day_label, actual_date in dates_to_scrape.items():
+                    sasamai = graph_results.get(day_label, "取得失敗")
+
+                    conn_local = sqlite3.connect(DB_FILE, timeout=10.0)
+                    cursor_local = conn_local.cursor()
+                    try:
+                        bonus = table_data.get(day_label, {}).get("BONUS", 0)
+                        big   = table_data.get(day_label, {}).get("BIG", 0)
+                        reg   = table_data.get(day_label, {}).get("REG", 0)
+                        games = table_data.get(day_label, {}).get("累計ゲーム", 0)
+
+                        games_int = int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0
+
+                        if games_int == 0:
+                            sasamai_final = 0
+                            if isinstance(sasamai, (int, float)) and sasamai != 0:
+                                logger.warning(f"[{thread_name}] 台番号 {cd_dai_str} 累計G=0のため差枚0に補正")
+                        else:
+                            sasamai_final = sasamai if isinstance(sasamai, (int, float)) else 0
+
+                        record_tuple = (
+                            actual_date, model_name, cd_dai_str,
+                            int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
+                            int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
+                            int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
+                            games_int,
+                            sasamai_final
+                        )
+
+                        cursor_local.execute('''
+                            INSERT OR REPLACE INTO slot_data (日付, 機種名, 台番号, BONUS, BIG, REG, 累計ゲーム, 最終差枚)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', record_tuple)
+                        conn_local.commit()
+                        logger.info(f"[{thread_name}] リトライ: 台番号 {cd_dai_str} ({actual_date}) 保存成功")
+
+                        processed_count += 1
+                        if processed_count % 10 == 0:
+                            logger.info(f"[{thread_name}] リトライ分 10台完了（合計: {processed_count}台）。中間アップロードを実行します。")
+                            export_and_upload_to_github()
+                    finally:
+                        conn_local.close()
+
+                break  # 成功したらリトライループを抜ける
+            except Exception as e:
+                logger.error(f"[{thread_name}] リトライ中の台番号 {cd_dai_str} でエラー: {e}")
+                try:
+                    page.screenshot(path=f"error_retry_{cd_dai_str}_{thread_name}.png")
+                except:
+                    pass
+
+                if r_idx < max_retries_per_machine - 1:
+                    logger.info(f"[{thread_name}] プロキシ再起動を試みて再試行します...")
+                    safe_restart_proxy()
+                else:
+                    logger.error(f"[{thread_name}] 最大リトライ回数に達したため、台番号 {cd_dai_str} をスキップします。")
+                    break
+
+def scrape_worker_scrapling(machine_list: list, thread_name: str):
+    logger.info(f"[{thread_name}] scrapling (StealthyFetcher) を使用して直接取得します")
     def action_wrapper(page: Page):
-        scrape_missing_machines_action(page, missing_machines)
+        scrape_worker_action(page, machine_list, thread_name)
 
     StealthyFetcher.fetch(
-        SITE1_URL, 
-        page_action=action_wrapper, 
-        headless=False, 
+        SITE1_URL,
+        page_action=action_wrapper,
+        headless=False,
         proxy=PROXY_SERVER,
         locale="ja-JP"
     )
+
+def run_parallel_scraping(missing_machines: list):
+    global processing_machines
+
+    with processing_lock:
+        processing_machines.clear()
+
+    logger.info(f"並列スクレイピングを開始します。対象台数: {len(missing_machines)}台")
+
+    thread1 = threading.Thread(target=scrape_worker_scrapling, args=(missing_machines, "Forward"))
+
+    reversed_machines = list(reversed(missing_machines))
+    thread2 = threading.Thread(target=scrape_worker_scrapling, args=(reversed_machines, "Reverse"))
+
+    thread1.start()
+    time.sleep(3)  # ブラウザの同時起動による干渉を避けるため少し待機
+    thread2.start()
+
+    thread1.join()
+    thread2.join()
+    logger.info("並列スクレイピングスレッドが両方完了しました。")
 
 def export_and_upload_to_github():
     # データのエクスポート処理とGitHubへの自動アップロード
     # （現在は都度DBに保存しているため、無条件でエクスポートとアップロードを実行する）
     logger.info("docsディレクトリへのJSONデータエクスポートを開始します...")
     try:
-        subprocess.run([sys.executable, "export_slot_data.py"], check=True)
+        subprocess.run([sys.executable, "export_slot_data_king666_t.py"], check=True)
         logger.info("JSONデータのエクスポートが完了しました。")
         
         logger.info("GitHub Pagesへのアップロードを開始します...")
@@ -1321,7 +1424,7 @@ def main(skip_scraping: bool = False):
                             if not setup_docker_proxy(force_restart_docker=True):
                                 logger.warning("プロキシの切り替えに失敗しましたが、続行します。")
                         
-                        scrape_missing_machines_scrapling(missing)
+                        run_parallel_scraping(missing)
                     
                     # 最終チェック
                     final_missing = check_missing_machines(expected)

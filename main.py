@@ -13,6 +13,7 @@ from typing import List, Optional
 import subprocess
 import ogiya_pscube_scraping as scraper
 import cosmoobu_teramoba_scraping as cosmo_scraper
+import sumiyoshi_kita_pscube_scraping as sumiyoshi_scraper
 import pscube_calculator as calc
 import logging
 
@@ -65,15 +66,19 @@ def should_drop_duplicate_log(stream_name: str, msg: dict) -> bool:
         _last_log_messages[stream_name] = (signature, now)
     return False
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     poller = asyncio.create_task(queue_poller())
     poller_cosmo = asyncio.create_task(queue_poller_cosmo())
+    poller_sumiyoshi = asyncio.create_task(queue_poller_sumiyoshi())
     yield
     # Shutdown
     poller.cancel()
     poller_cosmo.cancel()
+    poller_sumiyoshi.cancel()
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -95,12 +100,25 @@ result_queue_cosmo = queue.Queue()
 connected_websockets_cosmo = set()
 stop_event_cosmo = threading.Event()
 
+# Shared state for Sumiyoshi Kita
+scraping_lock_sumiyoshi = asyncio.Lock()
+is_scraping_sumiyoshi = False
+result_queue_sumiyoshi = queue.Queue()
+connected_websockets_sumiyoshi = set()
+stop_event_sumiyoshi = threading.Event()
+
 # Docker proxy uses a fixed host port, so only one scraper can own it at a time.
 docker_runtime_lock = threading.Lock()
 
+
 class RunRequest(BaseModel):
     models: Optional[List[str]] = None
-    specific_machines: Optional[str] = None # comma separated string
+    specific_machines: Optional[str] = None  # comma separated string
+
+
+# ==========================================
+# バックグラウンドスレッド
+# ==========================================
 
 def background_scraper_thread(models, specific_machines, stop_event):
     global is_scraping
@@ -130,50 +148,6 @@ def background_scraper_thread(models, specific_machines, stop_event):
         is_scraping = False
         result_queue.put({"type": "done"})
 
-async def queue_poller():
-    while True:
-        try:
-            # Non-blocking get
-            while True:
-                msg = result_queue.get_nowait()
-                if should_drop_duplicate_log("ogiya", msg):
-                    continue
-                # Broadcast to all connected websockets
-                to_remove = []
-                for ws in list(connected_websockets):
-                    try:
-                        # Try to send with a short timeout to detect dead connections
-                        await asyncio.wait_for(ws.send_json(msg), timeout=1.0)
-                    except Exception:
-                        to_remove.append(ws)
-                
-                for ws in to_remove:
-                    if ws in connected_websockets:
-                        connected_websockets.remove(ws)
-        except queue.Empty:
-            pass
-        await asyncio.sleep(0.1)
-
-async def queue_poller_cosmo():
-    while True:
-        try:
-            while True:
-                msg = result_queue_cosmo.get_nowait()
-                if should_drop_duplicate_log("cosmo", msg):
-                    continue
-                to_remove = []
-                for ws in list(connected_websockets_cosmo):
-                    try:
-                        await asyncio.wait_for(ws.send_json(msg), timeout=1.0)
-                    except Exception:
-                        to_remove.append(ws)
-                
-                for ws in to_remove:
-                    if ws in connected_websockets_cosmo:
-                        connected_websockets_cosmo.remove(ws)
-        except queue.Empty:
-            pass
-        await asyncio.sleep(0.1)
 
 def background_scraper_thread_cosmo(models, specific_machines, stop_event):
     global is_scraping_cosmo
@@ -196,38 +170,146 @@ def background_scraper_thread_cosmo(models, specific_machines, stop_event):
         is_scraping_cosmo = False
         result_queue_cosmo.put({"type": "done"})
 
+
+def background_scraper_thread_sumiyoshi(models, specific_machines, stop_event):
+    global is_scraping_sumiyoshi
+    try:
+        with queue_logging(sumiyoshi_scraper.logger, sumiyoshi_scraper.QueueHandler, result_queue_sumiyoshi):
+            try:
+                with docker_runtime_lock:
+                    if not sumiyoshi_scraper.ensure_docker_desktop_running():
+                        result_queue_sumiyoshi.put({"type": "log", "message": "Docker Desktopが起動できなかったため、処理を中止します。", "level": "ERROR"})
+                        return
+                    if not sumiyoshi_scraper.setup_docker_proxy():
+                        result_queue_sumiyoshi.put({"type": "log", "message": "プロキシの準備ができなかったため、処理を中止します。", "level": "ERROR"})
+                        return
+
+                    result_queue_sumiyoshi.put({"type": "log", "message": "スクレイピングを開始します...", "level": "INFO"})
+                    sumiyoshi_scraper.scrape_site1_scrapling(
+                        target_models=models,
+                        specific_machines=specific_machines,
+                        result_queue=result_queue_sumiyoshi,
+                        stop_event=stop_event,
+                    )
+                    result_queue_sumiyoshi.put({"type": "log", "message": "スクレイピングが完了しました。", "level": "INFO"})
+            except Exception as e:
+                result_queue_sumiyoshi.put({"type": "log", "message": f"予期せぬエラーが発生しました: {e}", "level": "ERROR"})
+            finally:
+                result_queue_sumiyoshi.put({"type": "log", "message": "クリーンアップ処理を開始します...", "level": "INFO"})
+                subprocess.run(["docker", "rm", "-f", sumiyoshi_scraper.CONTAINER_NAME], capture_output=True)
+                sumiyoshi_scraper.stop_docker_desktop()
+    except Exception as e:
+        result_queue_sumiyoshi.put({"type": "log", "message": f"予期せぬエラーが発生しました: {e}", "level": "ERROR"})
+    finally:
+        is_scraping_sumiyoshi = False
+        result_queue_sumiyoshi.put({"type": "done"})
+
+
+# ==========================================
+# キューポーラー
+# ==========================================
+
+async def queue_poller():
+    while True:
+        try:
+            while True:
+                msg = result_queue.get_nowait()
+                if should_drop_duplicate_log("ogiya", msg):
+                    continue
+                to_remove = []
+                for ws in list(connected_websockets):
+                    try:
+                        await asyncio.wait_for(ws.send_json(msg), timeout=1.0)
+                    except Exception:
+                        to_remove.append(ws)
+                for ws in to_remove:
+                    if ws in connected_websockets:
+                        connected_websockets.remove(ws)
+        except queue.Empty:
+            pass
+        await asyncio.sleep(0.1)
+
+
+async def queue_poller_cosmo():
+    while True:
+        try:
+            while True:
+                msg = result_queue_cosmo.get_nowait()
+                if should_drop_duplicate_log("cosmo", msg):
+                    continue
+                to_remove = []
+                for ws in list(connected_websockets_cosmo):
+                    try:
+                        await asyncio.wait_for(ws.send_json(msg), timeout=1.0)
+                    except Exception:
+                        to_remove.append(ws)
+                for ws in to_remove:
+                    if ws in connected_websockets_cosmo:
+                        connected_websockets_cosmo.remove(ws)
+        except queue.Empty:
+            pass
+        await asyncio.sleep(0.1)
+
+
+async def queue_poller_sumiyoshi():
+    while True:
+        try:
+            while True:
+                msg = result_queue_sumiyoshi.get_nowait()
+                if should_drop_duplicate_log("sumiyoshi", msg):
+                    continue
+                to_remove = []
+                for ws in list(connected_websockets_sumiyoshi):
+                    try:
+                        await asyncio.wait_for(ws.send_json(msg), timeout=1.0)
+                    except Exception:
+                        to_remove.append(ws)
+                for ws in to_remove:
+                    if ws in connected_websockets_sumiyoshi:
+                        connected_websockets_sumiyoshi.remove(ws)
+        except queue.Empty:
+            pass
+        await asyncio.sleep(0.1)
+
+
+# ==========================================
+# オーギヤタウン半田店 エンドポイント
+# ==========================================
+
 @app.get("/")
 async def get_index():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
+
 @app.get("/api/models")
 async def get_models():
     return list(calc.OGIYA_BORDER_DICT.keys())
 
+
 @app.post("/api/run")
 async def run_scraping(req: RunRequest):
     global is_scraping
-    if is_scraping or is_scraping_cosmo or docker_runtime_lock.locked():
+    if is_scraping or is_scraping_cosmo or is_scraping_sumiyoshi or docker_runtime_lock.locked():
         return {"status": "error", "message": "既にスクレイピングが実行中です。"}
-        
+
     async with scraping_lock:
-        if is_scraping or is_scraping_cosmo or docker_runtime_lock.locked():
-             return {"status": "error", "message": "既にスクレイピングが実行中です。"}
+        if is_scraping or is_scraping_cosmo or is_scraping_sumiyoshi or docker_runtime_lock.locked():
+            return {"status": "error", "message": "既にスクレイピングが実行中です。"}
         is_scraping = True
-    
+
     specific_machines_list = None
     if req.specific_machines:
         specific_machines_list = [m.strip() for m in req.specific_machines.split(",") if m.strip()]
-        
+
     models = req.models if req.models else list(calc.OGIYA_BORDER_DICT.keys())
-    
-    # Start thread
+
     stop_event.clear()
     thread = threading.Thread(target=background_scraper_thread, args=(models, specific_machines_list, stop_event), daemon=True)
     thread.start()
-    
+
     return {"status": "success", "message": "スクレイピングをバックグラウンドで開始しました。"}
+
 
 @app.post("/api/stop")
 async def stop_scraping():
@@ -237,11 +319,11 @@ async def stop_scraping():
     stop_event.set()
     return {"status": "success", "message": "停止信号を送信しました。"}
 
+
 @app.get("/api/status")
 async def get_status():
     global is_scraping
-    
-    # Try to load latest data
+
     data = {}
     try:
         if os.path.exists("scraping_data.pkl"):
@@ -250,11 +332,12 @@ async def get_status():
                 data = pickle.load(f)
     except:
         pass
-        
+
     return {
         "is_scraping": is_scraping,
         "data": data
     }
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -270,37 +353,45 @@ async def websocket_endpoint(websocket: WebSocket):
         if websocket in connected_websockets:
             connected_websockets.remove(websocket)
 
+
+# ==========================================
+# コスモジャパン大府店 エンドポイント
+# ==========================================
+
 @app.get("/cosmo_obu")
 async def get_cosmo_obu_index():
     with open("static/cosmo_obu_index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
+
 @app.get("/api/cosmo_obu/models")
 async def get_models_cosmo():
     return list(calc.COSMO_BORDER_DICT.keys())
 
+
 @app.post("/api/cosmo_obu/run")
 async def run_scraping_cosmo(req: RunRequest):
     global is_scraping_cosmo
-    if is_scraping_cosmo or is_scraping or docker_runtime_lock.locked():
+    if is_scraping_cosmo or is_scraping or is_scraping_sumiyoshi or docker_runtime_lock.locked():
         return {"status": "error", "message": "既にスクレイピングが実行中です。"}
-        
+
     async with scraping_lock_cosmo:
-        if is_scraping_cosmo or is_scraping or docker_runtime_lock.locked():
-             return {"status": "error", "message": "既にスクレイピングが実行中です。"}
+        if is_scraping_cosmo or is_scraping or is_scraping_sumiyoshi or docker_runtime_lock.locked():
+            return {"status": "error", "message": "既にスクレイピングが実行中です。"}
         is_scraping_cosmo = True
-    
+
     specific_machines_list = None
     if req.specific_machines:
         specific_machines_list = [m.strip() for m in req.specific_machines.split(",") if m.strip()]
-        
+
     models = req.models if req.models else list(calc.COSMO_BORDER_DICT.keys())
-    
+
     stop_event_cosmo.clear()
     thread = threading.Thread(target=background_scraper_thread_cosmo, args=(models, specific_machines_list, stop_event_cosmo), daemon=True)
     thread.start()
-    
+
     return {"status": "success", "message": "スクレイピングをバックグラウンドで開始しました。"}
+
 
 @app.post("/api/cosmo_obu/stop")
 async def stop_scraping_cosmo():
@@ -310,10 +401,11 @@ async def stop_scraping_cosmo():
     stop_event_cosmo.set()
     return {"status": "success", "message": "停止信号を送信しました。"}
 
+
 @app.get("/api/cosmo_obu/status")
 async def get_status_cosmo():
     global is_scraping_cosmo
-    
+
     data = {}
     try:
         if os.path.exists("scraping_data_cosmo_obu.pkl"):
@@ -322,11 +414,12 @@ async def get_status_cosmo():
                 data = pickle.load(f)
     except:
         pass
-        
+
     return {
         "is_scraping": is_scraping_cosmo,
         "data": data
     }
+
 
 @app.websocket("/ws/cosmo_obu")
 async def websocket_endpoint_cosmo(websocket: WebSocket):
@@ -341,6 +434,90 @@ async def websocket_endpoint_cosmo(websocket: WebSocket):
     finally:
         if websocket in connected_websockets_cosmo:
             connected_websockets_cosmo.remove(websocket)
+
+
+# ==========================================
+# 有楽住吉北店 エンドポイント
+# ==========================================
+
+@app.get("/sumiyoshi_kita")
+async def get_sumiyoshi_kita_index():
+    with open("static/sumiyoshi_kita_index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+
+
+@app.get("/api/sumiyoshi_kita/models")
+async def get_models_sumiyoshi():
+    # オーギヤ半田機種 + 住吉北店固有機種
+    return list({**calc.OGIYA_BORDER_DICT, **calc.SUMIYOSHI_KITA_BORDER_DICT}.keys())
+
+
+@app.post("/api/sumiyoshi_kita/run")
+async def run_scraping_sumiyoshi(req: RunRequest):
+    global is_scraping_sumiyoshi
+    if is_scraping_sumiyoshi or is_scraping or is_scraping_cosmo or docker_runtime_lock.locked():
+        return {"status": "error", "message": "既にスクレイピングが実行中です。"}
+
+    async with scraping_lock_sumiyoshi:
+        if is_scraping_sumiyoshi or is_scraping or is_scraping_cosmo or docker_runtime_lock.locked():
+            return {"status": "error", "message": "既にスクレイピングが実行中です。"}
+        is_scraping_sumiyoshi = True
+
+    specific_machines_list = None
+    if req.specific_machines:
+        specific_machines_list = [m.strip() for m in req.specific_machines.split(",") if m.strip()]
+
+    models = req.models if req.models else list({**calc.OGIYA_BORDER_DICT, **calc.SUMIYOSHI_KITA_BORDER_DICT}.keys())
+
+    stop_event_sumiyoshi.clear()
+    thread = threading.Thread(target=background_scraper_thread_sumiyoshi, args=(models, specific_machines_list, stop_event_sumiyoshi), daemon=True)
+    thread.start()
+
+    return {"status": "success", "message": "スクレイピングをバックグラウンドで開始しました。"}
+
+
+@app.post("/api/sumiyoshi_kita/stop")
+async def stop_scraping_sumiyoshi():
+    global is_scraping_sumiyoshi
+    if not is_scraping_sumiyoshi:
+        return {"status": "error", "message": "スクレイピングは実行中ではありません。"}
+    stop_event_sumiyoshi.set()
+    return {"status": "success", "message": "停止信号を送信しました。"}
+
+
+@app.get("/api/sumiyoshi_kita/status")
+async def get_status_sumiyoshi():
+    global is_scraping_sumiyoshi
+
+    data = {}
+    try:
+        if os.path.exists("scraping_data_sumiyoshi_kita.pkl"):
+            import pickle
+            with open("scraping_data_sumiyoshi_kita.pkl", "rb") as f:
+                data = pickle.load(f)
+    except:
+        pass
+
+    return {
+        "is_scraping": is_scraping_sumiyoshi,
+        "data": data
+    }
+
+
+@app.websocket("/ws/sumiyoshi_kita")
+async def websocket_endpoint_sumiyoshi(websocket: WebSocket):
+    await websocket.accept()
+    connected_websockets_sumiyoshi.add(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        if websocket in connected_websockets_sumiyoshi:
+            connected_websockets_sumiyoshi.remove(websocket)
+    finally:
+        if websocket in connected_websockets_sumiyoshi:
+            connected_websockets_sumiyoshi.remove(websocket)
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

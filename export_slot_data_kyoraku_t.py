@@ -2,14 +2,17 @@ import sqlite3
 import json
 import os
 
-DB_FILE = 'slot_data.db'
-EXCEL_FILE = 'オーギヤ半田島図.xlsx'
-DOCS_DIR = os.path.join('docs', 'ogiya')
+# kyoraku東海店専用エクスポートスクリプト
+DB_FILE = 'slot_data_kyoraku_t.db'
+EXCEL_FILE = '島図最新版.xlsx'
+EXCEL_SHEET = 'kyoraku東海'  # 仮のシート名。必要に応じて修正してください。
+DOCS_DIR = os.path.join('docs', 'kyoraku_t')
+
 
 def export_data():
     os.makedirs(DOCS_DIR, exist_ok=True)
 
-    # 1. Export DB to JSON (pandas不要版)
+    # 1. DBからJSONへエクスポート
     print(f"Reading from {DB_FILE}...")
     if not os.path.exists(DB_FILE):
         print(f"Warning: {DB_FILE} does not exist. Creating empty data.json.")
@@ -26,21 +29,27 @@ def export_data():
             print(f"Error reading from DB: {e}")
             data = []
         finally:
-            conn.close()
+            if 'conn' in locals():
+                conn.close()
 
-    with open(os.path.join(DOCS_DIR, 'data.json'), 'w', encoding='utf-8') as f:
+    data_path = os.path.join(DOCS_DIR, 'data.json')
+    with open(data_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False)
-    print("Saved data.json")
+    print(f"Saved {data_path}")
 
-    # 2. Export Excel layout to JSON (openpyxl使用、なければスキップ)
-    print(f"Reading layout from {EXCEL_FILE}...")
+    # 2. ExcelレイアウトからJSONへエクスポート
+    print(f"Reading layout from {EXCEL_FILE} sheet='{EXCEL_SHEET}'...")
     if not os.path.exists(EXCEL_FILE):
         print(f"Warning: {EXCEL_FILE} does not exist. Skipping layout.json update.")
     else:
         try:
             import openpyxl
             wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
-            ws = wb.active
+            if EXCEL_SHEET not in wb.sheetnames:
+                print(f"Warning: Sheet '{EXCEL_SHEET}' not found in {EXCEL_FILE}.")
+                # 代わりのシートを探すか、空のレイアウトを作成
+                return
+            ws = wb[EXCEL_SHEET]
             layout = []
             for row in ws.iter_rows(values_only=True):
                 r = []
@@ -54,17 +63,19 @@ def export_data():
                     else:
                         r.append(str(val))
                 layout.append(r)
-            # 末尾の全空行を除去（layout.jsonの縦の空白問題を防止）
+            # 末尾の全空行を除去
             while layout and all(c == '' for c in layout[-1]):
                 layout.pop()
             print(f"Extracted layout with {len(layout)} rows (after trimming empty rows).")
-            with open(os.path.join(DOCS_DIR, 'layout.json'), 'w', encoding='utf-8') as f:
+            layout_path = os.path.join(DOCS_DIR, 'layout.json')
+            with open(layout_path, 'w', encoding='utf-8') as f:
                 json.dump(layout, f, ensure_ascii=False)
-            print("Saved layout.json")
+            print(f"Saved {layout_path}")
         except ImportError:
             print("openpyxl not found. Skipping layout.json update.")
         except Exception as e:
             print(f"Error reading Excel layout: {e}")
+
 
 if __name__ == "__main__":
     export_data()
