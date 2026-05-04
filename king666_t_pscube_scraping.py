@@ -812,7 +812,7 @@ def get_today_date(page: Page = None) -> str:
 def extract_slot_table(page: Page) -> dict:
     """
     スロットデータテーブルからデータを抽出する。
-    #tblDAb を主に参照し、見つからない場合はページ内の全テーブルを走査する。
+    #tblDAbv2 (列ベースレイアウト) を優先的に参照し、見つからない場合は #tblDAb 等の行ベースレイアウトにフォールバックする。
     各行の td(1):本日, td(2):1日前, td(3):2日前, td(4):3日前, td(5):4日前
     """
     return page.evaluate(r'''() => {
@@ -826,6 +826,47 @@ def extract_slot_table(page: Page) -> dict:
             { target: '累計', key: '累計ゲーム', exactMatch: false }
         ];
 
+        // 新しい列ベースのレイアウト (#tblDAbv2) を試行
+        const tbodyV2 = document.querySelector('#tblDAbv2');
+        if (tbodyV2) {
+            const headerTd = tbodyV2.querySelector('td.nc-grid-color-fix.nc-text-align-center');
+            const columnTds = Array.from(tbodyV2.querySelectorAll('td.column'));
+            
+            if (headerTd && columnTds.length > 0) {
+                const headerDivs = Array.from(headerTd.querySelectorAll('div.outer.border-bottom'));
+                const labels = headerDivs.map(div => {
+                    const inner = div.querySelector('.inner');
+                    return inner ? inner.innerText.trim() : div.innerText.trim();
+                });
+
+                const days = ['本日', '1日前', '2日前', '3日前', '4日前'];
+                for (let i = 0; i < Math.min(columnTds.length, days.length); i++) {
+                    const dayKey = days[i];
+                    const dataDivs = Array.from(columnTds[i].querySelectorAll('div.outer.border-bottom'));
+                    
+                    for (let j = 0; j < Math.min(labels.length, dataDivs.length); j++) {
+                        const rowLabel = labels[j];
+                        const cellValDiv = dataDivs[j].querySelector('.inner');
+                        const cellVal = cellValDiv ? cellValDiv.innerText.replace(/,/g, '').trim() : dataDivs[j].innerText.replace(/,/g, '').trim();
+                        
+                        for (const {target, key, exactMatch} of labelMap) {
+                            const matched = exactMatch ? (rowLabel === target) : rowLabel.includes(target);
+                            if (matched) {
+                                data[dayKey][key] = cellVal;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // 列ベースから何らかのデータが取得できた場合はここで返す
+                if (Object.keys(data['本日']).length > 0) {
+                    return data;
+                }
+            }
+        }
+
+        // 従来の行ベースレイアウトに対するフォールバック
         function processRows(rows) {
             for (const row of rows) {
                 const cells = Array.from(row.querySelectorAll('td, th'));
@@ -870,7 +911,7 @@ def extract_slot_table(page: Page) -> dict:
         if (!allFilled) {
             const allTables = document.querySelectorAll('table');
             for (const tbl of allTables) {
-                if (tbl === mainTable) continue;
+                if (tbl === mainTable || tbl.closest('#tblDAbv2')) continue;
                 processRows(Array.from(tbl.querySelectorAll('tr')));
                 if (labelMap.every(({key}) => data['本日'][key])) break;
             }
@@ -1087,11 +1128,13 @@ def site1_action(page: Page) -> None:
                             conn_local = sqlite3.connect(DB_FILE)
                             cursor_local = conn_local.cursor()
                             try:
-                                bonus = table_data.get(day_label, {}).get("BONUS", 0)
-                                big = table_data.get(day_label, {}).get("BIG", 0)
-                                reg = table_data.get(day_label, {}).get("REG", 0)
+                                big_raw = table_data.get(day_label, {}).get("BIG", 0)
+                                reg_raw = table_data.get(day_label, {}).get("REG", 0)
                                 games = table_data.get(day_label, {}).get("累計ゲーム", 0)
 
+                                big_int = int(str(big_raw).replace(',','')) if str(big_raw).replace(',','').isdigit() else 0
+                                reg_int = int(str(reg_raw).replace(',','')) if str(reg_raw).replace(',','').isdigit() else 0
+                                bonus_int = big_int + reg_int
                                 games_int = int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0
 
                                 # 累計ゲーム=0の台はグラフが存在しない（未稼働）ため
@@ -1109,9 +1152,9 @@ def site1_action(page: Page) -> None:
 
                                 record_tuple = (
                                     actual_date, model_name, machine_num,
-                                    int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
-                                    int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
-                                    int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
+                                    bonus_int,
+                                    big_int,
+                                    reg_int,
                                     games_int,
                                     sasamai_final
                                 )
@@ -1258,11 +1301,13 @@ def scrape_worker_action(page: Page, machine_list: list, thread_name: str):
                     conn_local = sqlite3.connect(DB_FILE, timeout=10.0)
                     cursor_local = conn_local.cursor()
                     try:
-                        bonus = table_data.get(day_label, {}).get("BONUS", 0)
-                        big   = table_data.get(day_label, {}).get("BIG", 0)
-                        reg   = table_data.get(day_label, {}).get("REG", 0)
+                        big_raw = table_data.get(day_label, {}).get("BIG", 0)
+                        reg_raw = table_data.get(day_label, {}).get("REG", 0)
                         games = table_data.get(day_label, {}).get("累計ゲーム", 0)
 
+                        big_int = int(str(big_raw).replace(',','')) if str(big_raw).replace(',','').isdigit() else 0
+                        reg_int = int(str(reg_raw).replace(',','')) if str(reg_raw).replace(',','').isdigit() else 0
+                        bonus_int = big_int + reg_int
                         games_int = int(str(games).replace(',','')) if str(games).replace(',','').isdigit() else 0
 
                         if games_int == 0:
@@ -1274,9 +1319,9 @@ def scrape_worker_action(page: Page, machine_list: list, thread_name: str):
 
                         record_tuple = (
                             actual_date, model_name, cd_dai_str,
-                            int(str(bonus).replace(',','')) if str(bonus).replace(',','').isdigit() else 0,
-                            int(str(big).replace(',','')) if str(big).replace(',','').isdigit() else 0,
-                            int(str(reg).replace(',','')) if str(reg).replace(',','').isdigit() else 0,
+                            bonus_int,
+                            big_int,
+                            reg_int,
                             games_int,
                             sasamai_final
                         )
@@ -1393,13 +1438,13 @@ def main(skip_scraping: bool = False):
                     continue
                 
                 # 島図レイアウトを最新にするためにエクスポートを実行
-                logger.info("島図レイアウトの最新化のため export_slot_data.py を実行します...")
+                logger.info("島図レイアウトの最新化のため export_slot_data_king666_t.py を実行します...")
                 try:
-                    subprocess.run([sys.executable, "export_slot_data.py"], check=True)
+                    subprocess.run([sys.executable, "export_slot_data_king666_t.py"], check=True)
                 except Exception as e:
-                    logger.warning(f"export_slot_data.py の実行に失敗しました（既存のlayout.jsonを使用します）: {e}")
+                    logger.warning(f"export_slot_data_king666_t.py の実行に失敗しました（既存のlayout.jsonを使用します）: {e}")
 
-                # 期待される台番号を再度取得 (export_slot_dataで更新された可能性があるため)
+                # 期待される台番号を再度取得 (export_slot_data_king666_tで更新された可能性があるため)
                 expected = get_expected_machines_from_layout()
                 if not expected:
                     logger.warning("期待される台番号(layout.json)が空です。従来の全走査(site1_action)を実行します。")
