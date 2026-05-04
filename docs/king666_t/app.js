@@ -134,6 +134,13 @@ function buildLayoutLookup() {
             else if (hL + hR > 0) { dist = Math.min(hL, hR); dir = 'horizontal'; }
             else if (vT + vB > 0) { dist = Math.min(vT, vB); dir = 'vertical'; }
             else { dist = 0; }
+
+            // 除外設定：円形島や作図上の折れ曲がりを角判定から外す
+            const n = parseInt(numStr, 10);
+            if ((n >= 1006 && n <= 1010) || (n >= 1177 && n <= 1181) || (n >= 1185 && n <= 1203)) {
+                if (dist === 0) dist = 9; // 角(0)なら「その他」扱いにする
+            }
+
             layoutLookup[numStr] = { row_idx: rIdx, col_idx: cIdx, pos: dist, direction: dir, islandId: '' };
         });
     });

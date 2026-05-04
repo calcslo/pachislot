@@ -134,6 +134,13 @@ function buildLayoutLookup() {
             else if (hL + hR > 0) { dist = Math.min(hL, hR); dir = 'horizontal'; }
             else if (vT + vB > 0) { dist = Math.min(vT, vB); dir = 'vertical'; }
             else { dist = 0; }
+
+            // 除外設定：円形島を角判定から外す
+            const n = parseInt(numStr, 10);
+            if (n >= 1081 && n <= 1105) {
+                if (dist === 0) dist = 9; // 角(0)なら「その他」扱いにする
+            }
+
             layoutLookup[numStr] = { row_idx: rIdx, col_idx: cIdx, pos: dist, direction: dir, islandId: '' };
         });
     });
