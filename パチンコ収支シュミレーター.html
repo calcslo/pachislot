@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プレミアム パチンコ収支シュミレーター</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00d2ff;
+            --secondary: #3a7bd5;
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --accent: #f43f5e;
+            --success: #10b981;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 2rem;
+            text-align: center;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2.5rem;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.5);
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: none;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button .spinner {
+            display: none;
+            width: 1.2rem;
+            height: 1.2rem;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        @keyframes spin {
+            to { transform: translateY(-50%) rotate(360deg); }
+        }
+
+        button.loading .spinner {
+            display: block;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+        }
+
+        .info-box {
+            background: rgba(58, 123, 213, 0.1);
+            border-left: 4px solid var(--secondary);
+            padding: 1rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+            border-radius: 0 0.75rem 0.75rem 0;
+        }
+
+        @media (max-width: 1000px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PACHINKO & SLOT SIMULATOR</h1>
+    </header>
+
+    <main>
+        <div class="sidebar">
+            <div class="card">
+                <!-- カテゴリ選択 -->
+                <div class="input-group" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin: 0;">
+                        <input type="radio" name="category" value="pachinko" checked style="width: auto;"> パチンコ
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin: 0;">
+                        <input type="radio" name="category" value="slot" style="width: auto;"> スロット
+                    </label>
+                </div>
+
+                <div class="input-group">
+                    <label for="machine">対象機種</label>
+                    <select id="machine">
+                        <!-- JSで動的に生成されます -->
+                    </select>
+                </div>
+                
+                <div class="input-group" id="setting-group" style="display: none;">
+                    <label for="setting">設定</label>
+                    <select id="setting">
+                        <option value="1">設定1</option>
+                        <option value="2">設定2</option>
+                        <option value="3">設定3</option>
+                        <option value="4">設定4</option>
+                        <option value="5">設定5</option>
+                        <option value="6">設定6</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="days">期間 (日数)</label>
+                    <input type="number" id="days" value="30" min="1" max="365">
+                </div>
+                <div class="input-group">
+                    <label id="spins-label" for="spins">1日の通常回転数</label>
+                    <input type="number" id="spins" value="1500" min="1" max="10000">
+                </div>
+                <div class="input-group" id="rotation-group">
+                    <label for="rotation">設定回転率 (1kあたり)</label>
+                    <input type="number" id="rotation" value="18" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label for="budget">初期軍資金 (円)</label>
+                    <input type="number" id="budget" value="100000" step="10000">
+                </div>
+                <div class="input-group">
+                    <label for="iterations">試行回数 (モンテカルロ)</label>
+                    <input type="number" id="iterations" value="2000" min="100" max="10000">
+                </div>
+                <button id="simulateBtn"><div class="spinner"></div><span>シミュレーション実行</span></button>
+            </div>
+            <div class="info-box">
+                <b>パチンコ ボーダー収束:</b><br>
+                指定されたボーダー回転数において期待収支が正確に0円となるよう、理論上の平均出玉を逆算しています。<br><br>
+                <b>スロット AT機ロジック:</b><br>
+                公表の初当たり確率と機械割に完全に一致するよう、AT突入時の平均継続回数を自動計算してシミュレーションします。
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-value" id="resEV">0</span>
+                    <span class="stat-label">期待収支 (平均)</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="resWinRate">0%</span>
+                    <span class="stat-label">勝率 (収支プラス)</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="resBankrupt">0%</span>
+                    <span class="stat-label">破産確率</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="res95Range">0</span>
+                    <span class="stat-label">95%収支範囲</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="resMin" style="color: var(--accent);">0</span>
+                    <span class="stat-label">最大欠損 (95%下限最小)</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="chart-container">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const machines = {
+            "eva17": { type: 'pachinko', ts: 349.9, rush_rate: 0.614, continuation: 0.80, border: 17.0, name: "eエヴァ17はじまりの記憶" },
+            "ghoul": { type: 'pachinko', ts: 399.9, rush_rate: 0.51, continuation: 0.75, border: 17.4, name: "e東京喰種" },
+            "umi6":  { type: 'pachinko', ts: 319.6, rush_rate: 1.0,  continuation: 0.788, border: 17.6, name: "P沖海6LTP" },
+            "myjugV": { type: 'slot', name: "マイジャグラーV", coin: 42, big: 240, reg: 96, settings: {
+                1: { big_prob: 273.1, reg_prob: 409.6 },
+                2: { big_prob: 270.8, reg_prob: 385.5 },
+                3: { big_prob: 266.4, reg_prob: 336.1 },
+                4: { big_prob: 254.0, reg_prob: 290.0 },
+                5: { big_prob: 240.1, reg_prob: 268.6 },
+                6: { big_prob: 229.1, reg_prob: 229.1 }
+            }},
+            "kinghana": { type: 'slot', name: "キングハナハナ-30", coin: 39.9, big: 260, reg: 120, settings: {
+                1: { big_prob: 292, reg_prob: 489 },
+                2: { big_prob: 280, reg_prob: 452 },
+                3: { big_prob: 268, reg_prob: 420 },
+                4: { big_prob: 257, reg_prob: 390 },
+                5: { big_prob: 244, reg_prob: 360 },
+                6: { big_prob: 232, reg_prob: 332 }
+            }},
+            "hokuto": { type: 'slot', name: "スマスロ北斗の拳", coin: 34.7, big: 110, reg: 0, settings: {
+                1: { at_prob: 383.4, payout_rate: 98.0 },
+                2: { at_prob: 370.5, payout_rate: 98.9 },
+                3: { at_prob: 334.0, payout_rate: 102.3 },
+                4: { at_prob: 297.8, payout_rate: 105.7 },
+                5: { at_prob: 258.7, payout_rate: 110.0 },
+                6: { at_prob: 235.1, payout_rate: 113.0 }
+            }}
+        };
+
+        let myChart = null;
+
+        // Web Worker用のコード文字列
+        const workerCode = `
+            self.onmessage = function(e) {
+                const { 
+                    iterations, days, spinsPerDay, isSlot, spec, settingVal, 
+                    payoutPerHit, costPerSpin, atExpectedPayout, atHitRate, budget 
+                } = e.data;
+
+                let allHistories = [];
+                let bankruptcyDays = [];
+                let finalProfits = [];
+                let trialMinimums = [];
+
+                for (let i = 0; i < iterations; i++) {
+                    let purse = budget;
+                    let history = [0];
+                    let isBankrupt = false;
+                    let minInTrial = 0;
+
+                    for (let d = 0; d < days; d++) {
+                        if (isBankrupt) {
+                            history.push(history[history.length - 1]);
+                            continue;
+                        }
+
+                        for (let s = 0; s < spinsPerDay; s++) {
+                            let costYen = !isSlot ? costPerSpin : costPerSpin * 20;
+                            if (purse < costYen) {
+                                isBankrupt = true;
+                                bankruptcyDays.push(d + 1);
+                                break;
+                            }
+                            purse -= costYen;
+
+                            if (!isSlot) {
+                                if (Math.random() < (1 / spec.ts)) {
+                                    let win = payoutPerHit;
+                                    if (Math.random() < spec.rush_rate) {
+                                        while (Math.random() < spec.continuation) {
+                                            win += payoutPerHit;
+                                        }
+                                    }
+                                    purse += win * 4;
+                                }
+                            } else {
+                                const settingData = spec.settings[settingVal];
+                                let winMedals = 0;
+                                if (settingData.at_prob) {
+                                    if (Math.random() < atHitRate) {
+                                        let expectedSets = atExpectedPayout / spec.big;
+                                        let contRate = 1 - (1 / expectedSets);
+                                        winMedals += spec.big;
+                                        while (Math.random() < contRate) {
+                                            winMedals += spec.big;
+                                        }
+                                    }
+                                } else {
+                                    let r = Math.random();
+                                    if (r < (1 / settingData.big_prob)) {
+                                        winMedals += spec.big;
+                                    } else if (r < (1 / settingData.big_prob) + (1 / settingData.reg_prob)) {
+                                        winMedals += spec.reg;
+                                    }
+                                }
+                                purse += winMedals * 20;
+                            }
+                        }
+                        const currentProfit = purse - budget;
+                        history.push(currentProfit);
+                        if (currentProfit < minInTrial) minInTrial = currentProfit;
+                    }
+                    finalProfits.push(purse - budget);
+                    allHistories.push(history);
+                    trialMinimums.push(minInTrial);
+                }
+                self.postMessage({ allHistories, bankruptcyDays, finalProfits, trialMinimums });
+            };
+        `;
+
+        function simulate() {
+            const btn = document.getElementById('simulateBtn');
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            const isSlot = document.querySelector('input[name="category"]:checked').value === 'slot';
+            const mKey = document.getElementById('machine').value;
+            const spec = machines[mKey];
+            const settingVal = document.getElementById('setting').value;
+            const days = parseInt(document.getElementById('days').value);
+            const spinsPerDay = parseInt(document.getElementById('spins').value);
+            const rotation = parseFloat(document.getElementById('rotation').value);
+            const budget = parseInt(document.getElementById('budget').value);
+            const iterations = parseInt(document.getElementById('iterations').value);
+
+            let payoutPerHit = 0;
+            let costPerSpin = 0;
+            let atExpectedPayout = 0;
+            let atHitRate = 0;
+
+            if (!isSlot) {
+                const expectedTotalPayout = (1000 * spec.ts) / (4 * spec.border);
+                const avgHitsPerCycle = 1 + spec.rush_rate * (spec.continuation / (1 - spec.continuation));
+                payoutPerHit = expectedTotalPayout / avgHitsPerCycle;
+                costPerSpin = 1000 / rotation;
+            } else {
+                costPerSpin = 50 / spec.coin;
+                if (spec.settings[1].at_prob) {
+                    const settingData = spec.settings[settingVal];
+                    atHitRate = 1 / settingData.at_prob;
+                    const targetNetPerSpin = 3 * (settingData.payout_rate / 100 - 1);
+                    atExpectedPayout = (targetNetPerSpin + costPerSpin) / atHitRate;
+                }
+            }
+
+            // 並列処理の準備
+            const threadCount = navigator.hardwareConcurrency || 4;
+            const iterationsPerWorker = Math.ceil(iterations / threadCount);
+            let workersFinished = 0;
+
+            let allHistories = [];
+            let bankruptcyDays = [];
+            let finalProfits = [];
+            let trialMinimums = [];
+
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            const workerUrl = URL.createObjectURL(blob);
+
+            for (let t = 0; t < threadCount; t++) {
+                const worker = new Worker(workerUrl);
+                worker.postMessage({
+                    iterations: iterationsPerWorker, days, spinsPerDay, isSlot, spec, settingVal,
+                    payoutPerHit, costPerSpin, atExpectedPayout, atHitRate, budget
+                });
+
+                worker.onmessage = function(e) {
+                    const data = e.data;
+                    allHistories = allHistories.concat(data.allHistories);
+                    bankruptcyDays = bankruptcyDays.concat(data.bankruptcyDays);
+                    finalProfits = finalProfits.concat(data.finalProfits);
+                    trialMinimums = trialMinimums.concat(data.trialMinimums);
+                    
+                    workersFinished++;
+                    worker.terminate();
+
+                    if (workersFinished === threadCount) {
+                        // 全Worker終了
+                        finalizeSimulation(days, iterations, allHistories, bankruptcyDays, finalProfits, trialMinimums, budget);
+                        btn.classList.remove('loading');
+                        btn.disabled = false;
+                        URL.revokeObjectURL(workerUrl);
+                    }
+                };
+            }
+        }
+
+        function finalizeSimulation(days, iterations, allHistories, bankruptcyDays, finalProfits, trialMinimums, budget) {
+            // 統計計算
+            const meanHistory = Array.from({ length: days + 1 }, (_, d) => {
+                let sum = 0;
+                for (let i = 0; i < iterations; i++) sum += allHistories[i][d];
+                return sum / iterations;
+            });
+
+            const p25 = Array.from({ length: days + 1 }, (_, d) => {
+                const values = allHistories.map(h => h[d]).sort((a, b) => a - b);
+                return values[Math.floor(iterations * 0.025)];
+            });
+
+            const p975 = Array.from({ length: days + 1 }, (_, d) => {
+                const values = allHistories.map(h => h[d]).sort((a, b) => a - b);
+                return values[Math.floor(iterations * 0.975)];
+            });
+
+            const winRate = (finalProfits.filter(p => p > 0).length / iterations) * 100;
+            const bankruptRate = (bankruptcyDays.length / iterations) * 100;
+            const ev = meanHistory[days];
+            const maxDeficit = Math.min(...p25);
+
+            // UI更新
+            document.getElementById('resEV').textContent = ev.toLocaleString(undefined, { maximumFractionDigits: 0 }) + " 円";
+            document.getElementById('resWinRate').textContent = winRate.toFixed(1) + "%";
+            document.getElementById('resBankrupt').textContent = bankruptRate.toFixed(1) + "%";
+            document.getElementById('res95Range').textContent = `${p25[days].toLocaleString(undefined, { maximumFractionDigits: 0 })} ～ ${p975[days].toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            document.getElementById('resMin').textContent = maxDeficit.toLocaleString(undefined, { maximumFractionDigits: 0 }) + " 円";
+
+            updateChart(days, meanHistory, p25, p975, allHistories.slice(0, 10), budget);
+        }
+
+        function updateChart(days, mean, p25, p975, samples, budget) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const labels = Array.from({ length: days + 1 }, (_, i) => i + "日");
+
+            if (myChart) myChart.destroy();
+
+            const datasets = [
+                {
+                    label: '期待収支 (平均)',
+                    data: mean,
+                    borderColor: '#00d2ff',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0
+                },
+                {
+                    label: '95%分布 (上限)',
+                    data: p975,
+                    borderColor: 'rgba(148, 163, 184, 0.2)',
+                    borderWidth: 1,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0
+                },
+                {
+                    label: '95%分布 (下限)',
+                    data: p25,
+                    borderColor: 'rgba(148, 163, 184, 0.2)',
+                    borderWidth: 1,
+                    fill: '-1',
+                    backgroundColor: 'rgba(148, 163, 184, 0.1)',
+                    tension: 0.1,
+                    pointRadius: 0
+                }
+            ];
+
+            // 個別サンプル
+            samples.forEach((s, idx) => {
+                datasets.push({
+                    label: idx === 0 ? '個別試行サンプル' : null,
+                    data: s,
+                    borderColor: 'rgba(16, 185, 129, 0.2)',
+                    borderWidth: 1,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0
+                });
+            });
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                filter: (item) => item.text !== null,
+                                color: '#f8fafc'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const categoryRadios = document.querySelectorAll('input[name="category"]');
+        const machineSelect = document.getElementById('machine');
+        const settingGroup = document.getElementById('setting-group');
+        const rotationGroup = document.getElementById('rotation-group');
+        const spinsLabel = document.getElementById('spins-label');
+        const spinsInput = document.getElementById('spins');
+
+        function updateUI() {
+            const isSlot = document.querySelector('input[name="category"]:checked').value === 'slot';
+            
+            // 機種リストの更新
+            machineSelect.innerHTML = '';
+            for (const [key, m] of Object.entries(machines)) {
+                if (m.type === (isSlot ? 'slot' : 'pachinko')) {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    if (isSlot) {
+                        option.textContent = m.name;
+                    } else {
+                        option.textContent = `${m.name} (TS ${m.ts} / ボーダー ${m.border})`;
+                    }
+                    machineSelect.appendChild(option);
+                }
+            }
+
+            // UIの切り替え
+            if (isSlot) {
+                settingGroup.style.display = 'block';
+                rotationGroup.style.display = 'none';
+                spinsLabel.textContent = '1日の総ゲーム数';
+                if (parseInt(spinsInput.value) <= 3000) spinsInput.value = 7000;
+            } else {
+                settingGroup.style.display = 'none';
+                rotationGroup.style.display = 'block';
+                spinsLabel.textContent = '1日の通常回転数';
+                if (parseInt(spinsInput.value) > 3000) spinsInput.value = 1500;
+            }
+        }
+
+        categoryRadios.forEach(r => r.addEventListener('change', updateUI));
+        
+        document.getElementById('simulateBtn').addEventListener('click', simulate);
+        
+        // 初期化
+        updateUI();
+        simulate();
+    </script>
+</body>
+</html>

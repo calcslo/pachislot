@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE RADICAL | Minimal High-End</title>
+    <!-- GSAPのみ読み込み（これ1つで動きます） -->
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+    <style>
+        :root {
+            --bg: #000;
+            --fg: #fff;
+            --accent: #f00;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--fg);
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            overflow-x: hidden;
+            line-height: 1;
+        }
+
+        /* プロ級の粒子感（画像を使わずCSSのみで表現） */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://w3.org Operf%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* セクション設計 */
+        section {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 0 5vw;
+            position: relative;
+        }
+
+        /* 巨大タイポグラフィ */
+        .giant-text {
+            font-size: 22vw;
+            font-weight: 900;
+            letter-spacing: -0.06em;
+            text-transform: uppercase;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .outline {
+            -webkit-text-stroke: 1px var(--fg);
+            color: transparent;
+        }
+
+        /* 情報エリア（カードデザイン禁止を遵守） */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            width: 100%;
+            padding-top: 10vh;
+            border-top: 1px solid var(--fg);
+        }
+
+        .info-text {
+            grid-column: 6 / 13;
+            font-size: 3vw;
+            font-weight: 300;
+            line-height: 1.1;
+        }
+
+        /* 横スクロールセクション */
+        .horizontal-section {
+            background-color: var(--fg);
+            color: var(--bg);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .scrolling-wrapper {
+            display: flex;
+            white-space: nowrap;
+            will-change: transform;
+        }
+
+        .scrolling-item {
+            font-size: 30vh;
+            font-weight: 900;
+            padding-right: 10vw;
+        }
+
+        /* カーソル（演出用） */
+        #cursor {
+            position: fixed;
+            width: 15px;
+            height: 15px;
+            background: var(--accent);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            mix-blend-mode: difference;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="cursor"></div>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="giant-text">
+            <span class="line">Artistic</span>
+            <span class="line outline">Disruption</span>
+            <span class="line">Archive</span>
+        </div>
+    </section>
+
+    <!-- DESCRIPTION -->
+    <section class="details">
+        <div class="info-grid">
+            <div class="info-text">
+                <p>AIが生成する「それっぽさ」を拒絶し、</p>
+                <p>構造と律動だけで空間を支配する。</p>
+                <p style="margin-top: 2rem; color: var(--accent);">2026 Edition.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- HORIZONTAL SCROLL -->
+    <div class="scroll-container" style="height: 300vh;">
+        <div class="horizontal-section" id="sticky-section" style="position: sticky; top: 0;">
+            <div class="scrolling-wrapper" id="marquee">
+                <div class="scrolling-item">CRAFTMANSHIP</div>
+                <div class="scrolling-item">REDEFINED</div>
+                <div class="scrolling-item">MOVEMENT</div>
+            </div>
+        </div>
+    </div>
+
+    <section style="height: 50vh; justify-content: flex-end; font-size: 1vw;">
+        <p>SCROLL TO EXPLORE / 01</p>
+    </section>
+
+    <script>
+        window.onload = () => {
+            gsap.registerPlugin(ScrollTrigger);
+
+            // カスタムカーソル
+            const cursor = document.getElementById('cursor');
+            window.addEventListener('mousemove', (e) => {
+                gsap.to(cursor, { x: e.clientX, y: e.clientY, duration: 0.1 });
+            });
+
+            // ヒーローアニメーション
+            gsap.from(".line", {
+                y: 100, opacity: 0, duration: 1.2, stagger: 0.2, ease: "power4.out"
+            });
+
+            // 横スクロールアニメーション
+            gsap.to("#marquee", {
+                x: "-100%",
+                scrollTrigger: {
+                    trigger: ".scroll-container",
+                    start: "top top",
+                    end: "bottom bottom",
+                    scrub: 1
+                }
+            });
+
+            // 背景色反転（スクロール連動）
+            gsap.to("body", {
+                scrollTrigger: {
+                    trigger: ".horizontal-section",
+                    start: "top center",
+                    end: "bottom center",
+                    toggleActions: "play reverse play reverse"
+                },
+                backgroundColor: "#fff",
+                color: "#000",
+                duration: 0.5
+            });
+        };
+    </script>
+</body>
+
+</html>
