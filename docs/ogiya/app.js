@@ -2968,3 +2968,285 @@ function loadTargetConditions() {
 
     } catch (e) { console.error('Failed to load config', e); }
 }
+
+// ==========================================
+// NEW ANALYSES (Past Diff, Island Past Diff, Unexploded, Accidental Explosion)
+// ==========================================
+
+function getBucketName(d) {
+    if (d <= -4000) return '<=-4000';
+    if (d >= 6001) return '>=6001';
+    const idx = Math.floor((d - 1) / 500);
+    const lower = idx * 500 + 1;
+    const upper = (idx + 1) * 500;
+    return `${lower}~${upper}`;
+}
+
+const PAST_DIFF_BKEYS = ['<=-4000'];
+for (let i = -8; i <= 11; i++) { PAST_DIFF_BKEYS.push(`${i * 500 + 1}~${(i + 1) * 500}`); }
+PAST_DIFF_BKEYS.push('>=6001');
+
+function renderPastDiffAnalysis(data) {
+    const period = parseInt(pastDiffPeriod, 10);
+    
+    // Group rawData by machine
+    const mHist = {};
+    rawData.forEach(r => {
+        const num = normalizeNum(r['台番号']);
+        if (!mHist[num]) mHist[num] = [];
+        mHist[num].push(r);
+    });
+
+    const buckets = {};
+    PAST_DIFF_BKEYS.forEach(k => { buckets[k] = { diff: 0, c: 0, setSum: 0, setC: 0 }; });
+
+    for (const [m, hist] of Object.entries(mHist)) {
+        hist.sort((a, b) => a['日付'].localeCompare(b['日付']));
+        for (let i = period; i < hist.length; i++) {
+            const targetRow = hist[i];
+            
+            // Fast check: is this row in `data`?
+            // `data` contains only filtered rows (e.g. by tab/event).
+            // We use targetRow object reference directly since `data` and `rawData` objects might differ slightly or be the same?
+            // Actually, data is filtered from rawData, so object refs are identical.
+            if (!data.includes(targetRow)) continue;
+
+            let pastDiffSum = 0;
+            for (let j = 1; j <= period; j++) {
+                pastDiffSum += (Number(hist[i - j]['最終差枚']) || 0);
+            }
+            const pastAvg = pastDiffSum / period;
+            const bName = getBucketName(pastAvg);
+            
+            const trDiff = Number(targetRow['最終差枚']) || 0;
+            if (buckets[bName]) {
+                buckets[bName].diff += trDiff;
+                buckets[bName].c++;
+                const est = estimateSetting(targetRow['機種名'], targetRow['累計ゲーム'], targetRow['BIG'], targetRow['REG']);
+                if (est) {
+                    buckets[bName].setSum += est.setting;
+                    buckets[bName].setC++;
+                }
+            }
+        }
+    }
+
+    const labels = [];
+    const vals = [];
+    for (const k of PAST_DIFF_BKEYS) {
+        const v = buckets[k];
+        if (v.c > 0) {
+            labels.push(k);
+            if (analysisMode === 'setting') {
+                vals.push(v.setC > 0 ? v.setSum / v.setC : 0);
+            } else {
+                vals.push(v.diff / v.c);
+            }
+        }
+    }
+    const yLabel = analysisMode === 'setting' ? '平均設定' : '平均差枚';
+    drawBar('chart-past-diff', labels, vals, yLabel, { dynamicWidth: true });
+}
+
+function renderIslandPastDiffAnalysis(data) {
+    const period = parseInt(islandPastDiffPeriod, 10);
+    
+    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
+    const islandDaily = {};
+    rawData.forEach(r => {
+        const num = normalizeNum(r['台番号']);
+        const loc = layoutLookup[num];
+        if (!loc || !loc.islandId) return;
+        const iId = loc.islandId;
+        const date = r['日付'];
+        if (!islandDaily[iId]) islandDaily[iId] = {};
+        if (!islandDaily[iId][date]) islandDaily[iId][date] = { diff: 0, c: 0 };
+        islandDaily[iId][date].diff += (Number(r['最終差枚']) || 0);
+        islandDaily[iId][date].c++;
+    });
+
+    for (const iId of Object.keys(islandDaily)) {
+        for (const date of Object.keys(islandDaily[iId])) {
+            const v = islandDaily[iId][date];
+            islandDaily[iId][date] = v.c > 0 ? v.diff / v.c : 0;
+        }
+    }
+
+    const buckets = {};
+    PAST_DIFF_BKEYS.forEach(k => { buckets[k] = { diff: 0, c: 0, setSum: 0, setC: 0 }; });
+
+    const mHist = {};
+    rawData.forEach(r => {
+        const num = normalizeNum(r['台番号']);
+        if (!mHist[num]) mHist[num] = [];
+        mHist[num].push(r);
+    });
+
+    for (const [m, hist] of Object.entries(mHist)) {
+        const loc = layoutLookup[m];
+        if (!loc || !loc.islandId) continue;
+        const iId = loc.islandId;
+
+        for (const targetRow of hist) {
+            if (!data.includes(targetRow)) continue;
+
+            const tDate = targetRow['日付'];
+            const tDateIdx = allDates.indexOf(tDate);
+            if (tDateIdx < period) continue;
+            
+            let pastDiffSum = 0;
+            let valid = true;
+            for (let j = 1; j <= period; j++) {
+                const prevDate = allDates[tDateIdx - j];
+                if (islandDaily[iId][prevDate] !== undefined) {
+                    pastDiffSum += islandDaily[iId][prevDate];
+                } else {
+                    valid = false; break;
+                }
+            }
+            if (!valid) continue;
+
+            const pastAvg = pastDiffSum / period;
+            const bName = getBucketName(pastAvg);
+            const trDiff = Number(targetRow['最終差枚']) || 0;
+            
+            if (buckets[bName]) {
+                buckets[bName].diff += trDiff;
+                buckets[bName].c++;
+                const est = estimateSetting(targetRow['機種名'], targetRow['累計ゲーム'], targetRow['BIG'], targetRow['REG']);
+                if (est) {
+                    buckets[bName].setSum += est.setting;
+                    buckets[bName].setC++;
+                }
+            }
+        }
+    }
+
+    const labels = [];
+    const vals = [];
+    for (const k of PAST_DIFF_BKEYS) {
+        const v = buckets[k];
+        if (v.c > 0) {
+            labels.push(k);
+            if (analysisMode === 'setting') {
+                vals.push(v.setC > 0 ? v.setSum / v.setC : 0);
+            } else {
+                vals.push(v.diff / v.c);
+            }
+        }
+    }
+    const yLabel = analysisMode === 'setting' ? '平均設定' : '平均差枚';
+    drawBar('chart-island-past-diff', labels, vals, yLabel, { dynamicWidth: true });
+}
+
+function renderUnexplodedAnalysis(data) {
+    const isEvent = d => {
+        const dd = parseInt(d.split('-')[2], 10);
+        return dd === 3 || dd === 5 || dd === 8 || dd === 13 || dd === 15 || dd === 18 || dd === 23 || dd === 25 || dd === 28;
+    };
+
+    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
+    
+    let targetC = 0, targetDiff = 0, targetSetSum = 0, targetSetC = 0;
+    let baselineC = 0, baselineDiff = 0, baselineSetSum = 0, baselineSetC = 0;
+
+    data.forEach(targetRow => {
+        const m = targetRow['機種名'];
+        const tDate = targetRow['日付'];
+        const num = normalizeNum(targetRow['台番号']);
+        
+        const tDateIdx = allDates.indexOf(tDate);
+        if (tDateIdx < 1) return;
+        const prevDate = allDates[tDateIdx - 1];
+
+        if (unexplodedFilter === 'prev_event' && !isEvent(prevDate)) return;
+        if (unexplodedFilter === 'next_event' && !isEvent(tDate)) return;
+
+        const trDiff = Number(targetRow['最終差枚']) || 0;
+        const trEst = estimateSetting(m, targetRow['累計ゲーム'], targetRow['BIG'], targetRow['REG']);
+        baselineC++;
+        baselineDiff += trDiff;
+        if (trEst) { baselineSetSum += trEst.setting; baselineSetC++; }
+
+        const prevRow = rawData.find(r => r['日付'] === prevDate && normalizeNum(r['台番号']) === num);
+        if (!prevRow) return;
+
+        const prevEst = estimateSetting(prevRow['機種名'], prevRow['累計ゲーム'], prevRow['BIG'], prevRow['REG']);
+        if (prevEst && (prevEst.setting === 5 || prevEst.setting === 6)) {
+            targetC++;
+            targetDiff += trDiff;
+            if (trEst) { targetSetSum += trEst.setting; targetSetC++; }
+        }
+    });
+
+    const diffLabels = ['条件合致台 (前日5,6)', '比較用全体平均'];
+    const diffVals = [
+        targetC > 0 ? targetDiff / targetC : 0,
+        baselineC > 0 ? baselineDiff / baselineC : 0
+    ];
+    
+    const setLabels = ['条件合致台 (前日5,6)', '比較用全体平均'];
+    const setVals = [
+        targetSetC > 0 ? targetSetSum / targetSetC : 0,
+        baselineSetC > 0 ? baselineSetSum / baselineSetC : 0
+    ];
+
+    drawBar('chart-unexploded-diff', diffLabels, diffVals, '翌日 平均差枚', { datasetExtras: { backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(59,130,246,0.7)'] } });
+    drawBar('chart-unexploded-setting', setLabels, setVals, '翌日 平均設定', { datasetExtras: { backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(59,130,246,0.7)'] } });
+}
+
+function renderAccidentalExplosionAnalysis(data) {
+    const isEvent = d => {
+        const dd = parseInt(d.split('-')[2], 10);
+        return dd === 3 || dd === 5 || dd === 8 || dd === 13 || dd === 15 || dd === 18 || dd === 23 || dd === 25 || dd === 28;
+    };
+
+    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
+    
+    let targetC = 0, targetDiff = 0, targetSetSum = 0, targetSetC = 0;
+    let baselineC = 0, baselineDiff = 0, baselineSetSum = 0, baselineSetC = 0;
+
+    data.forEach(targetRow => {
+        const m = targetRow['機種名'];
+        const tDate = targetRow['日付'];
+        const num = normalizeNum(targetRow['台番号']);
+        
+        const tDateIdx = allDates.indexOf(tDate);
+        if (tDateIdx < 1) return;
+        const prevDate = allDates[tDateIdx - 1];
+
+        if (accidentalExplosionFilter === 'prev_event' && !isEvent(prevDate)) return;
+        if (accidentalExplosionFilter === 'next_event' && !isEvent(tDate)) return;
+
+        const trDiff = Number(targetRow['最終差枚']) || 0;
+        const trEst = estimateSetting(m, targetRow['累計ゲーム'], targetRow['BIG'], targetRow['REG']);
+        baselineC++;
+        baselineDiff += trDiff;
+        if (trEst) { baselineSetSum += trEst.setting; baselineSetC++; }
+
+        const prevRow = rawData.find(r => r['日付'] === prevDate && normalizeNum(r['台番号']) === num);
+        if (!prevRow) return;
+
+        const prevEst = estimateSetting(prevRow['機種名'], prevRow['累計ゲーム'], prevRow['BIG'], prevRow['REG']);
+        if (prevEst && (prevEst.setting === 1 || prevEst.setting === 2 || prevEst.setting === 3)) {
+            targetC++;
+            targetDiff += trDiff;
+            if (trEst) { targetSetSum += trEst.setting; targetSetC++; }
+        }
+    });
+
+    const diffLabels = ['条件合致台 (前日1,2,3)', '比較用全体平均'];
+    const diffVals = [
+        targetC > 0 ? targetDiff / targetC : 0,
+        baselineC > 0 ? baselineDiff / baselineC : 0
+    ];
+    
+    const setLabels = ['条件合致台 (前日1,2,3)', '比較用全体平均'];
+    const setVals = [
+        targetSetC > 0 ? targetSetSum / targetSetC : 0,
+        baselineSetC > 0 ? baselineSetSum / baselineSetC : 0
+    ];
+
+    drawBar('chart-accidental-explosion-diff', diffLabels, diffVals, '翌日 平均差枚', { datasetExtras: { backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(59,130,246,0.7)'] } });
+    drawBar('chart-accidental-explosion-setting', setLabels, setVals, '翌日 平均設定', { datasetExtras: { backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(59,130,246,0.7)'] } });
+}
