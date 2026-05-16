@@ -1,0 +1,977 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>キング666半田店スロット差枚データ</title>
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- ChartJS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+</head>
+
+<body>
+    <div class="glass-background"></div>
+    <div class="glow-orb top-left"></div>
+    <div class="glow-orb bottom-right"></div>
+
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="glass-panel header">
+            <h1 class="site-title">
+                <span class="main-title">キング666半田店</span>
+                <span class="sub-title">SLOT DATA DASHBOARD</span>
+            </h1>
+
+            <div class="header-controls">
+                <a href="../index.html" class="store-nav-btn">⌂ TOPに戻る</a>
+                <button id="theme-btn" class="icon-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path class="sun"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Global Controls -->
+        <section class="controls glass-panel">
+            <div class="control-group">
+                <h3>機種 (Machine)</h3>
+                <div class="tabs" id="machine-tabs">
+                    <button class="tab-btn" data-target="hanahana">ハナハナ</button>
+                    <button class="tab-btn" data-target="juggler">ジャグラー</button>
+                    <button class="tab-btn active" data-target="all">すべて</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>期間 (Period)</h3>
+                <div class="tabs" id="period-tabs">
+                    <button class="tab-btn" data-target="latest">最新日</button>
+                    <button class="tab-btn" data-target="3d">3日間</button>
+                    <button class="tab-btn" data-target="7d">7日間</button>
+                    <button class="tab-btn" data-target="1m">1か月</button>
+                    <button class="tab-btn active" data-target="3m">3か月</button>
+                    <button class="tab-btn" data-target="all_time">全期間</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>特定日 (Special Days)</h3>
+                <select id="event-filter" class="styled-select">
+                    <option value="none">フィルタなし</option>
+                    <option value="6">6の付く日 (6,16,26)</option>
+                    <option value="not1">イベント日以外</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Main Navigation -->
+        <div class="main-nav glass-panel">
+            <button class="nav-btn active" data-section="summary-section">サマリー</button>
+            <button class="nav-btn" data-section="heatmap-section">ヒートマップ</button>
+            <button class="nav-btn" data-section="machine-section">台番号別差枚</button>
+            <button class="nav-btn" data-section="analysis-section">詳細分析</button>
+            <button class="nav-btn" data-section="target-section">狙い台</button>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+
+            <!-- 1. Summary Section -->
+            <section id="summary-section" class="data-section glass-panel active-section">
+                <h2 class="section-title">月別集計 (Monthly Summary)</h2>
+                <div class="table-container mb-4">
+                    <table id="monthly-table">
+                        <thead>
+                            <tr>
+                                <th>月</th>
+                                <th>合計差枚</th>
+                                <th>平均差枚</th>
+                                <th>平均G数</th>
+                                <th>総G数</th>
+                                <th>出率(%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-tbody"></tbody>
+                    </table>
+                </div>
+
+                <h2 class="section-title">日別集計 (Daily Summary)</h2>
+                <div class="table-chart-wrapper">
+                    <!-- Table -->
+                    <div class="table-container">
+                        <table id="summary-table">
+                            <thead>
+                                <tr>
+                                    <th>日付</th>
+                                    <th>合計差枚</th>
+                                    <th>月間累計差枚</th>
+                                    <th>平均差枚</th>
+                                    <th>平均G数</th>
+                                    <th>総G数</th>
+                                    <th>出率(%)</th>
+                                    <th>末尾</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summary-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="chart-container" style="height: 500px;">
+                        <canvas id="diff-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Heatmap Section -->
+            <section id="heatmap-section" class="heatmap-section glass-panel" style="display:none;">
+                <div class="heatmap-controls">
+                </div>
+
+                <!-- Diff Heatmap -->
+                <div class="heatmap-block">
+                    <h2 class="section-title">差枚ヒートマップ</h2>
+                    <div class="heatmap-legend" id="diff-legend">
+                        <!-- Dynamically injected thresholds -->
+                    </div>
+                    <div class="heatmap-zoom-controls">
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('diff-heatmap-wrapper')">
+                            リセット</button>
+                    </div>
+                    <div class="heatmap-wrapper" id="diff-heatmap-wrapper"></div>
+                </div>
+
+                <!-- Estimated Setting Heatmap -->
+                <div class="heatmap-block">
+                    <h2 class="section-title">推定設定ヒートマップ (ハナハナ・ジャグラー限定)</h2>
+                    <div class="heatmap-legend">
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(60,20,180,0.8);"></span>設定1</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(30,100,230,0.8);"></span>設定2</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(0,190,255,0.8);"></span>設定3</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(255,220,0,0.8);"></span>設定4</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(255,130,0,0.8);"></span>設定5</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: rgba(230,40,40,0.8);"></span>設定6</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background-color: transparent; border: 1px solid #ccc;"></span>不明/データ不足</div>
+                    </div>
+                    <div class="heatmap-zoom-controls">
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('setting-heatmap-wrapper')">
+                            リセット</button>
+                    </div>
+                    <div class="heatmap-wrapper" id="setting-heatmap-wrapper"></div>
+                </div>
+
+                <!-- Island Average Heatmap -->
+                <div class="heatmap-block">
+                    <h2 class="section-title">島平均差枚ヒートマップ</h2>
+                    <div class="heatmap-legend" id="row-legend">
+                        <!-- Same as diff legend usually -->
+                    </div>
+                    <div class="heatmap-zoom-controls">
+                        <button class="zoom-reset-btn" onclick="resetHeatmapZoom('row-heatmap-wrapper')">
+                            リセット</button>
+                    </div>
+                    <div class="heatmap-wrapper" id="row-heatmap-wrapper"></div>
+                    <!-- Column avg bar chart moved here -->
+                    <div class="chart-container" id="row-avg-chart-container" style="margin-top: 2rem;">
+                        <canvas id="chart-row-avg-heatmap"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Machine Section (台番号別差枚) -->
+            <section id="machine-section" class="glass-panel" style="display:none;">
+                <h2 class="section-title">台番号別 平均差枚</h2>
+                <p class="section-note">※同一台番号に複数機種がある場合、最新以外は（機種名）で表示</p>
+                <div id="machine-split-wrapper" class="split-chart-wrapper">
+                    <div class="split-chart-body">
+                        <div class="split-chart-labels">
+                            <canvas id="machine-labels-canvas"></canvas>
+                        </div>
+                        <div class="split-chart-bars">
+                            <canvas id="chart-machine-diff"></canvas>
+                        </div>
+                    </div>
+                    <div class="split-chart-footer">
+                        <div class="split-chart-label-spacer"></div>
+                        <div class="split-chart-axis-pane">
+                            <canvas id="machine-axis-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Analysis Section -->
+            <section id="analysis-section" class="analysis-section glass-panel" style="display:none;">
+
+                <div class="chart-grid">
+                    <!-- Column 1 -->
+                    <div class="chart-card">
+                        <h3 class="chart-title">台番号末尾別 平均差枚</h3>
+                        <canvas id="chart-digit"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">nの付く日別 平均差枚</h3>
+                        <canvas id="chart-nday"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">曜日別 平均差枚</h3>
+                        <canvas id="chart-weekday"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">角からの位置別 平均差枚</h3>
+                        <canvas id="chart-position"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">連続凹み日数別 翌日平均差枚</h3>
+                        <canvas id="chart-cons-neg"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">連続凸日数別 翌日平均差枚</h3>
+                        <canvas id="chart-cons-pos"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">隣台差枚 × 自台平均差枚</h3>
+                        <canvas id="chart-neighbor-diff"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">隣台推定設定 × 自台平均推定設定</h3>
+                        <canvas id="chart-neighbor-setting"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">両隣差枚条件 × 自台平均差枚</h3>
+                        <canvas id="chart-both-neighbor-diff"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="chart-title">両隣設定456条件 × 自台平均推定設定</h3>
+                        <canvas id="chart-both-neighbor-setting"></canvas>
+                    </div>
+
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">ゲーム数別 平均差枚</h3>
+                        <p class="section-note">
+                            過去数日間（通常日・イベント日両方含む）の平均ゲーム数（1000G刻み）に対して、翌日（イベント日等フィルタ対象日）の平均差枚がどうなったかを集計します。</p>
+                        <div class="analysis-controls" style="margin-bottom:1rem;">
+                            <div class="tabs" id="game-count-period-tabs">
+                                <button class="tab-btn active" data-period="1">前日</button>
+                                <button class="tab-btn" data-period="2">過去2日</button>
+                                <button class="tab-btn" data-period="3">過去3日</button>
+                                <button class="tab-btn" data-period="4">過去4日</button>
+                                <button class="tab-btn" data-period="5">過去5日</button>
+                                <button class="tab-btn" data-period="6">過去6日</button>
+                                <button class="tab-btn" data-period="7">過去7日</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-game-count-diff"></canvas>
+                        </div>
+                    </div>
+
+
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">機種別 平均差枚</h3>
+                        <div class="chart-scroll-wrapper">
+                            <div class="chart-container">
+                                <canvas id="chart-model"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 日付(1〜31日)ごとの平均差枚・出率 -->
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">日付(1〜31日)別 平均差枚</h3>
+                        <canvas id="chart-dayofmonth-diff"></canvas>
+                    </div>
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">日付(1〜31日)別 出率(%)</h3>
+                        <canvas id="chart-dayofmonth-payout"></canvas>
+                    </div>
+
+                    <!-- 月通算差枚分析 -->
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">月通算差枚分析</h3>
+                        <div class="monthly-cumul-controls">
+                            <span style="font-size:0.85rem; color:var(--text-muted); margin-right:0.5rem;">絞り込み:</span>
+                            <div class="tabs" id="cumul-filter-tabs" style="display:inline-flex;">
+                                <button class="tab-btn active" data-target="all">全日</button>
+                                <button class="tab-btn" data-target="first_week">月初（第1週）</button>
+                                <button class="tab-btn" data-target="last_week">月末（最終週）</button>
+                            </div>
+                        </div>
+                        <div style="margin-top:1rem;">
+                            <h4 class="chart-subtitle">前日累積差枚 × 当日差枚 散布図（相関係数付き）</h4>
+                            <div class="chart-container" style="height:400px; margin-top:0.5rem;">
+                                <canvas id="chart-cumul-scatter"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- 5. Target Support Section -->
+            <section id="target-section" class="glass-panel" style="display:none;">
+                <h2 class="section-title">狙い台サポートツール</h2>
+                <p class="section-note">
+                    条件を設定して翌日の狙い台を絞り込みます。差枚・島平均はページ上部の期間・特定日フィルタを反映。連続凹み/凸は最新日時点（フィルタ無視）。フィルタ変更時は自動再計算。</p>
+
+                <!-- Condition Settings Panel -->
+                <div class="target-conditions-panel glass-panel">
+                    <h3 class="target-panel-title">条件設定</h3>
+
+                    <!-- Machine model filter -->
+                    <div class="target-model-filter">
+                        <div class="cond-header"
+                            style="margin-bottom:0.5rem; display:flex; align-items:center; flex-wrap:wrap;">
+                            <div>
+                                <span class="cond-label">機種フィルタ</span>
+                                <span style="font-size:0.8rem;color:var(--text-muted);">（未選択 = すべて対象）</span>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; margin-left: auto;">
+                                <button type="button" id="btn-model-filter-all" class="tab-btn"
+                                    style="padding: 0.2rem 0.6rem; font-size: 0.8rem; border-radius: 4px;">すべて選択</button>
+                                <button type="button" id="btn-model-filter-clear" class="tab-btn"
+                                    style="padding: 0.2rem 0.6rem; font-size: 0.8rem; border-radius: 4px;">すべて解除</button>
+                            </div>
+                        </div>
+                        <div class="cond-checkboxes" id="target-model-filter-list">
+                            <!-- dynamically populated -->
+                        </div>
+                    </div>
+
+                    <!-- Exclusion Conditions (Toggleable) -->
+                    <div class="target-exclude-panel" style="margin-bottom: 1.25rem;">
+                        <div class="exclude-toggle" id="exclude-cond-toggle"
+                            style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 0.6rem 1rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 10px; transition: 0.2s;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <span class="cond-label" style="margin-bottom:0;">除外条件設定</span>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">（合致する台を検索結果から排除）</span>
+                            </div>
+                            <span class="toggle-icon" id="exclude-toggle-icon"
+                                style="font-size:1.2rem; font-weight:bold;">+</span>
+                        </div>
+                        <div class="target-conditions-grid" id="exclude-conditions-grid"
+                            style="display:none; margin-top:0.75rem;">
+                            <!-- Excl: Consecutive negative streak -->
+                            <div class="target-condition-card" id="ex-cond-card-cons-neg">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-cons-neg-enabled">
+                                        <span class="cond-label">除外：連続凹み日数</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-cons-neg-badge">OFF</span>
+                                </div>
+                                <div class="cond-body cond-checkboxes">
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="1"> 1日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="2"> 2日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="3"> 3日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="4"> 4日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="5"> 5日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="6"> 6日</label>
+                                    <label><input type="checkbox" class="ex-cons-neg-chk" value="7"> 7日以上</label>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Consecutive positive streak -->
+                            <div class="target-condition-card" id="ex-cond-card-cons-pos">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-cons-pos-enabled">
+                                        <span class="cond-label">除外：連続凸日数</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-cons-pos-badge">OFF</span>
+                                </div>
+                                <div class="cond-body cond-checkboxes">
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="1"> 1日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="2"> 2日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="3"> 3日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="4"> 4日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="5"> 5日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="6"> 6日</label>
+                                    <label><input type="checkbox" class="ex-cons-pos-chk" value="7"> 7日以上</label>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Position from corner -->
+                            <div class="target-condition-card" id="ex-cond-card-position">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-position-enabled">
+                                        <span class="cond-label">除外：角からの位置</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-position-badge">OFF</span>
+                                </div>
+                                <div class="cond-body cond-checkboxes">
+                                    <label><input type="checkbox" class="ex-pos-chk" value="0"> 角</label>
+                                    <label><input type="checkbox" class="ex-pos-chk" value="1"> 角2</label>
+                                    <label><input type="checkbox" class="ex-pos-chk" value="2"> 角3</label>
+                                    <label><input type="checkbox" class="ex-pos-chk" value="other"> その他</label>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Tail digit -->
+                            <div class="target-condition-card" id="ex-cond-card-digit">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-digit-enabled">
+                                        <span class="cond-label">除外：台番号末尾</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-digit-badge">OFF</span>
+                                </div>
+                                <div class="cond-body cond-checkboxes">
+                                    <label><input type="checkbox" class="ex-digit-chk" value="0"> 0</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="1"> 1</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="2"> 2</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="3"> 3</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="4"> 4</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="5"> 5</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="6"> 6</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="7"> 7</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="8"> 8</label>
+                                    <label><input type="checkbox" class="ex-digit-chk" value="9"> 9</label>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Island avg diff -->
+                            <div class="target-condition-card" id="ex-cond-card-island-avg">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-island-avg-enabled">
+                                        <span class="cond-label">除外：島平均差枚</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-island-avg-badge">OFF</span>
+                                </div>
+                                <div class="cond-body">
+                                    <span class="cond-unit">有効にすると島平均がプラスの台を除外</span>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Machine avg diff -->
+                            <div class="target-condition-card" id="ex-cond-card-machine-avg">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-machine-avg-enabled">
+                                        <span class="cond-label">除外：台の平均差枚</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-machine-avg-badge">OFF</span>
+                                </div>
+                                <div class="cond-body">
+                                    <span class="cond-unit">有効にすると台の平均がプラスの台を除外</span>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Model avg diff -->
+                            <div class="target-condition-card" id="ex-cond-card-model-avg">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-model-avg-enabled">
+                                        <span class="cond-label">除外：機種の平均差枚</span>
+                                    </label>
+                                    <span class="cond-badge" id="ex-cond-model-avg-badge">OFF</span>
+                                </div>
+                                <div class="cond-body">
+                                    <span class="cond-unit">有効にすると機種平均がプラスの台を除外</span>
+                                </div>
+                            </div>
+
+                            <!-- Excl: Past game count average -->
+                            <div class="target-condition-card" id="ex-cond-card-past-game" style="grid-column: 1 / -1;">
+                                <div class="cond-header">
+                                    <label class="cond-toggle">
+                                        <input type="checkbox" id="ex-cond-past-game-enabled">
+                                        <span class="cond-label">除外：過去G数平均</span>
+                                    </label>
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <div class="logic-switch">
+                                            <label><input type="radio" name="ex-past-game-logic" value="or" checked>
+                                                OR</label>
+                                            <label><input type="radio" name="ex-past-game-logic" value="and">
+                                                AND</label>
+                                        </div>
+                                        <span class="cond-badge" id="ex-cond-past-game-badge">OFF</span>
+                                    </div>
+                                </div>
+                                <div class="cond-body" style="display: block; width: 100%;">
+                                    <div class="past-game-grid">
+                                        <div class="ex-past-game-period-row" data-period="1">
+                                            <div class="period-header"
+                                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                                <label><input type="checkbox" class="ex-period-chk" value="1">
+                                                    前日</label>
+                                            </div>
+                                            <div class="period-ranges cond-checkboxes">
+                                                <label><input type="checkbox" class="ex-range-chk" value="0">
+                                                    ~1000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="1">
+                                                    2000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="2">
+                                                    3000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="3">
+                                                    4000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="4">
+                                                    5000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="5">
+                                                    6000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="6">
+                                                    7000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="7">
+                                                    8000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="8">
+                                                    9000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="9">
+                                                    10000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="10">
+                                                    10001G~</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="target-conditions-grid">
+
+                        <!-- Consecutive negative streak -->
+                        <div class="target-condition-card" id="cond-card-cons-neg">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-cons-neg-enabled">
+                                    <span class="cond-label">連続凹み日数</span>
+                                </label>
+                                <span class="cond-badge" id="cond-cons-neg-badge">OFF</span>
+                            </div>
+                            <div class="cond-body cond-checkboxes" id="cond-cons-neg-days">
+                                <label><input type="checkbox" class="cons-neg-chk" value="1"> 1日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="2"> 2日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="3"> 3日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="4"> 4日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="5"> 5日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="6"> 6日</label>
+                                <label><input type="checkbox" class="cons-neg-chk" value="7"> 7日以上</label>
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">最新日時点・期間フィルタ無視
+                            </div>
+                        </div>
+
+                        <!-- Consecutive positive streak -->
+                        <div class="target-condition-card" id="cond-card-cons-pos">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-cons-pos-enabled">
+                                    <span class="cond-label">連続凸日数</span>
+                                </label>
+                                <span class="cond-badge" id="cond-cons-pos-badge">OFF</span>
+                            </div>
+                            <div class="cond-body cond-checkboxes" id="cond-cons-pos-days">
+                                <label><input type="checkbox" class="cons-pos-chk" value="1"> 1日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="2"> 2日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="3"> 3日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="4"> 4日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="5"> 5日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="6"> 6日</label>
+                                <label><input type="checkbox" class="cons-pos-chk" value="7"> 7日以上</label>
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">最新日時点・期間フィルタ無視
+                            </div>
+                        </div>
+
+                        <!-- Position from corner -->
+                        <div class="target-condition-card" id="cond-card-position">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-position-enabled">
+                                    <span class="cond-label">角からの位置</span>
+                                </label>
+                                <span class="cond-badge" id="cond-position-badge">OFF</span>
+                            </div>
+                            <div class="cond-body cond-checkboxes">
+                                <label><input type="checkbox" class="pos-chk" value="0"> 角</label>
+                                <label><input type="checkbox" class="pos-chk" value="1"> 角2</label>
+                                <label><input type="checkbox" class="pos-chk" value="2"> 角3</label>
+                                <label><input type="checkbox" class="pos-chk" value="other"> その他</label>
+                            </div>
+                        </div>
+
+                        <!-- Tail digit -->
+                        <div class="target-condition-card" id="cond-card-digit">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-digit-enabled">
+                                    <span class="cond-label">台番号末尾</span>
+                                </label>
+                                <span class="cond-badge" id="cond-digit-badge">OFF</span>
+                            </div>
+                            <div class="cond-body cond-checkboxes">
+                                <label><input type="checkbox" class="digit-chk" value="0"> 0</label>
+                                <label><input type="checkbox" class="digit-chk" value="1"> 1</label>
+                                <label><input type="checkbox" class="digit-chk" value="2"> 2</label>
+                                <label><input type="checkbox" class="digit-chk" value="3"> 3</label>
+                                <label><input type="checkbox" class="digit-chk" value="4"> 4</label>
+                                <label><input type="checkbox" class="digit-chk" value="5"> 5</label>
+                                <label><input type="checkbox" class="digit-chk" value="6"> 6</label>
+                                <label><input type="checkbox" class="digit-chk" value="7"> 7</label>
+                                <label><input type="checkbox" class="digit-chk" value="8"> 8</label>
+                                <label><input type="checkbox" class="digit-chk" value="9"> 9</label>
+                            </div>
+                        </div>
+
+                        <!-- Island avg diff -->
+                        <div class="target-condition-card" id="cond-card-island-avg">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-island-avg-enabled">
+                                    <span class="cond-label">島平均差枚</span>
+                                </label>
+                                <span class="cond-badge" id="cond-island-avg-badge">OFF</span>
+                            </div>
+                            <div class="cond-body">
+                                <span class="cond-unit">有効にすると多い順でソート（フィルタ期間内平均）</span>
+                            </div>
+                        </div>
+
+                        <!-- Machine avg diff -->
+                        <div class="target-condition-card" id="cond-card-machine-avg">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-machine-avg-enabled">
+                                    <span class="cond-label">台の平均差枚</span>
+                                </label>
+                                <span class="cond-badge" id="cond-machine-avg-badge">OFF</span>
+                            </div>
+                            <div class="cond-body">
+                                <span class="cond-unit">有効にすると多い順でソート（フィルタ期間内平均）</span>
+                            </div>
+                        </div>
+
+                        <!-- Model avg diff -->
+                        <div class="target-condition-card" id="cond-card-model-avg">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-model-avg-enabled">
+                                    <span class="cond-label">機種の平均差枚</span>
+                                </label>
+                                <span class="cond-badge" id="cond-model-avg-badge">OFF</span>
+                            </div>
+                            <div class="cond-body">
+                                <span class="cond-unit">有効にすると多い順でソート（フィルタ期間内平均）</span>
+                            </div>
+                        </div>
+
+                        <!-- Past game count average (NEW: Independent Periods) -->
+                        <div class="target-condition-card" id="cond-card-past-game" style="grid-column: 1 / -1;">
+                            <div class="cond-header">
+                                <label class="cond-toggle">
+                                    <input type="checkbox" id="cond-past-game-enabled">
+                                    <span class="cond-label">過去G数平均（期間ごとに独立設定）</span>
+                                </label>
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <div class="logic-switch">
+                                        <label><input type="radio" name="past-game-logic" value="or" checked> OR</label>
+                                        <label><input type="radio" name="past-game-logic" value="and"> AND</label>
+                                    </div>
+                                    <span class="cond-badge" id="cond-past-game-badge">OFF</span>
+                                </div>
+                            </div>
+                            <div class="cond-body" style="display: block; width: 100%;">
+                                <div class="past-game-grid">
+                                    <!-- Periods 1 to 7 -->
+                                    <div class="past-game-period-row" data-period="1">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                            <label><input type="checkbox" class="period-chk" value="1"> 前日</label>
+                                            <div style="display:flex; gap:0.3rem;">
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                            </div>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="2">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                            <label><input type="checkbox" class="period-chk" value="2"> ～2日前平均</label>
+                                            <div style="display:flex; gap:0.3rem;">
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                            </div>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="3">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                            <label><input type="checkbox" class="period-chk" value="3"> ～3日前平均</label>
+                                            <div style="display:flex; gap:0.3rem;">
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                            </div>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="4">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                            <label><input type="checkbox" class="period-chk" value="4"> ～4日前平均</label>
+                                            <div style="display:flex; gap:0.3rem;">
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                            </div>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="5">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                            <label><input type="checkbox" class="period-chk" value="5"> ～5日前平均</label>
+                                            <div style="display:flex; gap:0.3rem;">
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                            </div>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="6">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                            <label><input type="checkbox" class="period-chk" value="6"> ～6日前平均</label>
+                                            <div style="display:flex; gap:0.3rem;">
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                            </div>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                    <div class="past-game-period-row" data-period="7">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                            <label><input type="checkbox" class="period-chk" value="7"> ～7日前平均</label>
+                                            <div style="display:flex; gap:0.3rem;">
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                            </div>
+                                        </div>
+                                        <div class="period-ranges cond-checkboxes">
+                                            <label><input type="checkbox" class="range-chk" value="0"> ~1000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="1"> 2000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="2"> 3000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="3"> 4000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="4"> 5000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="5"> 6000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="6"> 7000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="7"> 8000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="8"> 9000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="9"> 10000G</label>
+                                            <label><input type="checkbox" class="range-chk" value="10"> 10001G~</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem; padding-top:0.4rem; border-top:1px solid var(--glass-border);">
+                                    フィルタ無視（通常日含む平均）。複数指定時は、いずれかの期間で合致すれば「過去G数平均」条件合致としてカウントされます。
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- /.target-conditions-grid -->
+
+
+                    <!-- Priority and ranking settings -->
+                    <div class="target-priority-section">
+                        <div class="target-priority-block">
+                            <h4 class="priority-title">優先条件（2つまで選択）</h4>
+                            <p class="priority-hint">選んだ条件の合致数をランキングで優先します</p>
+                            <div class="priority-checkboxes" id="priority-conditions">
+                                <label><input type="checkbox" class="prio-chk" value="cons-neg"> 連続凹み</label>
+                                <label><input type="checkbox" class="prio-chk" value="cons-pos"> 連続凸</label>
+                                <label><input type="checkbox" class="prio-chk" value="position"> 角位置</label>
+                                <label><input type="checkbox" class="prio-chk" value="digit"> 台番号末尾</label>
+                                <label><input type="checkbox" class="prio-chk" value="island-avg"> 島平均差枚</label>
+                                <label><input type="checkbox" class="prio-chk" value="machine-avg"> 台平均差枚</label>
+                                <label><input type="checkbox" class="prio-chk" value="model-avg"> 機種平均差枚</label>
+                                <label><input type="checkbox" class="prio-chk" value="past-game"> 過去G数平均</label>
+                            </div>
+                        </div>
+                        <div class="target-priority-block">
+                            <h4 class="priority-title">差枚ランキング優先順位</h4>
+                            <p class="priority-hint">差枚系条件が有効な場合の1次ソートキー</p>
+                            <div class="priority-radios">
+                                <label><input type="radio" name="diff-priority" value="machine" checked>
+                                    台の平均差枚を優先</label>
+                                <label><input type="radio" name="diff-priority" value="island"> 島平均差枚を優先</label>
+                                <label><input type="radio" name="diff-priority" value="model"> 機種平均差枚を優先</label>
+                            </div>
+                        </div>
+                        <div class="target-priority-block">
+                            <h4 class="priority-title">合致数ソート</h4>
+                            <p class="priority-hint">条件の合致数を最優先でソートします</p>
+                            <div class="priority-checkboxes">
+                                <label><input type="checkbox" id="sort-by-match-count"> 条件の合致数でソートする</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="target-search-btn" id="target-search-btn">検索して島図を表示</button>
+                </div><!-- /.target-conditions-panel -->
+
+                <!-- Results Area -->
+                <div id="target-results" style="display:none;">
+                    <!-- Legend -->
+                    <div class="target-legend-area">
+                        <h3 class="target-panel-title">凡例 &amp; ランキング</h3>
+                        <div id="target-legend" class="target-legend"></div>
+                    </div>
+
+                    <!-- Ranking List -->
+                    <div class="target-ranking-area">
+                        <h3 class="target-panel-title">ランキング（上位30台）</h3>
+                        <div id="target-ranking-list" class="target-ranking-list"></div>
+                    </div>
+
+                    <!-- Island Map -->
+                    <div class="target-map-area">
+                        <h3 class="target-panel-title">島図（色分け）</h3>
+                        <div class="heatmap-wrapper" id="target-heatmap-wrapper"></div>
+                    </div>
+                </div><!-- /#target-results -->
+
+                <!-- Mobile tap popup overlay -->
+                <div id="target-mobile-popup" class="target-mobile-popup" style="display:none;">
+                    <div class="target-mobile-popup-inner">
+                        <button class="target-mobile-close" id="target-mobile-close">✕</button>
+                        <div id="target-mobile-content"></div>
+                        <a id="target-mobile-link" href="#" target="_blank" class="target-mobile-data-btn">📊 データを見る</a>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Date Detail Modal -->
+    <div id="date-detail-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-container glass-panel">
+            <div class="modal-header">
+                <h2 id="modal-date-title">日付詳細</h2>
+                <button id="modal-close-btn" class="icon-btn modal-close">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Injected dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

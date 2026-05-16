@@ -96,6 +96,15 @@ def init_db():
                 PRIMARY KEY (日付, 機種名, 台番号)
             )
         ''')
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS skipped_data (
+                日付 TEXT,
+                機種名 TEXT,
+                台番号 TEXT,
+                理由 TEXT,
+                PRIMARY KEY (日付, 機種名, 台番号)
+            )
+        ''')
         conn.commit()
         conn.close()
         logger.info("DB初期化が正常に完了しました。")
@@ -131,7 +140,13 @@ def get_completed_dates_for_machine(model_name: str, machine_num: str) -> list:
     # パフォーマンス向上のため、過去7日分程度の履歴のみを検索対象とする
     min_date = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
     
-    c.execute('SELECT 日付 FROM slot_data WHERE 機種名=? AND 台番号=? AND 日付 >= ?', (model_name, machine_num, min_date))
+    # slot_data (実データ) と skipped_data (スキップ済み) の両方から取得
+    query = '''
+        SELECT 日付 FROM slot_data WHERE 機種名=? AND 台番号=? AND 日付 >= ?
+        UNION
+        SELECT 日付 FROM skipped_data WHERE 機種名=? AND 台番号=? AND 日付 >= ?
+    '''
+    c.execute(query, (model_name, machine_num, min_date, model_name, machine_num, min_date))
     dates = [row[0] for row in c.fetchall()]
     conn.close()
     return dates
@@ -796,10 +811,40 @@ def extract_pscube_graph_data_all_days(page: Page, today_date_str: str) -> dict:
         # 各タブの切り替え後にもチェック
         check_page_health(page)
 
-        # グラフから最終差枚を抽出
-        sasamai = _extract_last_diff_from_active_chart(page, chart_id)
-        logger.info(f"{day_label} ({chart_id}): 最終差枚 = {sasamai}")
-        results[day_label] = sasamai
+        # グラフデータの抽出試行
+        try:
+            # 「データはありません」が表示されているかチェック（複数のインジケータを試行）
+            no_data_selectors = [
+                f"#{chart_id} .nc-notfound",
+                f"#{chart_id}:has-text('データはありません')",
+                f"#{chart_id}:has-text('該当するデータはありません')",
+                f"#{chart_id}:has-text('準備中')"
+            ]
+            is_no_data = False
+            for sel in no_data_selectors:
+                try:
+                    el = page.query_selector(sel)
+                    if el and el.is_visible():
+                        is_no_data = True
+                        break
+                except:
+                    continue
+
+            if is_no_data:
+                logger.info(f"{day_label} ({chart_id}): データなしを検知しました。")
+                results[day_label] = None
+                continue
+
+            # グラフから最終差枚を抽出
+            sasamai = _extract_last_diff_from_active_chart(page, chart_id)
+            logger.info(f"{day_label} ({chart_id}): 最終差枚 = {sasamai}")
+            results[day_label] = sasamai
+        except SVGTimeoutError as e:
+            logger.warning(f"{day_label} ({chart_id}): SVG待機タイムアウト。データなしとは判断せずエラーとして処理します。")
+            raise
+        except Exception as e:
+            logger.error(f"{day_label} ({chart_id}): 抽出中にエラーが発生しました: {e}")
+            results[day_label] = "取得失敗"
 
     return results
 
@@ -971,9 +1016,21 @@ def check_missing_machines(expected_machines):
         except ValueError:
             continue
             
-        # layout.json は '690'、DBは '0690' などフォーマットが異なる場合があるため、数値として比較する
-        c.execute("SELECT COUNT(*) FROM slot_data WHERE CAST(台番号 AS INTEGER)=? AND 日付 IN (?, ?, ?, ?, ?)", (m_int, *target_dates))
-        if c.fetchone()[0] < 5:
+        # slot_data (実データ) または skipped_data (データなし確認済み) のいずれかに存在すればOK
+        query = '''
+            SELECT 
+                (SELECT COUNT(*) FROM slot_data WHERE CAST(台番号 AS INTEGER)=? AND 日付=?) +
+                (SELECT COUNT(*) FROM skipped_data WHERE CAST(台番号 AS INTEGER)=? AND 日付=?)
+        '''
+        
+        found_all = True
+        for d in target_dates:
+            c.execute(query, (m_int, d, m_int, d))
+            if c.fetchone()[0] == 0:
+                found_all = False
+                break
+        
+        if not found_all:
             missing.append(m)
     conn.close()
     return missing
@@ -1124,6 +1181,18 @@ def site1_action(page: Page) -> None:
                         for day_label, actual_date in dates_to_scrape.items():
                             sasamai = graph_results.get(day_label, "取得失敗")
 
+                            # グラフに「データはありません」が表示されていた場合はスキップフラグを立てる
+                            if sasamai is None:
+                                logger.info(f"Site 1: 台番号 {machine_num} ({actual_date}): データなしのためスキップ登録します。")
+                                conn_skip = sqlite3.connect(DB_FILE)
+                                try:
+                                    conn_skip.execute('INSERT OR IGNORE INTO skipped_data (日付, 機種名, 台番号, 理由) VALUES (?, ?, ?, ?)', 
+                                                      (actual_date, model_name, machine_num, "データなし"))
+                                    conn_skip.commit()
+                                finally:
+                                    conn_skip.close()
+                                continue
+
                             # DB保存
                             conn_local = sqlite3.connect(DB_FILE)
                             cursor_local = conn_local.cursor()
@@ -1191,8 +1260,12 @@ def site1_action(page: Page) -> None:
                     
                     with open(os.path.join(SCRIPT_DIR, "error_log.txt"), "a", encoding="utf-8") as f:
                         f.write(f"[{error_time}] 台番号: {machine_num}, エラー原因: {e}, スクリーンショット: {screenshot_path}\n")
-                        
-                    raise e # 外側のループでリトライさせるために例外を投げる
+                    
+                    # ProxyError の場合はプロキシを再起動してからブラウザ再起動を上位に促す
+                    if isinstance(e, ProxyError):
+                        logger.info("ProxyError を検知しました。プロキシを再起動してからブラウザを再起動します。")
+                        safe_restart_proxy()
+                    raise e # 外側のループでリトライ（ブラウザ再起動）させるために例外を投げる
 
             page.go_back(wait_until="networkidle")
             check_page_health(page)
@@ -1213,18 +1286,39 @@ def site1_action(page: Page) -> None:
         raise e
 
 def scrape_site1_scrapling():
-    logger.info("Site 1: scrapling (StealthyFetcher) を使用して実行します (プロキシなしテスト)")
+    logger.info("Site 1: scrapling (StealthyFetcher) を使用して実行します")
     
-    def action_wrapper(page: Page):
-        site1_action(page)
+    max_browser_restarts = 5
+    for browser_attempt in range(max_browser_restarts):
+        try:
+            logger.info(f"Site 1: ブラウザ起動 (試行 {browser_attempt + 1}/{max_browser_restarts})。TOPページからアクセスします。")
+            def action_wrapper(page: Page):
+                site1_action(page)
 
-    StealthyFetcher.fetch(
-        SITE1_URL, 
-        page_action=action_wrapper, 
-        headless=False, 
-        proxy=PROXY_SERVER,
-        locale="ja-JP"
-    )
+            StealthyFetcher.fetch(
+                SITE1_URL, 
+                page_action=action_wrapper, 
+                headless=False, 
+                proxy=PROXY_SERVER,
+                locale="ja-JP"
+            )
+            break
+        except ProxyError as pe:
+            logger.error(f"Site 1: ProxyError によりブラウザを終了します: {pe}")
+            if browser_attempt < max_browser_restarts - 1:
+                logger.info("プロキシ再起動後、ブラウザを再起動してTOPページから再アクセスします。")
+                safe_restart_proxy()
+            else:
+                logger.error("ブラウザ再起動の最大試行回数に達しました。")
+                break
+        except Exception as e:
+            logger.error(f"Site 1: ブラウザセッション中に予期しないエラーが発生しました: {e}")
+            if browser_attempt < max_browser_restarts - 1:
+                logger.info("ブラウザを再起動してTOPページから再アクセスします。")
+                time.sleep(5)
+            else:
+                logger.error("ブラウザ再起動の最大試行回数に達しました。")
+                break
 
 def scrape_worker_action(page: Page, machine_list: list, thread_name: str):
     logger.info(f"[{thread_name}] 欠損データ {len(machine_list)} 台の直接スクレイピングを開始します。")
@@ -1298,6 +1392,18 @@ def scrape_worker_action(page: Page, machine_list: list, thread_name: str):
                 for day_label, actual_date in dates_to_scrape.items():
                     sasamai = graph_results.get(day_label, "取得失敗")
 
+                    # グラフに「データはありません」が表示されていた場合はスキップフラグを立てる
+                    if sasamai is None:
+                        logger.info(f"[{thread_name}] 台番号 {cd_dai_str} ({actual_date}): データなしのためスキップ登録します。")
+                        conn_skip = sqlite3.connect(DB_FILE)
+                        try:
+                            conn_skip.execute('INSERT OR IGNORE INTO skipped_data (日付, 機種名, 台番号, 理由) VALUES (?, ?, ?, ?)', 
+                                              (actual_date, model_name, cd_dai_str, "データなし"))
+                            conn_skip.commit()
+                        finally:
+                            conn_skip.close()
+                        continue
+
                     conn_local = sqlite3.connect(DB_FILE, timeout=10.0)
                     cursor_local = conn_local.cursor()
                     try:
@@ -1348,25 +1454,51 @@ def scrape_worker_action(page: Page, machine_list: list, thread_name: str):
                 except:
                     pass
 
-                if r_idx < max_retries_per_machine - 1:
-                    logger.info(f"[{thread_name}] プロキシ再起動を試みて再試行します...")
+                if isinstance(e, ProxyError):
+                    # ProxyError: プロキシ再起動後、ブラウザ再起動のため例外を上位に再 raise
+                    logger.info(f"[{thread_name}] ProxyError を検知しました。プロキシを再起動してからブラウザを再起動します。")
                     safe_restart_proxy()
+                    raise  # scrape_worker_scrapling のリトライループに渡す
+                elif r_idx < max_retries_per_machine - 1:
+                    logger.info(f"[{thread_name}] 同一ブラウザでリトライします...")
                 else:
                     logger.error(f"[{thread_name}] 最大リトライ回数に達したため、台番号 {cd_dai_str} をスキップします。")
                     break
 
 def scrape_worker_scrapling(machine_list: list, thread_name: str):
     logger.info(f"[{thread_name}] scrapling (StealthyFetcher) を使用して直接取得します")
-    def action_wrapper(page: Page):
-        scrape_worker_action(page, machine_list, thread_name)
 
-    StealthyFetcher.fetch(
-        SITE1_URL,
-        page_action=action_wrapper,
-        headless=False,
-        proxy=PROXY_SERVER,
-        locale="ja-JP"
-    )
+    max_browser_restarts = 5
+    for browser_attempt in range(max_browser_restarts):
+        try:
+            logger.info(f"[{thread_name}] ブラウザ起動 (試行 {browser_attempt + 1}/{max_browser_restarts})。TOPページからアクセスします。")
+            def action_wrapper(page: Page):
+                scrape_worker_action(page, machine_list, thread_name)
+
+            StealthyFetcher.fetch(
+                SITE1_URL,
+                page_action=action_wrapper,
+                headless=False,
+                proxy=PROXY_SERVER,
+                locale="ja-JP"
+            )
+            break  # 正常終了ならループを抜ける
+        except ProxyError as pe:
+            logger.error(f"[{thread_name}] ProxyError によりブラウザを終了します: {pe}")
+            if browser_attempt < max_browser_restarts - 1:
+                logger.info(f"[{thread_name}] プロキシ再起動後、ブラウザを再起動してTOPページから再アクセスします。")
+                safe_restart_proxy()
+            else:
+                logger.error(f"[{thread_name}] ブラウザ再起動の最大試行回数に達しました。スレッドを終了します。")
+                break
+        except Exception as e:
+            logger.error(f"[{thread_name}] ブラウザセッション中に予期しないエラーが発生しました: {e}")
+            if browser_attempt < max_browser_restarts - 1:
+                logger.info(f"[{thread_name}] ブラウザを再起動してTOPページから再アクセスします。")
+                time.sleep(5)
+            else:
+                logger.error(f"[{thread_name}] ブラウザ再起動の最大試行回数に達しました。スレッドを終了します。")
+                break
 
 def run_parallel_scraping(missing_machines: list):
     global processing_machines

@@ -314,6 +314,27 @@
                                     transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                                 />
                             </motion.a>
+
+                            <motion.a 
+                                href="./king666_h/index.html" 
+                                style={{...styles.storeCard, backgroundColor: '#EFEFEF'}}
+                                variants={itemVariants}
+                                whileHover={{ scale: 1.03, y: -10, backgroundColor: 'var(--color-white)' }}
+                                whileTap={{ scale: 0.97 }}
+                            >
+                                <div>
+                                    <h2 style={styles.storeName}>KING666<br/>半田店</h2>
+                                </div>
+                                <div>
+                                    <span style={{...styles.storeLabel, backgroundColor: '#00BCD4'}}>ENTER DASHBOARD &rarr;</span>
+                                </div>
+                                {/* Inner decoration shape */}
+                                <motion.div 
+                                    style={{ position: 'absolute', right: '-20px', bottom: '-20px', width: '100px', height: '100px', backgroundColor: '#00BCD4', clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)', zIndex: 0, opacity: 0.2 }}
+                                    animate={{ rotate: [0, 360], scale: [1, 1.3, 1] }}
+                                    transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                                />
+                            </motion.a>
                         </div>
 
                         {/* Marquee Ticker */}
