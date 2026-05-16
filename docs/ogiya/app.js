@@ -1288,56 +1288,83 @@ function getBucket(v, step, min, max) {
 }
 
 function renderAnalysis(data) {
-    const digits = Array(10).fill().map(() => ({ diff: 0, g: 0, c: 0 }));
-    const ndays = Array(10).fill().map(() => ({ diff: 0, g: 0, c: 0 }));
+    const yLabel = analysisMode === 'setting' ? '平均設定' : '平均差枚';
+
+    const digits = Array(10).fill().map(() => ({ diff: 0, g: 0, c: 0, setSum: 0, setC: 0 }));
+    const ndays = Array(10).fill().map(() => ({ diff: 0, g: 0, c: 0, setSum: 0, setC: 0 }));
     const wdNames = ['日', '月', '火', '水', '木', '金', '土'];
-    const wdays = Array(7).fill().map(() => ({ diff: 0, g: 0, c: 0 }));
+    const wdays = Array(7).fill().map(() => ({ diff: 0, g: 0, c: 0, setSum: 0, setC: 0 }));
     const models = {};
-    const positions = { '角': { diff: 0, c: 0 }, '角2': { diff: 0, c: 0 }, '角3': { diff: 0, c: 0 }, 'その他': { diff: 0, c: 0 } };
+    const positions = { '角': { diff: 0, c: 0, setSum: 0, setC: 0 }, '角2': { diff: 0, c: 0, setSum: 0, setC: 0 }, '角3': { diff: 0, c: 0, setSum: 0, setC: 0 }, 'その他': { diff: 0, c: 0, setSum: 0, setC: 0 } };
     const mHistory = {};
-    const dayOfMonth = Array(32).fill().map(() => ({ diff: 0, g: 0, c: 0 }));// index=day 1-31
+    const dayOfMonth = Array(32).fill().map(() => ({ diff: 0, g: 0, c: 0, setSum: 0, setC: 0 }));// index=day 1-31
 
     data.forEach(row => {
         const d = row['日付'], diff = Number(row['最終差枚']) || 0, g = Number(row['累計ゲーム']) || 0;
         const num = normalizeNum(row['台番号']), model = row['機種名'];
+        
+        let estSettingVal = 0; let hasSetting = false;
+        const est = estimateSetting(model, g, row['BIG'], row['REG']);
+        if (est) { estSettingVal = est.setting; hasSetting = true; }
+
         const digit = parseInt(num.slice(-1));
-        if (!isNaN(digit)) { digits[digit].diff += diff; digits[digit].g += g; digits[digit].c++; }
+        if (!isNaN(digit)) { digits[digit].diff += diff; digits[digit].g += g; digits[digit].c++; if(hasSetting){ digits[digit].setSum += estSettingVal; digits[digit].setC++; } }
         const dayStr = d.split('-')[2], nday = parseInt(dayStr.slice(-1));
-        ndays[nday].diff += diff; ndays[nday].g += g; ndays[nday].c++;
-        const wd = new Date(d).getDay(); wdays[wd].diff += diff; wdays[wd].g += g; wdays[wd].c++;
-        if (!models[model]) models[model] = { diff: 0, g: 0, c: 0 };
-        models[model].diff += diff; models[model].g += g; models[model].c++;
+        ndays[nday].diff += diff; ndays[nday].g += g; ndays[nday].c++; if(hasSetting){ ndays[nday].setSum += estSettingVal; ndays[nday].setC++; }
+        const wd = new Date(d).getDay(); wdays[wd].diff += diff; wdays[wd].g += g; wdays[wd].c++; if(hasSetting){ wdays[wd].setSum += estSettingVal; wdays[wd].setC++; }
+        if (!models[model]) models[model] = { diff: 0, g: 0, c: 0, setSum: 0, setC: 0 };
+        models[model].diff += diff; models[model].g += g; models[model].c++; if(hasSetting){ models[model].setSum += estSettingVal; models[model].setC++; }
         const loc = layoutLookup[num];
         if (loc) {
             const pk = loc.pos === 0 ? '角' : loc.pos === 1 ? '角2' : loc.pos === 2 ? '角3' : 'その他';
-            positions[pk].diff += diff; positions[pk].c++;
+            positions[pk].diff += diff; positions[pk].c++; if(hasSetting){ positions[pk].setSum += estSettingVal; positions[pk].setC++; }
         }
         if (!mHistory[num]) mHistory[num] = [];
-        mHistory[num].push({ ...row, diff, g });
+        mHistory[num].push({ ...row, diff, g, estSettingVal, hasSetting });
         // Day of month
         const dom = parseInt(d.split('-')[2], 10);
-        if (dom >= 1 && dom <= 31) { dayOfMonth[dom].diff += diff; dayOfMonth[dom].g += g; dayOfMonth[dom].c++; }
+        if (dom >= 1 && dom <= 31) { dayOfMonth[dom].diff += diff; dayOfMonth[dom].g += g; dayOfMonth[dom].c++; if(hasSetting){ dayOfMonth[dom].setSum += estSettingVal; dayOfMonth[dom].setC++; } }
     });
 
-    const buildCD = obj => { let labels = [], dDiff = [], dPayout = []; for (const [k, v] of Object.entries(obj)) { if (v.c === 0) continue; labels.push(k); dDiff.push(v.diff / v.c); dPayout.push(payout(v.diff, v.g)); } return { labels, dDiff, dPayout }; };
+    const buildCD = obj => { 
+        let labels = [], dVal = []; 
+        for (const [k, v] of Object.entries(obj)) { 
+            if (v.c === 0) continue; 
+            labels.push(k); 
+            if (analysisMode === 'setting') {
+                dVal.push(v.setC > 0 ? v.setSum / v.setC : 0);
+            } else {
+                dVal.push(v.c > 0 ? v.diff / v.c : 0);
+            }
+        } 
+        return { labels, dVal }; 
+    };
 
-    drawBar('chart-digit', buildCD(digits).labels, buildCD(digits).dDiff, '平均差枚');
-    drawBar('chart-nday', buildCD(ndays).labels, buildCD(ndays).dDiff, '平均差枚');
+    drawBar('chart-digit', buildCD(digits).labels, buildCD(digits).dVal, yLabel);
+    drawBar('chart-nday', buildCD(ndays).labels, buildCD(ndays).dVal, yLabel);
     const wdOrder = [1, 2, 3, 4, 5, 6, 0];
     const ordW = wdOrder.map(i => ({ ...wdays[i], name: wdNames[i] }));
-    drawBar('chart-weekday', ordW.filter(w => w.c > 0).map(w => w.name), ordW.filter(w => w.c > 0).map(w => w.diff / w.c), '平均差枚');
-    drawBar('chart-position', buildCD(positions).labels, buildCD(positions).dDiff, '平均差枚');
-    drawBar('chart-model', buildCD(models).labels, buildCD(models).dDiff, '平均差枚', { dynamicWidth: true });
+    const wdLabels = ordW.filter(w => w.c > 0).map(w => w.name);
+    const wdVals = ordW.filter(w => w.c > 0).map(w => analysisMode === 'setting' ? (w.setC > 0 ? w.setSum / w.setC : 0) : (w.c > 0 ? w.diff / w.c : 0));
+    drawBar('chart-weekday', wdLabels, wdVals, yLabel);
+    drawBar('chart-position', buildCD(positions).labels, buildCD(positions).dVal, yLabel);
+    drawBar('chart-model', buildCD(models).labels, buildCD(models).dVal, yLabel, { dynamicWidth: true });
 
     // Day of month (1-31) bar charts
-    const domLabels = [], domDiff = [], domPayout = [];
-    for (let i = 1; i <= 31; i++) { if (dayOfMonth[i].c > 0) { domLabels.push(`${i}日`); domDiff.push(dayOfMonth[i].diff / dayOfMonth[i].c); domPayout.push(payout(dayOfMonth[i].diff, dayOfMonth[i].g)); } }
-    drawBar('chart-dayofmonth-diff', domLabels, domDiff, '平均差枚');
+    const domLabels = [], domVal = [], domPayout = [];
+    for (let i = 1; i <= 31; i++) { 
+        if (dayOfMonth[i].c > 0) { 
+            domLabels.push(`${i}日`); 
+            domVal.push(analysisMode === 'setting' ? (dayOfMonth[i].setC > 0 ? dayOfMonth[i].setSum / dayOfMonth[i].setC : 0) : (dayOfMonth[i].diff / dayOfMonth[i].c)); 
+            domPayout.push(payout(dayOfMonth[i].diff, dayOfMonth[i].g)); 
+        } 
+    }
+    drawBar('chart-dayofmonth-diff', domLabels, domVal, yLabel);
     drawDotChart('chart-dayofmonth-payout', domLabels, domPayout, '出率(%)');
 
     // Consecutive & Neighbor analysis
-    const consNeg = Array(7).fill().map(() => ({ diff: 0, c: 0 }));
-    const consPos = Array(7).fill().map(() => ({ diff: 0, c: 0 }));
+    const consNeg = Array(7).fill().map(() => ({ diff: 0, c: 0, setSum: 0, setC: 0 }));
+    const consPos = Array(7).fill().map(() => ({ diff: 0, c: 0, setSum: 0, setC: 0 }));
     const neiDiffBuckets = { '<-4000': { diff: 0, c: 0 }, '-4000~-2001': { diff: 0, c: 0 }, '-2000~-1': { diff: 0, c: 0 }, '0~2000': { diff: 0, c: 0 }, '2001~4000': { diff: 0, c: 0 }, '>4000': { diff: 0, c: 0 } };
     const neiSetBuckets = { 1: { diff: 0, c: 0 }, 2: { diff: 0, c: 0 }, 3: { diff: 0, c: 0 }, 4: { diff: 0, c: 0 }, 5: { diff: 0, c: 0 }, 6: { diff: 0, c: 0 } };
     const bothDiffBuckets = { '<-4000': { diff: 0, c: 0 }, '-4000~-2001': { diff: 0, c: 0 }, '-2000~-1': { diff: 0, c: 0 }, '0~2000': { diff: 0, c: 0 }, '2001~4000': { diff: 0, c: 0 }, '>4000': { diff: 0, c: 0 } };
@@ -1351,12 +1378,25 @@ function renderAnalysis(data) {
     for (const [m, hist] of Object.entries(mHistory)) {
         hist.sort((a, b) => a['日付'].localeCompare(b['日付']));
         let negS = 0, posS = 0;
-        for (const row of hist) {
-            const diff = row.diff, g = Number(row['累計ゲーム']) || 0;
+        for (let i = 1; i < hist.length; i++) {
+            const prev = hist[i - 1];
+            const row = hist[i];
+            
+            const prevDiff = prev.diff;
+            if (prevDiff < 0) { negS++; posS = 0; } else if (prevDiff > 0) { posS++; negS = 0; } else { negS = 0; posS = 0; }
+
+            const diff = row.diff;
+            const g = row.g;
             if (g === 0) continue;
-            consNeg[Math.min(negS, 6)].diff += diff; consNeg[Math.min(negS, 6)].c++;
-            consPos[Math.min(posS, 6)].diff += diff; consPos[Math.min(posS, 6)].c++;
-            if (diff < 0) { negS++; posS = 0; } else if (diff > 0) { posS++; negS = 0; } else { negS = 0; posS = 0; }
+
+            const nIdx = Math.min(negS, 6);
+            consNeg[nIdx].diff += diff; consNeg[nIdx].c++;
+            if (row.hasSetting) { consNeg[nIdx].setSum += row.estSettingVal; consNeg[nIdx].setC++; }
+
+            const pIdx = Math.min(posS, 6);
+            consPos[pIdx].diff += diff; consPos[pIdx].c++;
+            if (row.hasSetting) { consPos[pIdx].setSum += row.estSettingVal; consPos[pIdx].setC++; }
+
             const loc = layoutLookup[m];
             if (loc) {
                 const dmap = matrix[row['日付']];
@@ -1377,12 +1417,16 @@ function renderAnalysis(data) {
             }
         }
     }
-    drawBar('chart-cons-neg', ['0日', '1日', '2日', '3日', '4日', '5日', '6日以上'], consNeg.map(v => v.c ? v.diff / v.c : 0), '翌日平均差枚');
-    drawBar('chart-cons-pos', ['0日', '1日', '2日', '3日', '4日', '5日', '6日以上'], consPos.map(v => v.c ? v.diff / v.c : 0), '翌日平均差枚');
-    drawBar('chart-neighbor-diff', buildCD(neiDiffBuckets).labels, buildCD(neiDiffBuckets).dDiff, '平均差枚');
-    drawBar('chart-neighbor-setting', buildCD(neiSetBuckets).labels, buildCD(neiSetBuckets).dDiff, '自台平均設定');
-    drawBar('chart-both-neighbor-diff', buildCD(bothDiffBuckets).labels, buildCD(bothDiffBuckets).dDiff, '平均差枚');
-    drawBar('chart-both-neighbor-setting', buildCD(bothSetBuckets).labels, buildCD(bothSetBuckets).dDiff, '自台平均設定');
+    
+    const cNegVals = consNeg.map(v => analysisMode === 'setting' ? (v.setC ? v.setSum / v.setC : 0) : (v.c ? v.diff / v.c : 0));
+    drawBar('chart-cons-neg', ['0日', '1日', '2日', '3日', '4日', '5日', '6日以上'], cNegVals, '翌日' + yLabel);
+    const cPosVals = consPos.map(v => analysisMode === 'setting' ? (v.setC ? v.setSum / v.setC : 0) : (v.c ? v.diff / v.c : 0));
+    drawBar('chart-cons-pos', ['0日', '1日', '2日', '3日', '4日', '5日', '6日以上'], cPosVals, '翌日' + yLabel);
+    
+    drawBar('chart-neighbor-diff', buildCD(neiDiffBuckets).labels, buildCD(neiDiffBuckets).dVal, yLabel);
+    drawBar('chart-neighbor-setting', buildCD(neiSetBuckets).labels, buildCD(neiSetBuckets).dVal, '自台平均設定'); // This explicitly targets setting
+    drawBar('chart-both-neighbor-diff', buildCD(bothDiffBuckets).labels, buildCD(bothDiffBuckets).dVal, yLabel);
+    drawBar('chart-both-neighbor-setting', buildCD(bothSetBuckets).labels, buildCD(bothSetBuckets).dVal, '自台平均設定'); // This explicitly targets setting
 
     // Monthly cumulative analysis
     renderCumulAnalysis(data);
@@ -1486,7 +1530,12 @@ function renderCumulAnalysis(data) {
             }
         });
     }
+    
     renderGameCountAnalysis();
+    renderPastDiffAnalysis(data);
+    renderIslandPastDiffAnalysis(data);
+    renderUnexplodedAnalysis(data);
+    renderAccidentalExplosionAnalysis(data);
 }
 
 // ==========================================
