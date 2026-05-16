@@ -41,6 +41,13 @@ let diffThresholds = { neg1: -2000, neg2: -1000, pos1: 1000, pos2: 2000 };
 let includeOldData = false; // 旧データ(2026/4/21以前)を含めるかどうか
 const OLD_DATA_CUTOFF = '2026-04-21'; // この日付以前のデータを旧データとして扱う
 
+// Analysis Section State
+let analysisMode = 'diff'; // 'diff' or 'setting'
+let pastDiffPeriod = '1';
+let islandPastDiffPeriod = '1';
+let unexplodedFilter = 'none';
+let accidentalExplosionFilter = 'none';
+
 const tooltip = document.createElement('div');
 tooltip.className = 'custom-tooltip';
 document.body.appendChild(tooltip);
@@ -293,6 +300,48 @@ function setupEventListeners() {
         activeDate = null;
         updateDashboard();
     });
+
+    // --- Analysis Section Events ---
+    document.querySelectorAll('input[name="analysis-target-mode"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+            analysisMode = e.target.value;
+            if (currentSection === 'analysis-section') updateDashboard();
+        });
+    });
+    
+    document.querySelectorAll('#past-diff-period-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('#past-diff-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            pastDiffPeriod = e.target.dataset.period;
+            if (currentSection === 'analysis-section') updateDashboard();
+        });
+    });
+
+    document.querySelectorAll('#island-past-diff-period-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('#island-past-diff-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            islandPastDiffPeriod = e.target.dataset.period;
+            if (currentSection === 'analysis-section') updateDashboard();
+        });
+    });
+
+    const ueFilter = document.getElementById('unexploded-filter');
+    if (ueFilter) {
+        ueFilter.addEventListener('change', e => {
+            unexplodedFilter = e.target.value;
+            if (currentSection === 'analysis-section') updateDashboard();
+        });
+    }
+
+    const aeFilter = document.getElementById('accidental-explosion-filter');
+    if (aeFilter) {
+        aeFilter.addEventListener('change', e => {
+            accidentalExplosionFilter = e.target.value;
+            if (currentSection === 'analysis-section') updateDashboard();
+        });
+    }
 }
 
 function openModal(date) {

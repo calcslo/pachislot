@@ -222,6 +222,15 @@
             <!-- 4. Analysis Section -->
             <section id="analysis-section" class="analysis-section glass-panel" style="display:none;">
 
+                <!-- Analysis Global Toggle -->
+                <div class="analysis-global-controls" style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 8px;">
+                    <span style="font-size: 0.9rem; font-weight: bold;">集計対象:</span>
+                    <div class="logic-switch">
+                        <label><input type="radio" name="analysis-target-mode" value="diff" checked> 平均差枚</label>
+                        <label><input type="radio" name="analysis-target-mode" value="setting"> 平均設定</label>
+                    </div>
+                </div>
+
                 <div class="chart-grid">
                     <!-- Column 1 -->
                     <div class="chart-card">
@@ -331,6 +340,87 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- 過去差枚別 平均差枚 -->
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">過去差枚別 平均差枚</h3>
+                        <p class="section-note">指定した過去期間の自台の平均差枚数ごとに、対象日（翌日）の平均差枚数を集計します。</p>
+                        <div class="analysis-controls" style="margin-bottom:1rem;">
+                            <div class="tabs" id="past-diff-period-tabs">
+                                <button class="tab-btn active" data-period="1">前日</button>
+                                <button class="tab-btn" data-period="2">過去2日</button>
+                                <button class="tab-btn" data-period="3">過去3日</button>
+                                <button class="tab-btn" data-period="4">過去4日</button>
+                                <button class="tab-btn" data-period="5">過去5日</button>
+                                <button class="tab-btn" data-period="6">過去6日</button>
+                                <button class="tab-btn" data-period="7">過去7日</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-past-diff"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 島過去差枚別 平均差枚 -->
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">島過去差枚別 平均差枚</h3>
+                        <p class="section-note">指定した過去期間の島の平均差枚数ごとに、対象日（翌日）の自台の平均差枚数を集計します。</p>
+                        <div class="analysis-controls" style="margin-bottom:1rem;">
+                            <div class="tabs" id="island-past-diff-period-tabs">
+                                <button class="tab-btn active" data-period="1">前日</button>
+                                <button class="tab-btn" data-period="2">過去2日</button>
+                                <button class="tab-btn" data-period="3">過去3日</button>
+                                <button class="tab-btn" data-period="4">過去4日</button>
+                                <button class="tab-btn" data-period="5">過去5日</button>
+                                <button class="tab-btn" data-period="6">過去6日</button>
+                                <button class="tab-btn" data-period="7">過去7日</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-island-past-diff"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 不発台据え置き分析 -->
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">不発台据え置き分析 (前日設定5,6想定)</h3>
+                        <p class="section-note">前日の推定設定が5または6であった台の、対象日（翌日）の平均差枚と平均設定を集計します。</p>
+                        <div class="analysis-controls" style="margin-bottom:1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 0.85rem; font-weight: bold;">条件フィルタ:</span>
+                            <select id="unexploded-filter" class="styled-select" style="max-width: 200px;">
+                                <option value="none">フィルタなし</option>
+                                <option value="prev_event">前日がイベント日</option>
+                                <option value="next_event">翌日がイベント日</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-unexploded-diff"></canvas>
+                        </div>
+                        <div class="chart-container" style="margin-top: 1rem;">
+                            <canvas id="chart-unexploded-setting"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 誤爆台分析 -->
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3 class="chart-title">誤爆台分析 (前日設定1,2,3想定)</h3>
+                        <p class="section-note">前日の推定設定が1, 2, 3であった台の、対象日（翌日）の平均差枚と平均設定を集計します。</p>
+                        <div class="analysis-controls" style="margin-bottom:1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 0.85rem; font-weight: bold;">条件フィルタ:</span>
+                            <select id="accidental-explosion-filter" class="styled-select" style="max-width: 200px;">
+                                <option value="none">フィルタなし</option>
+                                <option value="prev_event">前日がイベント日</option>
+                                <option value="next_event">翌日がイベント日</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-accidental-explosion-diff"></canvas>
+                        </div>
+                        <div class="chart-container" style="margin-top: 1rem;">
+                            <canvas id="chart-accidental-explosion-setting"></canvas>
+                        </div>
+                    </div>
+
                 </div>
 
             </section>
