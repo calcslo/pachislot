@@ -83,6 +83,7 @@
             <button class="nav-btn" data-section="machine-section">台番号別差枚</button>
             <button class="nav-btn" data-section="analysis-section">詳細分析</button>
             <button class="nav-btn" data-section="target-section">狙い台</button>
+            <button class="nav-btn" data-section="ml-analysis-section">傾向分析</button>
         </div>
 
         <!-- Main Content Grid -->
@@ -223,7 +224,8 @@
             <section id="analysis-section" class="analysis-section glass-panel" style="display:none;">
 
                 <!-- Analysis Global Toggle -->
-                <div class="analysis-global-controls" style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 8px;">
+                <div class="analysis-global-controls"
+                    style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 8px;">
                     <span style="font-size: 0.9rem; font-weight: bold;">集計対象:</span>
                     <div class="logic-switch">
                         <label><input type="radio" name="analysis-target-mode" value="diff" checked> 平均差枚</label>
@@ -285,7 +287,8 @@
 
                     <div class="chart-card" style="grid-column: 1 / -1;">
                         <h3 class="chart-title">ゲーム数別 平均差枚</h3>
-                        <p class="section-note">過去数日間（通常日・イベント日両方含む）の平均ゲーム数（1000G刻み）に対して、翌日（イベント日等フィルタ対象日）の平均差枚がどうなったかを集計します。</p>
+                        <p class="section-note">
+                            過去数日間（通常日・イベント日両方含む）の平均ゲーム数（1000G刻み）に対して、翌日（イベント日等フィルタ対象日）の平均差枚がどうなったかを集計します。</p>
                         <div class="analysis-controls" style="margin-bottom:1rem;">
                             <div class="tabs" id="game-count-period-tabs">
                                 <button class="tab-btn active" data-period="1">前日</button>
@@ -355,6 +358,11 @@
                                 <button class="tab-btn" data-period="6">過去6日</button>
                                 <button class="tab-btn" data-period="7">過去7日</button>
                             </div>
+                            <div class="tabs" id="past-diff-step-tabs" style="margin-top:0.5rem;">
+                                <button class="tab-btn" data-step="1000">1000枚刻み</button>
+                                <button class="tab-btn active" data-step="500">500枚刻み</button>
+                                <button class="tab-btn" data-step="50">50枚刻み</button>
+                            </div>
                         </div>
                         <div class="chart-container">
                             <canvas id="chart-past-diff"></canvas>
@@ -375,6 +383,11 @@
                                 <button class="tab-btn" data-period="6">過去6日</button>
                                 <button class="tab-btn" data-period="7">過去7日</button>
                             </div>
+                            <div class="tabs" id="island-past-diff-step-tabs" style="margin-top:0.5rem;">
+                                <button class="tab-btn" data-step="1000">1000枚刻み</button>
+                                <button class="tab-btn active" data-step="500">500枚刻み</button>
+                                <button class="tab-btn" data-step="50">50枚刻み</button>
+                            </div>
                         </div>
                         <div class="chart-container">
                             <canvas id="chart-island-past-diff"></canvas>
@@ -385,7 +398,8 @@
                     <div class="chart-card" style="grid-column: 1 / -1;">
                         <h3 class="chart-title">不発台据え置き分析 (前日設定5,6想定)</h3>
                         <p class="section-note">前日の推定設定が5または6であった台の、対象日（翌日）の平均差枚と平均設定を集計します。</p>
-                        <div class="analysis-controls" style="margin-bottom:1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="analysis-controls"
+                            style="margin-bottom:1rem; display: flex; align-items: center; gap: 0.5rem;">
                             <span style="font-size: 0.85rem; font-weight: bold;">条件フィルタ:</span>
                             <select id="unexploded-filter" class="styled-select" style="max-width: 200px;">
                                 <option value="none">フィルタなし</option>
@@ -405,7 +419,8 @@
                     <div class="chart-card" style="grid-column: 1 / -1;">
                         <h3 class="chart-title">誤爆台分析 (前日設定1,2,3想定)</h3>
                         <p class="section-note">前日の推定設定が1, 2, 3であった台の、対象日（翌日）の平均差枚と平均設定を集計します。</p>
-                        <div class="analysis-controls" style="margin-bottom:1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="analysis-controls"
+                            style="margin-bottom:1rem; display: flex; align-items: center; gap: 0.5rem;">
                             <span style="font-size: 0.85rem; font-weight: bold;">条件フィルタ:</span>
                             <select id="accidental-explosion-filter" class="styled-select" style="max-width: 200px;">
                                 <option value="none">フィルタなし</option>
@@ -437,14 +452,17 @@
 
                     <!-- Machine model filter -->
                     <div class="target-model-filter">
-                        <div class="cond-header" style="margin-bottom:0.5rem; display:flex; align-items:center; flex-wrap:wrap;">
+                        <div class="cond-header"
+                            style="margin-bottom:0.5rem; display:flex; align-items:center; flex-wrap:wrap;">
                             <div>
                                 <span class="cond-label">機種フィルタ</span>
                                 <span style="font-size:0.8rem;color:var(--text-muted);">（未選択 = すべて対象）</span>
                             </div>
                             <div style="display:flex; gap:0.5rem; margin-left: auto;">
-                                <button type="button" id="btn-model-filter-all" class="tab-btn" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; border-radius: 4px;">すべて選択</button>
-                                <button type="button" id="btn-model-filter-clear" class="tab-btn" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; border-radius: 4px;">すべて解除</button>
+                                <button type="button" id="btn-model-filter-all" class="tab-btn"
+                                    style="padding: 0.2rem 0.6rem; font-size: 0.8rem; border-radius: 4px;">すべて選択</button>
+                                <button type="button" id="btn-model-filter-clear" class="tab-btn"
+                                    style="padding: 0.2rem 0.6rem; font-size: 0.8rem; border-radius: 4px;">すべて解除</button>
                             </div>
                         </div>
                         <div class="cond-checkboxes" id="target-model-filter-list">
@@ -454,14 +472,17 @@
 
                     <!-- Exclusion Conditions (Toggleable) -->
                     <div class="target-exclude-panel" style="margin-bottom: 1.25rem;">
-                        <div class="exclude-toggle" id="exclude-cond-toggle" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 0.6rem 1rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 10px; transition: 0.2s;">
+                        <div class="exclude-toggle" id="exclude-cond-toggle"
+                            style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 0.6rem 1rem; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 10px; transition: 0.2s;">
                             <div style="display:flex; align-items:center; gap:0.5rem;">
                                 <span class="cond-label" style="margin-bottom:0;">除外条件設定</span>
                                 <span style="font-size:0.75rem; color:var(--text-muted);">（合致する台を検索結果から排除）</span>
                             </div>
-                            <span class="toggle-icon" id="exclude-toggle-icon" style="font-size:1.2rem; font-weight:bold;">+</span>
+                            <span class="toggle-icon" id="exclude-toggle-icon"
+                                style="font-size:1.2rem; font-weight:bold;">+</span>
                         </div>
-                        <div class="target-conditions-grid" id="exclude-conditions-grid" style="display:none; margin-top:0.75rem;">
+                        <div class="target-conditions-grid" id="exclude-conditions-grid"
+                            style="display:none; margin-top:0.75rem;">
                             <!-- Excl: Consecutive negative streak -->
                             <div class="target-condition-card" id="ex-cond-card-cons-neg">
                                 <div class="cond-header">
@@ -593,8 +614,10 @@
                                     </label>
                                     <div style="display:flex; align-items:center; gap:0.5rem;">
                                         <div class="logic-switch">
-                                            <label><input type="radio" name="ex-past-game-logic" value="or" checked> OR</label>
-                                            <label><input type="radio" name="ex-past-game-logic" value="and"> AND</label>
+                                            <label><input type="radio" name="ex-past-game-logic" value="or" checked>
+                                                OR</label>
+                                            <label><input type="radio" name="ex-past-game-logic" value="and">
+                                                AND</label>
                                         </div>
                                         <span class="cond-badge" id="ex-cond-past-game-badge">OFF</span>
                                     </div>
@@ -602,21 +625,34 @@
                                 <div class="cond-body" style="display: block; width: 100%;">
                                     <div class="past-game-grid">
                                         <div class="ex-past-game-period-row" data-period="1">
-                                            <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
-                                                <label><input type="checkbox" class="ex-period-chk" value="1"> 前日</label>
+                                            <div class="period-header"
+                                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                                <label><input type="checkbox" class="ex-period-chk" value="1">
+                                                    前日</label>
                                             </div>
                                             <div class="period-ranges cond-checkboxes">
-                                                <label><input type="checkbox" class="ex-range-chk" value="0"> ~1000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="1"> 2000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="2"> 3000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="3"> 4000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="4"> 5000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="5"> 6000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="6"> 7000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="7"> 8000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="8"> 9000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="9"> 10000G</label>
-                                                <label><input type="checkbox" class="ex-range-chk" value="10"> 10001G~</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="0">
+                                                    ~1000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="1">
+                                                    2000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="2">
+                                                    3000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="3">
+                                                    4000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="4">
+                                                    5000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="5">
+                                                    6000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="6">
+                                                    7000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="7">
+                                                    8000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="8">
+                                                    9000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="9">
+                                                    10000G</label>
+                                                <label><input type="checkbox" class="ex-range-chk" value="10">
+                                                    10001G~</label>
                                             </div>
                                         </div>
                                     </div>
@@ -772,11 +808,14 @@
                                 <div class="past-game-grid">
                                     <!-- Periods 1 to 7 -->
                                     <div class="past-game-period-row" data-period="1">
-                                        <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
                                             <label><input type="checkbox" class="period-chk" value="1"> 前日</label>
                                             <div style="display:flex; gap:0.3rem;">
-                                                <button type="button" class="tab-btn period-all-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
-                                                <button type="button" class="tab-btn period-clear-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
                                             </div>
                                         </div>
                                         <div class="period-ranges cond-checkboxes">
@@ -794,11 +833,14 @@
                                         </div>
                                     </div>
                                     <div class="past-game-period-row" data-period="2">
-                                        <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
                                             <label><input type="checkbox" class="period-chk" value="2"> ～2日前平均</label>
                                             <div style="display:flex; gap:0.3rem;">
-                                                <button type="button" class="tab-btn period-all-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
-                                                <button type="button" class="tab-btn period-clear-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
                                             </div>
                                         </div>
                                         <div class="period-ranges cond-checkboxes">
@@ -816,11 +858,14 @@
                                         </div>
                                     </div>
                                     <div class="past-game-period-row" data-period="3">
-                                        <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
                                             <label><input type="checkbox" class="period-chk" value="3"> ～3日前平均</label>
                                             <div style="display:flex; gap:0.3rem;">
-                                                <button type="button" class="tab-btn period-all-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
-                                                <button type="button" class="tab-btn period-clear-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
                                             </div>
                                         </div>
                                         <div class="period-ranges cond-checkboxes">
@@ -838,11 +883,14 @@
                                         </div>
                                     </div>
                                     <div class="past-game-period-row" data-period="4">
-                                        <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
                                             <label><input type="checkbox" class="period-chk" value="4"> ～4日前平均</label>
                                             <div style="display:flex; gap:0.3rem;">
-                                                <button type="button" class="tab-btn period-all-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
-                                                <button type="button" class="tab-btn period-clear-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
                                             </div>
                                         </div>
                                         <div class="period-ranges cond-checkboxes">
@@ -860,11 +908,14 @@
                                         </div>
                                     </div>
                                     <div class="past-game-period-row" data-period="5">
-                                        <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
                                             <label><input type="checkbox" class="period-chk" value="5"> ～5日前平均</label>
                                             <div style="display:flex; gap:0.3rem;">
-                                                <button type="button" class="tab-btn period-all-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
-                                                <button type="button" class="tab-btn period-clear-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
                                             </div>
                                         </div>
                                         <div class="period-ranges cond-checkboxes">
@@ -882,11 +933,14 @@
                                         </div>
                                     </div>
                                     <div class="past-game-period-row" data-period="6">
-                                        <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
                                             <label><input type="checkbox" class="period-chk" value="6"> ～6日前平均</label>
                                             <div style="display:flex; gap:0.3rem;">
-                                                <button type="button" class="tab-btn period-all-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
-                                                <button type="button" class="tab-btn period-clear-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
                                             </div>
                                         </div>
                                         <div class="period-ranges cond-checkboxes">
@@ -904,11 +958,14 @@
                                         </div>
                                     </div>
                                     <div class="past-game-period-row" data-period="7">
-                                        <div class="period-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                        <div class="period-header"
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
                                             <label><input type="checkbox" class="period-chk" value="7"> ～7日前平均</label>
                                             <div style="display:flex; gap:0.3rem;">
-                                                <button type="button" class="tab-btn period-all-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
-                                                <button type="button" class="tab-btn period-clear-btn" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
+                                                <button type="button" class="tab-btn period-all-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">すべて</button>
+                                                <button type="button" class="tab-btn period-clear-btn"
+                                                    style="padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: 3px;">解除</button>
                                             </div>
                                         </div>
                                         <div class="period-ranges cond-checkboxes">
@@ -926,7 +983,8 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem; padding-top:0.4rem; border-top:1px solid var(--glass-border);">
+                                <div
+                                    style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem; padding-top:0.4rem; border-top:1px solid var(--glass-border);">
                                     フィルタ無視（通常日含む平均）。複数指定時は、いずれかの期間で合致すれば「過去G数平均」条件合致としてカウントされます。
                                 </div>
                             </div>
@@ -1003,6 +1061,233 @@
                     </div>
                 </div>
 
+            </section>
+
+            <!-- 6. ML Analysis Section -->
+            <section id="ml-analysis-section" class="glass-panel" style="display:none;">
+                <h2 class="section-title">傾向分析 (機械学習) <span
+                        style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">対象: ハナハナのみ</span></h2>
+                <p class="section-note">
+                    過去のデータから、差枚や高設定(推定4以上)になりやすい条件の組み合わせを機械学習で分析します。
+                    （※このタブは、ページ上部の「期間」や「特定日」フィルタの影響を受けず、以下の専用タブで切り替えます）
+                </p>
+
+                <!-- Next Day Prediction Container -->
+                <div id="ml-next-day-container" class="glass-panel" style="margin-bottom: 2rem; border-color: var(--accent-blue); display: none;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+                        <div>
+                            <h3 style="display:flex; align-items:center; gap:0.5rem; color:var(--accent-blue); margin-bottom: 0.5rem;">
+                                AIによる高設定推測ランキング
+                            </h3>
+                            <p class="section-note" style="margin-bottom:1rem;">
+                                最新日の状態と過去7日間の傾向をもとに、各台の翌日の高設定確率と予想差枚を算出しました。
+                            </p>
+                            <div id="ml-next-day-info" style="font-weight:bold; margin-bottom:1rem; font-size:1.1rem; color: var(--text-main);">
+                                <!-- Injected by JS -->
+                            </div>
+                        </div>
+                        
+                        <div style="background:var(--card-bg); padding:1rem; border-radius:8px; border:1px solid rgba(16,185,129,0.3); min-width:200px;">
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">このモデルの過去データでの実績</div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>的中率 (設定4以上):</span>
+                                <span id="ml-next-day-hit-rate" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>予想台の平均差枚:</span>
+                                <span id="ml-next-day-avg-diff" style="font-weight:bold; color:#fbbf24; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">※過去のテストデータでのAI予想スコア上位群の実績値です</div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container" style="max-height: 500px; overflow-y: auto; margin-top: 1rem;">
+                        <table id="ml-next-day-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="color: var(--text-muted); font-size: 0.9rem;">
+                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 60px; text-align: center;">ランク</th>
+                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 80px; text-align: left;">台番号</th>
+                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 100px; text-align: center;">高設定確率</th>
+                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 100px; text-align: center;">予想差枚</th>
+                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; text-align: left;">AIが推測した主な理由 (詳細)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ml-next-day-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ML Controls -->
+                <div class="ml-controls"
+                    style="margin-bottom: 1.5rem; background: var(--card-bg); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                    <div style="display:flex; flex-wrap:wrap; gap: 1rem; align-items:center;">
+                        <div class="control-group" style="margin-bottom:0;">
+                            <h3 style="font-size:0.9rem; margin-bottom:0.3rem;">対象期間</h3>
+                            <div class="tabs" id="ml-period-tabs">
+                                <button class="tab-btn active" data-ml-period="all">全日</button>
+                                <button class="tab-btn" data-ml-period="day3">3の付く日</button>
+                                <button class="tab-btn" data-ml-period="day5">5の付く日</button>
+                                <button class="tab-btn" data-ml-period="day8">8の付く日</button>
+                                <button class="tab-btn" data-ml-period="event">イベント日(3,5,8)</button>
+                                <button class="tab-btn" data-ml-period="nonevent">イベント日以外</button>
+                            </div>
+                        </div>
+
+                        <!-- Utilized Features Collapse -->
+                        <div style="width: 100%; margin-top: 1rem;">
+                            <details
+                                style="background: var(--bg-main); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                                <summary
+                                    style="cursor: pointer; font-size: 0.9rem; color: var(--text-muted); font-weight: bold;">
+                                    分析に使用した特徴量（全一覧を見る）</summary>
+                                <div id="ml-features-list"
+                                    style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-main); line-height: 1.6; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                    <!-- Injected by JS -->
+                                </div>
+                            </details>
+                        </div>
+
+                        <div class="control-group" style="margin-bottom:0;">
+                            <h3 style="font-size:0.9rem; margin-bottom:0.3rem;">目的変数</h3>
+                            <div class="logic-switch">
+                                <label><input type="radio" name="ml-target" value="regression" checked> 差枚（回帰）</label>
+                                <label><input type="radio" name="ml-target" value="classification"> 高設定フラグ（分類）</label>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="margin-bottom:0;">
+                            <h3 style="font-size:0.9rem; margin-bottom:0.3rem;">分析アルゴリズム</h3>
+                            <div class="tabs" id="ml-algo-tabs">
+                                <button class="tab-btn active" data-ml-algo="tree">決定木</button>
+                                <button class="tab-btn" data-ml-algo="rf">特徴量重要度</button>
+                                <button class="tab-btn" data-ml-algo="assoc">アソシエーション</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ML Results Container -->
+                <div id="ml-results-container">
+                    <div id="ml-loading"
+                        style="text-align:center; padding: 2rem; color: var(--text-muted); display:none;">
+                        分析データを読み込み中...
+                    </div>
+                    <div id="ml-error"
+                        style="text-align:center; padding: 2rem; color: var(--accent-red); display:none;">
+                        サンプル数が不足しているか、エラーが発生しました。
+                    </div>
+
+                    <div id="ml-content" style="display:none;">
+                        <!-- Summary stats -->
+                        <div class="ml-summary-stats"
+                            style="display:flex; gap: 1rem; margin-bottom: 1rem; flex-wrap:wrap;">
+                            <div class="ml-stat-card"
+                                style="background:var(--card-bg); padding:0.8rem 1.2rem; border-radius:8px; border:1px solid var(--glass-border);">
+                                <div style="font-size:0.8rem; color:var(--text-muted);">サンプル数</div>
+                                <div id="ml-stat-samples"
+                                    style="font-size:1.2rem; font-weight:bold; color:var(--text-main);">0</div>
+                            </div>
+                            <div id="ml-stat-high-wrap" class="ml-stat-card"
+                                style="background:var(--card-bg); padding:0.8rem 1.2rem; border-radius:8px; border:1px solid var(--glass-border); display:none;">
+                                <div style="font-size:0.8rem; color:var(--text-muted);">高設定数 (割合)</div>
+                                <div id="ml-stat-high"
+                                    style="font-size:1.2rem; font-weight:bold; color:var(--accent-blue);">0 (0%)</div>
+                            </div>
+                            <div id="ml-stat-metrics-wrap" class="ml-stat-card"
+                                style="background:var(--card-bg); padding:0.8rem 1.2rem; border-radius:8px; border:1px solid var(--glass-border);">
+                                <div id="ml-stat-metric-label"
+                                    style="font-size:0.8rem; color:var(--text-muted); cursor:help;"
+                                    title="予測モデルの正確さを示す指標です。">精度指標</div>
+                                <div id="ml-stat-metric-val"
+                                    style="font-size:1.2rem; font-weight:bold; color:var(--text-main);">-</div>
+                                <div id="ml-stat-metric-desc"
+                                    style="font-size:0.75rem; color:var(--text-muted); margin-top: 4px;"></div>
+                            </div>
+
+                            <div id="ml-stat-confusion-wrap" class="ml-stat-card"
+                                style="background:var(--card-bg); padding:0.8rem 1.2rem; border-radius:8px; border:1px solid var(--glass-border); display:none; flex-grow: 1;">
+                                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 0.5rem;">予測の内訳
+                                    (混合行列比率)</div>
+                                <div
+                                    style="display: flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; text-align: center;">
+                                    <div title="低設定を正しく低設定と予測">
+                                        <div style="color:var(--text-muted);">真陰性 (正解)</div>
+                                        <div id="ml-stat-tn" style="font-weight:bold; color:#10b981;">0%</div>
+                                    </div>
+                                    <div title="低設定を誤って高設定と予測">
+                                        <div style="color:var(--text-muted);">偽陽性 (ハズレ)</div>
+                                        <div id="ml-stat-fp" style="font-weight:bold; color:#ef4444;">0%</div>
+                                    </div>
+                                    <div title="高設定を誤って低設定と予測">
+                                        <div style="color:var(--text-muted);">偽陰性 (見逃し)</div>
+                                        <div id="ml-stat-fn" style="font-weight:bold; color:#f59e0b;">0%</div>
+                                    </div>
+                                    <div title="高設定を正しく高設定と予測">
+                                        <div style="color:var(--text-muted);">真陽性 (正解)</div>
+                                        <div id="ml-stat-tp" style="font-weight:bold; color:#10b981;">0%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Content blocks for each algo -->
+                        <!-- 1. Decision Tree -->
+                        <div id="ml-algo-tree" class="ml-algo-block" style="display:none;">
+                            <h3 class="chart-title" style="margin-bottom:0.5rem;">条件の組み合わせによる結果予測 (決定木)</h3>
+                            <p class="section-note" style="margin-bottom:1rem;">
+                                データから自動的に「結果に差が出る条件」を探し出し、ツリー構造で整理したものです。上から順に条件をたどっていくことで、特定の状況下での平均的な結果がわかります。
+                            </p>
+                            <div id="ml-tree-text"
+                                style="background: #1e1e1e; color: #d4d4d4; padding: 1.5rem; border-radius: 8px; overflow-x: auto; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: 0.95rem; line-height: 1.6; border: 1px solid var(--glass-border);">
+                            </div>
+                        </div>
+
+                        <!-- 2. Feature Importance -->
+                        <div id="ml-algo-rf" class="ml-algo-block" style="display:none;">
+                            <h3 class="chart-title">特徴量重要度 (Random Forest)</h3>
+                            <p class="section-note">
+                                どの要素が結果（差枚や高設定かどうか）に強く影響を与えているかをランキングで表示します。
+                            </p>
+                            <div class="chart-container" style="height: 400px; max-width: 800px; margin: 0 auto;">
+                                <canvas id="ml-chart-rf"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- 3. Association Rules -->
+                        <div id="ml-algo-assoc" class="ml-algo-block" style="display:none;">
+                            <h3 class="chart-title">アソシエーション分析 (相関ルール)</h3>
+                            <p class="section-note" style="margin-bottom: 0.5rem;">
+                                「もし条件Aが起きているなら、結果Bになりやすい」というルールを抽出します。Lift(リフト値)が1より大きいほど、偶然ではなく意味のある関係と言えます。
+                            </p>
+                            <div
+                                style="background: var(--bg-main); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; border: 1px solid var(--glass-border);">
+                                <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-muted);">
+                                    <li><strong style="color: var(--text-main);">Support (支持度):</strong>
+                                        全データのうち、この「条件と結果のセット」が同時に起こった割合。「これが大きいほど、レアケースではなく頻繁に起こる事象」です。</li>
+                                    <li style="margin-top: 0.5rem;"><strong style="color: var(--text-main);">Confidence
+                                            (確信度):</strong> 条件を満たした台の中で、実際にその結果になった割合。「これが大きいほど、条件を満たした時の的中率が高い」です。</li>
+                                    <li style="margin-top: 0.5rem;"><strong style="color: var(--text-main);">Lift
+                                            (リフト値):</strong>
+                                        偶然その結果になる確率と比べて、条件を満たしたことで何倍起こりやすくなったか。「1を超え、大きいほど条件の強力さ（効果）が高い」です。</li>
+                                </ul>
+                            </div>
+                            <div class="table-container" style="max-height: 800px; overflow: auto; width: 100%;">
+                                <table id="ml-assoc-table" style="min-width: 700px; width: 100%; table-layout: auto;">
+                                    <thead>
+                                        <tr>
+                                            <th style="min-width:220px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);">条件 (Antecedents)</th>
+                                            <th style="min-width:150px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);">結果 (Consequents)</th>
+                                            <th style="min-width:80px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);" title="全データ中、このルールが当てはまる割合">Support</th>
+                                            <th style="min-width:90px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);" title="条件を満たしたときに、結果が起こる確率">Confidence</th>
+                                            <th style="min-width:70px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);" title="偶然起こる確率に対して何倍起こりやすいか">Lift</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ml-assoc-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
         </div>
     </div>

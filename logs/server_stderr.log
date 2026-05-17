@@ -812,3 +812,138 @@ INFO:     connection closed
 INFO:     100.109.8.4:59978 - "WebSocket /ws" [accepted]
 INFO:     connection open
 INFO:     connection closed
+INFO:     100.109.8.4:57231 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-16T08:26:33.146642600Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-16T08:26:33.149788600Z][Docker Desktop.exe] backend process started
+INFO:     connection closed
+[2026-05-16 17:41:44] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#8;2344> (referer: https://www.google.com/)
+2026-05-16 17:41:44,096 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#8;2344> (referer: https://www.google.com/)
+INFO:     100.109.8.4:62107 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:56131 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:53896 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+[2026-05-16 17:58:11] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=eF.%25E3%2581%258B%25E3%2582%2589%25E3%2581%258F%25E3%2582%258A%25EF%25BD%25BB%25EF%25BD%25B0%25EF%25BD%25B6%25EF%25BD%25BD2+R#496> (referer: https://www.google.com/)
+2026-05-16 17:58:11,389 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=eF.%25E3%2581%258B%25E3%2582%2589%25E3%2581%258F%25E3%2582%258A%25EF%25BD%25BB%25EF%25BD%25B0%25EF%25BD%25B6%25EF%25BD%25BD2+R#496> (referer: https://www.google.com/)
+INFO:     100.109.8.4:58703 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:58707 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-16T09:06:37.428373000Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-16T09:06:37.432051300Z][Docker Desktop.exe] backend process started
+2026-05-16 18:06:38,378 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+[2026-05-16T09:08:49.982495300Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-16T09:08:49.985671800Z][Docker Desktop.exe] backend process started
+INFO:     connection closed
+[2026-05-16T09:13:06.306879400Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-16T09:13:06.310501500Z][Docker Desktop.exe] backend process started
+[2026-05-16T09:17:22.509117100Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-16T09:17:22.512310600Z][Docker Desktop.exe] backend process started
+[2026-05-16T09:21:39.758063500Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-16T09:21:39.761150100Z][Docker Desktop.exe] backend process started
+INFO:     100.109.8.4:58968 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:52087 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-16 18:25:44] INFO: Fetched (403) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/> (referer: https://www.google.com/)
+2026-05-16 18:25:44,313 - scrapling - INFO - Fetched (403) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/> (referer: https://www.google.com/)
+ERROR:    data transfer failed
+Traceback (most recent call last):
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 940, in transfer_data
+    message = await self.read_message()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1010, in read_message
+    frame = await self.read_data_frame(max_size=self.max_size)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1087, in read_data_frame
+    frame = await self.read_frame(max_size)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\protocol.py", line 1144, in read_frame
+    frame = await Frame.read(
+            ^^^^^^^^^^^^^^^^^
+  File "D:\PycharmProjects\pachislot\.venv\Lib\site-packages\websockets\legacy\framing.py", line 70, in read
+    data = await reader(2)
+           ^^^^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\streams.py", line 752, in readexactly
+    await self._wait_for_data('readexactly')
+  File "D:\Program Files\Python\Python312\Lib\asyncio\streams.py", line 545, in _wait_for_data
+    await self._waiter
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 286, in _loop_reading
+    length = fut.result()
+             ^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\windows_events.py", line 803, in _poll
+    value = callback(transferred, key, ov)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Program Files\Python\Python312\Lib\asyncio\windows_events.py", line 462, in finish_socket_func
+    return ov.getresult()
+           ^^^^^^^^^^^^^^
+OSError: [WinError 121] セマフォがタイムアウトしました。
+INFO:     connection closed
+INFO:     100.109.8.4:52089 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:51112 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:51114 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+[2026-05-16 18:45:16] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#8;13> (referer: https://www.google.com/)
+2026-05-16 18:45:16,495 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#8;13> (referer: https://www.google.com/)
+INFO:     100.109.8.4:57793 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:62349 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-05-16 21:42:27,767 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+2026-05-16 21:42:27,876 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+2026-05-16 21:42:29,613 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+2026-05-16 21:42:29,613 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+INFO:     100.109.8.4:56033 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:59148 - "WebSocket /ws" [accepted]
+INFO:     connection open

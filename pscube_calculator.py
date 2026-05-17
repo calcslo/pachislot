@@ -29,6 +29,7 @@ OGIYA_BORDER_DICT = {
     "eﾘﾝｸﾞ最恐領域RHA": 17.4,
     "PA海物語極ｼﾞｬﾊﾟﾝHBD": 17.6,
     "PA大海物語5 HLD": 16.8,
+    "eｷﾞﾝﾊﾟﾗVIVA FESTA HTA2": 22.3,
 }
 
 # 有楽住吉北店用機種リスト (P's Cube表記)
@@ -64,6 +65,7 @@ COSMO_BORDER_DICT = {
     #"e地獄少女 7500Ver.": 18.0,
     "e 東京リベンジャーズ": 16.5,
     "P Re:ゼロから始める異世界生活 season2 129ver.": 16.1,
+    "e ギンパラVIVA FESTA HTA2": 22.3,
 }
 
 # コスモジャパン大府店用 機種名と台番号の対応マップ
@@ -300,6 +302,9 @@ ST_CONFIG = {
         "min": {"big": 74, "special": 74},
         "max": {"big": 20, "special": 74},
     },
+    "eｷﾞﾝﾊﾟﾗVIVA FESTA HTA2": {
+        "all": {"big": 79, "special": 79}
+    },
 }
 
 def normalize_machine_name(name):
@@ -346,6 +351,7 @@ def calculate_decrease_start_core(df, final_start, machine_name, mode):
 
     decrease_start = 0
     has_large_start = False # SAOやまでか3用
+    is_ginpara = "eギンパラvivafestahta2" in norm_target or "eｷﾞﾝﾊﾟﾗvivafestahta2" in norm_target or ("ギンパラ" in norm_target and "viva" in norm_target)
 
     # 履歴行のループ
     for i in range(len(df)):
@@ -356,7 +362,22 @@ def calculate_decrease_start_core(df, final_start, machine_name, mode):
         current_dedama = df.loc[i, "出玉"]
 
         st_val = 0
-        if current_shubetu == "大当":
+        if is_ginpara:
+            if current_shubetu == "大当":
+                if current_dedama >= 1000:
+                    st_val = 79
+                else:
+                    has_kakuhen = False
+                    for j in range(i + 1, len(df)):
+                        if df.loc[j, "種別"] == "大当":
+                            break
+                        if df.loc[j, "種別"] == "確変":
+                            has_kakuhen = True
+                            break
+                    st_val = 79 if has_kakuhen else 29
+            elif current_shubetu == "確変":
+                st_val = 79
+        elif current_shubetu == "大当":
             # 大当たりの場合
             if "big_dedama" in m_config:
                 if "big_high" in m_config: # まどか3等

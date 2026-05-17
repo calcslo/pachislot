@@ -41,10 +41,23 @@ let diffThresholds = { neg1: -2000, neg2: -1000, pos1: 1000, pos2: 2000 };
 let includeOldData = false; // 旧データ(2026/4/21以前)を含めるかどうか
 const OLD_DATA_CUTOFF = '2026-04-21'; // この日付以前のデータを旧データとして扱う
 
+// Global Caches for Analysis Performance
+let globalAllDates = [];
+let globalMHist = {};
+let globalIslandDaily = {};
+let globalMachineDateMap = {};
+// ML Analysis State
+let mlAnalysisData = null;
+let currentMlPeriod = 'all';
+let currentMlTarget = 'regression'; // 'regression' or 'classification'
+let currentMlAlgo = 'tree'; // 'tree', 'rf', 'assoc'
+
 // Analysis Section State
 let analysisMode = 'diff'; // 'diff' or 'setting'
 let pastDiffPeriod = '1';
+let pastDiffStepSize = 500;
 let islandPastDiffPeriod = '1';
+let islandPastDiffStepSize = 500;
 let unexplodedFilter = 'none';
 let accidentalExplosionFilter = 'none';
 
@@ -108,12 +121,18 @@ async function init() {
     setupTheme(); setupEventListeners();
     window.addEventListener('resize', () => requestAnimationFrame(applyHeatmapCellSizes));
     try {
-        const [dr, lr] = await Promise.all([fetch('data.json'), fetch('layout.json')]);
+        const [dr, lr, mr] = await Promise.all([fetch('data.json'), fetch('layout.json'), fetch('analysis_results.json').catch(() => null)]);
         rawData = await dr.json(); layoutData = await lr.json();
+        if (mr && mr.ok) {
+            mlAnalysisData = await mr.json();
+        } else {
+            console.warn('analysis_results.json not found or could not be loaded.');
+        }
         updateMachineGroups(rawData); // Build groups dynamically from data
         const maxCols = layoutData.reduce((max, r) => Math.max(max, r.length), 0);
         layoutData.forEach(r => { while (r.length < maxCols) r.push(''); });
         buildLayoutLookup();
+        buildGlobalCaches();
         populateTargetModelFilter();
         // Setup Target Support Tool UI handlers
         setupTargetSearchBtn();
@@ -123,6 +142,45 @@ async function init() {
         updateDashboard();
 
     } catch (err) { console.error(err); }
+}
+
+function buildGlobalCaches() {
+    globalAllDates = [...new Set(rawData.map(r => r['日付']))].sort();
+
+    globalMHist = {};
+    globalMachineDateMap = {};
+    rawData.forEach(r => {
+        const num = normalizeNum(r['台番号']);
+        if (!globalMHist[num]) globalMHist[num] = [];
+        globalMHist[num].push(r);
+
+        if (!globalMachineDateMap[num]) globalMachineDateMap[num] = {};
+        globalMachineDateMap[num][r['日付']] = r;
+    });
+
+    for (const hist of Object.values(globalMHist)) {
+        hist.sort((a, b) => a['日付'].localeCompare(b['日付']));
+    }
+
+    globalIslandDaily = {};
+    rawData.forEach(r => {
+        const num = normalizeNum(r['台番号']);
+        const loc = layoutLookup[num];
+        if (!loc || !loc.islandId) return;
+        const iId = loc.islandId;
+        const date = r['日付'];
+        if (!globalIslandDaily[iId]) globalIslandDaily[iId] = {};
+        if (!globalIslandDaily[iId][date]) globalIslandDaily[iId][date] = { diff: 0, c: 0 };
+        globalIslandDaily[iId][date].diff += (Number(r['最終差枚']) || 0);
+        globalIslandDaily[iId][date].c++;
+    });
+
+    for (const iId of Object.keys(globalIslandDaily)) {
+        for (const date of Object.keys(globalIslandDaily[iId])) {
+            const v = globalIslandDaily[iId][date];
+            globalIslandDaily[iId][date] = v.c > 0 ? v.diff / v.c : 0;
+        }
+    }
 }
 
 function buildLayoutLookup() {
@@ -272,6 +330,7 @@ function setupEventListeners() {
             e.target.classList.add('active');
             document.querySelectorAll('.content-grid > section').forEach(s => { s.style.display = 'none'; s.classList.remove('active-section'); });
             const t = document.getElementById(e.target.dataset.section);
+            currentSection = e.target.dataset.section;
             t.style.display = 'block'; t.classList.add('active-section'); updateDashboard();
         });
     });
@@ -318,11 +377,29 @@ function setupEventListeners() {
         });
     });
 
+    document.querySelectorAll('#past-diff-step-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('#past-diff-step-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            pastDiffStepSize = parseInt(e.target.dataset.step, 10);
+            if (currentSection === 'analysis-section') updateDashboard();
+        });
+    });
+
     document.querySelectorAll('#island-past-diff-period-tabs .tab-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             document.querySelectorAll('#island-past-diff-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             islandPastDiffPeriod = e.target.dataset.period;
+            if (currentSection === 'analysis-section') updateDashboard();
+        });
+    });
+
+    document.querySelectorAll('#island-past-diff-step-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('#island-past-diff-step-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            islandPastDiffStepSize = parseInt(e.target.dataset.step, 10);
             if (currentSection === 'analysis-section') updateDashboard();
         });
     });
@@ -342,6 +419,30 @@ function setupEventListeners() {
             if (currentSection === 'analysis-section') updateDashboard();
         });
     }
+
+    // --- ML Analysis Section Events ---
+    document.querySelectorAll('#ml-period-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('#ml-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            currentMlPeriod = e.target.dataset.mlPeriod;
+            if (currentSection === 'ml-analysis-section') renderMLAnalysis();
+        });
+    });
+    document.querySelectorAll('input[name="ml-target"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+            currentMlTarget = e.target.value;
+            if (currentSection === 'ml-analysis-section') renderMLAnalysis();
+        });
+    });
+    document.querySelectorAll('#ml-algo-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('#ml-algo-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            currentMlAlgo = e.target.dataset.mlAlgo;
+            if (currentSection === 'ml-analysis-section') renderMLAnalysis();
+        });
+    });
 }
 
 function openModal(date) {
@@ -487,6 +588,7 @@ function updateDashboard() {
         const res = document.getElementById('target-results');
         if (res && res.style.display !== 'none') renderTargetSupport(f);
     }
+    else if (sec === 'ml-analysis-section') renderMLAnalysis();
 }
 
 
@@ -1231,6 +1333,17 @@ function drawBar(id, labels, vals, label, extraOpts = {}) {
         scales.x.min = -2000;
         scales.x.max = 2000;
     }
+    
+    if (analysisMode === 'setting' || label.includes('設定')) {
+        const pVals = vals.filter(v => v > 0);
+        if (pVals.length > 0) {
+            const minVal = Math.min(...pVals);
+            const maxVal = Math.max(...pVals);
+            scales.x.min = Math.max(1, Math.floor(minVal * 10) / 10 - 0.2);
+            scales.x.max = Math.min(6, Math.ceil(maxVal * 10) / 10 + 0.2);
+        }
+    }
+
     if (extraOpts.optExtras && extraOpts.optExtras.scales) {
         Object.assign(scales.x, extraOpts.optExtras.scales.x || {});
         Object.assign(scales.y, extraOpts.optExtras.scales.y || {});
@@ -2973,50 +3086,58 @@ function loadTargetConditions() {
 // NEW ANALYSES (Past Diff, Island Past Diff, Unexploded, Accidental Explosion)
 // ==========================================
 
-function getBucketName(d) {
+function getBucketName(d, stepSize) {
     if (d <= -4000) return '<=-4000';
     if (d >= 6001) return '>=6001';
-    const idx = Math.floor((d - 1) / 500);
-    const lower = idx * 500 + 1;
-    const upper = (idx + 1) * 500;
+    const idx = Math.floor((d - 1) / stepSize);
+    const lower = idx * stepSize + 1;
+    const upper = (idx + 1) * stepSize;
     return `${lower}~${upper}`;
 }
 
-const PAST_DIFF_BKEYS = ['<=-4000'];
-for (let i = -8; i <= 11; i++) { PAST_DIFF_BKEYS.push(`${i * 500 + 1}~${(i + 1) * 500}`); }
-PAST_DIFF_BKEYS.push('>=6001');
+function getPastDiffKeys(stepSize) {
+    const keys = ['<=-4000'];
+    const minIdx = Math.floor((-3999 - 1) / stepSize);
+    const maxIdx = Math.floor((6000 - 1) / stepSize);
+    for (let i = minIdx; i <= maxIdx; i++) {
+        keys.push(`${i * stepSize + 1}~${(i + 1) * stepSize}`);
+    }
+    keys.push('>=6001');
+    return keys;
+}
 
 function renderPastDiffAnalysis(data) {
     const period = parseInt(pastDiffPeriod, 10);
     
-    // Group rawData by machine
-    const mHist = {};
-    rawData.forEach(r => {
-        const num = normalizeNum(r['台番号']);
-        if (!mHist[num]) mHist[num] = [];
-        mHist[num].push(r);
-    });
-
+    const bKeys = getPastDiffKeys(pastDiffStepSize);
     const buckets = {};
-    PAST_DIFF_BKEYS.forEach(k => { buckets[k] = { diff: 0, c: 0, setSum: 0, setC: 0 }; });
+    bKeys.forEach(k => { buckets[k] = { diff: 0, c: 0, setSum: 0, setC: 0 }; });
 
-    for (const [m, hist] of Object.entries(mHist)) {
-        hist.sort((a, b) => a['日付'].localeCompare(b['日付']));
-        for (let i = period; i < hist.length; i++) {
-            const targetRow = hist[i];
-            
-            // Fast check: is this row in `data`?
-            // `data` contains only filtered rows (e.g. by tab/event).
-            // We use targetRow object reference directly since `data` and `rawData` objects might differ slightly or be the same?
-            // Actually, data is filtered from rawData, so object refs are identical.
-            if (!data.includes(targetRow)) continue;
+    const dataSet = new Set(data);
+    
+    for (const [m, hist] of Object.entries(globalMHist)) {
+        for (const targetRow of hist) {
+            if (!dataSet.has(targetRow)) continue;
+
+            const tDate = targetRow['日付'];
+            const tDateIdx = globalAllDates.indexOf(tDate);
+            if (tDateIdx < period) continue;
 
             let pastDiffSum = 0;
+            let valid = true;
             for (let j = 1; j <= period; j++) {
-                pastDiffSum += (Number(hist[i - j]['最終差枚']) || 0);
+                const prevDate = globalAllDates[tDateIdx - j];
+                const prevRow = globalMachineDateMap[m] && globalMachineDateMap[m][prevDate];
+                if (prevRow !== undefined) {
+                    pastDiffSum += (Number(prevRow['最終差枚']) || 0);
+                } else {
+                    valid = false; break;
+                }
             }
+            if (!valid) continue;
+
             const pastAvg = pastDiffSum / period;
-            const bName = getBucketName(pastAvg);
+            const bName = getBucketName(pastAvg, pastDiffStepSize);
             
             const trDiff = Number(targetRow['最終差枚']) || 0;
             if (buckets[bName]) {
@@ -3033,7 +3154,7 @@ function renderPastDiffAnalysis(data) {
 
     const labels = [];
     const vals = [];
-    for (const k of PAST_DIFF_BKEYS) {
+    for (const k of bKeys) {
         const v = buckets[k];
         if (v.c > 0) {
             labels.push(k);
@@ -3051,55 +3172,30 @@ function renderPastDiffAnalysis(data) {
 function renderIslandPastDiffAnalysis(data) {
     const period = parseInt(islandPastDiffPeriod, 10);
     
-    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
-    const islandDaily = {};
-    rawData.forEach(r => {
-        const num = normalizeNum(r['台番号']);
-        const loc = layoutLookup[num];
-        if (!loc || !loc.islandId) return;
-        const iId = loc.islandId;
-        const date = r['日付'];
-        if (!islandDaily[iId]) islandDaily[iId] = {};
-        if (!islandDaily[iId][date]) islandDaily[iId][date] = { diff: 0, c: 0 };
-        islandDaily[iId][date].diff += (Number(r['最終差枚']) || 0);
-        islandDaily[iId][date].c++;
-    });
-
-    for (const iId of Object.keys(islandDaily)) {
-        for (const date of Object.keys(islandDaily[iId])) {
-            const v = islandDaily[iId][date];
-            islandDaily[iId][date] = v.c > 0 ? v.diff / v.c : 0;
-        }
-    }
-
+    const bKeys = getPastDiffKeys(islandPastDiffStepSize);
     const buckets = {};
-    PAST_DIFF_BKEYS.forEach(k => { buckets[k] = { diff: 0, c: 0, setSum: 0, setC: 0 }; });
+    bKeys.forEach(k => { buckets[k] = { diff: 0, c: 0, setSum: 0, setC: 0 }; });
 
-    const mHist = {};
-    rawData.forEach(r => {
-        const num = normalizeNum(r['台番号']);
-        if (!mHist[num]) mHist[num] = [];
-        mHist[num].push(r);
-    });
+    const dataSet = new Set(data);
 
-    for (const [m, hist] of Object.entries(mHist)) {
+    for (const [m, hist] of Object.entries(globalMHist)) {
         const loc = layoutLookup[m];
         if (!loc || !loc.islandId) continue;
         const iId = loc.islandId;
 
         for (const targetRow of hist) {
-            if (!data.includes(targetRow)) continue;
+            if (!dataSet.has(targetRow)) continue;
 
             const tDate = targetRow['日付'];
-            const tDateIdx = allDates.indexOf(tDate);
+            const tDateIdx = globalAllDates.indexOf(tDate);
             if (tDateIdx < period) continue;
             
             let pastDiffSum = 0;
             let valid = true;
             for (let j = 1; j <= period; j++) {
-                const prevDate = allDates[tDateIdx - j];
-                if (islandDaily[iId][prevDate] !== undefined) {
-                    pastDiffSum += islandDaily[iId][prevDate];
+                const prevDate = globalAllDates[tDateIdx - j];
+                if (globalIslandDaily[iId][prevDate] !== undefined) {
+                    pastDiffSum += globalIslandDaily[iId][prevDate];
                 } else {
                     valid = false; break;
                 }
@@ -3107,7 +3203,7 @@ function renderIslandPastDiffAnalysis(data) {
             if (!valid) continue;
 
             const pastAvg = pastDiffSum / period;
-            const bName = getBucketName(pastAvg);
+            const bName = getBucketName(pastAvg, islandPastDiffStepSize);
             const trDiff = Number(targetRow['最終差枚']) || 0;
             
             if (buckets[bName]) {
@@ -3124,7 +3220,7 @@ function renderIslandPastDiffAnalysis(data) {
 
     const labels = [];
     const vals = [];
-    for (const k of PAST_DIFF_BKEYS) {
+    for (const k of bKeys) {
         const v = buckets[k];
         if (v.c > 0) {
             labels.push(k);
@@ -3144,10 +3240,9 @@ function renderUnexplodedAnalysis(data) {
         const dd = parseInt(d.split('-')[2], 10);
         return dd === 3 || dd === 5 || dd === 8 || dd === 13 || dd === 15 || dd === 18 || dd === 23 || dd === 25 || dd === 28;
     };
-
-    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
     
     let targetC = 0, targetDiff = 0, targetSetSum = 0, targetSetC = 0;
+    let subC = 0, subDiff = 0, subSetSum = 0, subSetC = 0;
     let baselineC = 0, baselineDiff = 0, baselineSetSum = 0, baselineSetC = 0;
 
     data.forEach(targetRow => {
@@ -3155,9 +3250,9 @@ function renderUnexplodedAnalysis(data) {
         const tDate = targetRow['日付'];
         const num = normalizeNum(targetRow['台番号']);
         
-        const tDateIdx = allDates.indexOf(tDate);
+        const tDateIdx = globalAllDates.indexOf(tDate);
         if (tDateIdx < 1) return;
-        const prevDate = allDates[tDateIdx - 1];
+        const prevDate = globalAllDates[tDateIdx - 1];
 
         if (unexplodedFilter === 'prev_event' && !isEvent(prevDate)) return;
         if (unexplodedFilter === 'next_event' && !isEvent(tDate)) return;
@@ -3168,31 +3263,40 @@ function renderUnexplodedAnalysis(data) {
         baselineDiff += trDiff;
         if (trEst) { baselineSetSum += trEst.setting; baselineSetC++; }
 
-        const prevRow = rawData.find(r => r['日付'] === prevDate && normalizeNum(r['台番号']) === num);
+        const prevRow = globalMachineDateMap[num] && globalMachineDateMap[num][prevDate];
         if (!prevRow) return;
 
+        const prevDiff = Number(prevRow['最終差枚']) || 0;
         const prevEst = estimateSetting(prevRow['機種名'], prevRow['累計ゲーム'], prevRow['BIG'], prevRow['REG']);
         if (prevEst && (prevEst.setting === 5 || prevEst.setting === 6)) {
-            targetC++;
-            targetDiff += trDiff;
-            if (trEst) { targetSetSum += trEst.setting; targetSetC++; }
+            subC++;
+            subDiff += trDiff;
+            if (trEst) { subSetSum += trEst.setting; subSetC++; }
+
+            if (prevDiff < 0) {
+                targetC++;
+                targetDiff += trDiff;
+                if (trEst) { targetSetSum += trEst.setting; targetSetC++; }
+            }
         }
     });
 
-    const diffLabels = ['条件合致台 (前日5,6)', '比較用全体平均'];
+    const diffLabels = ['条件合致台 (前日5,6かつマイナス)', '前日5,6全体', '比較用全体平均'];
     const diffVals = [
         targetC > 0 ? targetDiff / targetC : 0,
+        subC > 0 ? subDiff / subC : 0,
         baselineC > 0 ? baselineDiff / baselineC : 0
     ];
     
-    const setLabels = ['条件合致台 (前日5,6)', '比較用全体平均'];
+    const setLabels = ['条件合致台 (前日5,6かつマイナス)', '前日5,6全体', '比較用全体平均'];
     const setVals = [
         targetSetC > 0 ? targetSetSum / targetSetC : 0,
+        subSetC > 0 ? subSetSum / subSetC : 0,
         baselineSetC > 0 ? baselineSetSum / baselineSetC : 0
     ];
 
-    drawBar('chart-unexploded-diff', diffLabels, diffVals, '翌日 平均差枚', { datasetExtras: { backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(59,130,246,0.7)'] } });
-    drawBar('chart-unexploded-setting', setLabels, setVals, '翌日 平均設定', { datasetExtras: { backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(59,130,246,0.7)'] } });
+    drawBar('chart-unexploded-diff', diffLabels, diffVals, '翌日 平均差枚', { datasetExtras: { backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(168,85,247,0.7)', 'rgba(59,130,246,0.7)'] } });
+    drawBar('chart-unexploded-setting', setLabels, setVals, '翌日 平均設定', { datasetExtras: { backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(168,85,247,0.7)', 'rgba(59,130,246,0.7)'] } });
 }
 
 function renderAccidentalExplosionAnalysis(data) {
@@ -3201,9 +3305,8 @@ function renderAccidentalExplosionAnalysis(data) {
         return dd === 3 || dd === 5 || dd === 8 || dd === 13 || dd === 15 || dd === 18 || dd === 23 || dd === 25 || dd === 28;
     };
 
-    const allDates = [...new Set(rawData.map(r => r['日付']))].sort();
-    
     let targetC = 0, targetDiff = 0, targetSetSum = 0, targetSetC = 0;
+    let subC = 0, subDiff = 0, subSetSum = 0, subSetC = 0;
     let baselineC = 0, baselineDiff = 0, baselineSetSum = 0, baselineSetC = 0;
 
     data.forEach(targetRow => {
@@ -3211,9 +3314,9 @@ function renderAccidentalExplosionAnalysis(data) {
         const tDate = targetRow['日付'];
         const num = normalizeNum(targetRow['台番号']);
         
-        const tDateIdx = allDates.indexOf(tDate);
+        const tDateIdx = globalAllDates.indexOf(tDate);
         if (tDateIdx < 1) return;
-        const prevDate = allDates[tDateIdx - 1];
+        const prevDate = globalAllDates[tDateIdx - 1];
 
         if (accidentalExplosionFilter === 'prev_event' && !isEvent(prevDate)) return;
         if (accidentalExplosionFilter === 'next_event' && !isEvent(tDate)) return;
@@ -3224,29 +3327,450 @@ function renderAccidentalExplosionAnalysis(data) {
         baselineDiff += trDiff;
         if (trEst) { baselineSetSum += trEst.setting; baselineSetC++; }
 
-        const prevRow = rawData.find(r => r['日付'] === prevDate && normalizeNum(r['台番号']) === num);
+        const prevRow = globalMachineDateMap[num] && globalMachineDateMap[num][prevDate];
         if (!prevRow) return;
 
+        const prevDiff = Number(prevRow['最終差枚']) || 0;
         const prevEst = estimateSetting(prevRow['機種名'], prevRow['累計ゲーム'], prevRow['BIG'], prevRow['REG']);
         if (prevEst && (prevEst.setting === 1 || prevEst.setting === 2 || prevEst.setting === 3)) {
-            targetC++;
-            targetDiff += trDiff;
-            if (trEst) { targetSetSum += trEst.setting; targetSetC++; }
+            subC++;
+            subDiff += trDiff;
+            if (trEst) { subSetSum += trEst.setting; subSetC++; }
+
+            if (prevDiff >= 2000) {
+                targetC++;
+                targetDiff += trDiff;
+                if (trEst) { targetSetSum += trEst.setting; targetSetC++; }
+            }
         }
     });
 
-    const diffLabels = ['条件合致台 (前日1,2,3)', '比較用全体平均'];
+    const diffLabels = ['条件合致台 (前日1〜3かつ+2000枚)', '前日1〜3全体', '比較用全体平均'];
     const diffVals = [
         targetC > 0 ? targetDiff / targetC : 0,
+        subC > 0 ? subDiff / subC : 0,
         baselineC > 0 ? baselineDiff / baselineC : 0
     ];
     
-    const setLabels = ['条件合致台 (前日1,2,3)', '比較用全体平均'];
+    const setLabels = ['条件合致台 (前日1〜3かつ+2000枚)', '前日1〜3全体', '比較用全体平均'];
     const setVals = [
         targetSetC > 0 ? targetSetSum / targetSetC : 0,
+        subSetC > 0 ? subSetSum / subSetC : 0,
         baselineSetC > 0 ? baselineSetSum / baselineSetC : 0
     ];
 
-    drawBar('chart-accidental-explosion-diff', diffLabels, diffVals, '翌日 平均差枚', { datasetExtras: { backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(59,130,246,0.7)'] } });
-    drawBar('chart-accidental-explosion-setting', setLabels, setVals, '翌日 平均設定', { datasetExtras: { backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(59,130,246,0.7)'] } });
+    drawBar('chart-accidental-explosion-diff', diffLabels, diffVals, '翌日 平均差枚', { datasetExtras: { backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(16,185,129,0.7)', 'rgba(59,130,246,0.7)'] } });
+    drawBar('chart-accidental-explosion-setting', setLabels, setVals, '翌日 平均設定', { datasetExtras: { backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(16,185,129,0.7)', 'rgba(59,130,246,0.7)'] } });
+}
+
+// ==========================================
+// ML Analysis Rendering
+// ==========================================
+function renderMLAnalysis() {
+    const wrap = document.getElementById('ml-results-container');
+    const loading = document.getElementById('ml-loading');
+    const err = document.getElementById('ml-error');
+    const content = document.getElementById('ml-content');
+    
+    if (!mlAnalysisData) {
+        loading.style.display = 'block'; err.style.display = 'none'; content.style.display = 'none';
+        return;
+    }
+    loading.style.display = 'none';
+    
+    const periodData = mlAnalysisData[currentMlPeriod];
+    if (!periodData) {
+        err.style.display = 'block'; err.textContent = 'データがありません。'; content.style.display = 'none';
+        return;
+    }
+    
+    const keyPrefix = currentMlTarget === 'regression' ? 'regression' : 'cls';
+    const algoKey = currentMlAlgo === 'tree' ? keyPrefix + '_tree' :
+                    currentMlAlgo === 'rf' ? keyPrefix + '_rf' :
+                    keyPrefix + '_assoc';
+    const res = periodData[algoKey];
+    
+    if (!res || res.error) {
+        err.style.display = 'block'; err.textContent = res ? res.error : 'データがありません。';
+        content.style.display = 'none';
+        return;
+    }
+    
+    err.style.display = 'none';
+    content.style.display = 'block';
+    
+    // Update Stats
+    document.getElementById('ml-stat-samples').textContent = (res.n_samples || periodData.n_total).toLocaleString() + '件';
+    
+    const highWrap = document.getElementById('ml-stat-high-wrap');
+    const confWrap = document.getElementById('ml-stat-confusion-wrap');
+    if (currentMlTarget === 'classification') {
+        highWrap.style.display = 'block';
+        const p = periodData.n_cls > 0 ? ((periodData.n_high / periodData.n_cls) * 100).toFixed(1) : 0;
+        document.getElementById('ml-stat-high').textContent = `${(periodData.n_high||0).toLocaleString()} (${p}%)`;
+        
+        if (periodData.cls_rf && periodData.cls_rf.tn_ratio !== undefined) {
+            confWrap.style.display = 'block';
+            document.getElementById('ml-stat-tn').textContent = (periodData.cls_rf.tn_ratio * 100).toFixed(1) + '%';
+            document.getElementById('ml-stat-fp').textContent = (periodData.cls_rf.fp_ratio * 100).toFixed(1) + '%';
+            document.getElementById('ml-stat-fn').textContent = (periodData.cls_rf.fn_ratio * 100).toFixed(1) + '%';
+            document.getElementById('ml-stat-tp').textContent = (periodData.cls_rf.tp_ratio * 100).toFixed(1) + '%';
+        } else {
+            confWrap.style.display = 'none';
+        }
+    } else {
+        highWrap.style.display = 'none';
+        confWrap.style.display = 'none';
+    }
+    
+    // Render features list
+    if (mlAnalysisData && mlAnalysisData.feature_names_jp) {
+        const featList = document.getElementById('ml-features-list');
+        featList.innerHTML = '';
+        for (const [key, name] of Object.entries(mlAnalysisData.feature_names_jp)) {
+            const el = document.createElement('span');
+            el.style.cssText = 'background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 4px; padding: 2px 8px; font-size: 0.8rem;';
+            el.textContent = name;
+            featList.appendChild(el);
+        }
+    }
+    
+    // Metrics
+    const mLabel = document.getElementById('ml-stat-metric-label');
+    const mVal = document.getElementById('ml-stat-metric-val');
+    const mDesc = document.getElementById('ml-stat-metric-desc');
+    if (currentMlTarget === 'regression') {
+        mLabel.innerHTML = '決定係数 (R²) <span style="font-size:0.75em; color:var(--text-muted); font-weight:normal;">[XGBoost回帰モデル]</span>';
+        mVal.textContent = (periodData.regression_rf && periodData.regression_rf.cv_r2 !== undefined) ? periodData.regression_rf.cv_r2.toFixed(4) : '-';
+        if (mDesc) mDesc.innerHTML = '1に近いほど予測精度が高く、0以下は「平均で予測した方がマシ」な状態を示します。<br><span style="color:#fca5a5;">※ スロットの差枚数は乱数要素（ヒキ）が極めて強いため、回帰モデルで正確な枚数を当てることは数学的に非常に困難（R²がマイナスになりやすい）です。</span>';
+    } else {
+        mLabel.innerHTML = 'F1スコア (精度) <span style="font-size:0.75em; color:var(--text-muted); font-weight:normal;">[XGBoost分類モデル]</span>';
+        mVal.textContent = (periodData.cls_rf && periodData.cls_rf.cv_f1 !== undefined) ? periodData.cls_rf.cv_f1.toFixed(4) : '-';
+        if (mDesc) mDesc.innerHTML = '1に近いほど「高設定を正確に見抜けている」ことを示します。<br><span style="color:#60a5fa;">※ 分類モデル（設定4以上の判別）では、ヒキに左右されにくいため一定の精度が出やすくなっています。</span>';
+    }
+    
+    // Hide all algo blocks
+    document.getElementById('ml-algo-tree').style.display = 'none';
+    document.getElementById('ml-algo-rf').style.display = 'none';
+    document.getElementById('ml-algo-assoc').style.display = 'none';
+    
+    // Render selected algo
+    if (currentMlAlgo === 'tree') {
+        document.getElementById('ml-algo-tree').style.display = 'block';
+        document.getElementById('ml-tree-text').innerHTML = formatTreeRules(res.tree_rules, currentMlTarget);
+    } else if (currentMlAlgo === 'rf') {
+        document.getElementById('ml-algo-rf').style.display = 'block';
+        renderMLChartRF(res.feature_importances);
+    } else if (currentMlAlgo === 'assoc') {
+        document.getElementById('ml-algo-assoc').style.display = 'block';
+        renderMLAssoc(res.rules);
+    }
+    
+    // Render Next Day Predictions
+    if (mlAnalysisData && mlAnalysisData.next_day_predictions) {
+        renderNextDayPredictions(mlAnalysisData.next_day_predictions);
+    } else {
+        document.getElementById('ml-next-day-container').style.display = 'none';
+    }
+}
+
+function renderNextDayPredictions(predsData) {
+    const container = document.getElementById('ml-next-day-container');
+    if (!predsData || !predsData.predictions || predsData.predictions.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = 'block';
+
+    const info = document.getElementById('ml-next-day-info');
+    const eventText = predsData.is_event ? ' <span style="color:#ef4444;">(イベント日)</span>' : '';
+    info.innerHTML = `予想対象日: <span style="color:#60a5fa;">${predsData.target_date}</span>${eventText}`;
+
+    const hitRateEl = document.getElementById('ml-next-day-hit-rate');
+    const avgDiffEl = document.getElementById('ml-next-day-avg-diff');
+    if (hitRateEl && predsData.hit_rate != null) {
+        hitRateEl.textContent = (predsData.hit_rate * 100).toFixed(1) + '%';
+    }
+    if (avgDiffEl && predsData.avg_diff != null) {
+        const sign = predsData.avg_diff >= 0 ? '+' : '';
+        avgDiffEl.textContent = sign + Math.round(predsData.avg_diff) + ' 枚';
+    }
+
+    const tbody = document.getElementById('ml-next-day-tbody');
+    tbody.innerHTML = '';
+
+    const featureNames = (mlAnalysisData && mlAnalysisData.feature_names_jp) ? mlAnalysisData.feature_names_jp : {};
+
+    predsData.predictions.slice(0, 20).forEach((p, index) => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--glass-border)';
+
+        const prob = p.prob_high_setting * 100;
+        let probColor = '#94a3b8';
+        if (prob >= 50) probColor = '#ef4444';
+        else if (prob >= 35) probColor = '#fbbf24';
+
+        const diff = p.expected_diff;
+        let diffColor = '#94a3b8';
+        if (diff >= 1000) diffColor = '#ef4444';
+        else if (diff > 0) diffColor = '#fbbf24';
+        else diffColor = '#64748b';
+
+        // ランクバッジ
+        let rankBadge;
+        if (index === 0) rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:gold;color:#000;font-weight:bold;font-size:0.85rem;">1</span>`;
+        else if (index === 1) rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:silver;color:#000;font-weight:bold;font-size:0.85rem;">2</span>`;
+        else if (index === 2) rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#cd7f32;color:#fff;font-weight:bold;font-size:0.85rem;">3</span>`;
+        else rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(59,130,246,0.2);color:var(--accent-blue);font-weight:bold;font-size:0.85rem;">${index+1}</span>`;
+
+        const f = p.features;
+        const detailId = `pred-detail-${index}`;
+
+        const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
+        const dayStr = dayNames[f.weekday] ? dayNames[f.weekday] + '曜' : '';
+        const posNames = ['角', '角2', '角3', 'その他(内側)'];
+        const posStr = posNames[f.position] || '';
+        
+        let nlReason = `<div style="margin:4px 0 8px 0; font-size:0.85rem; line-height:1.6; color:var(--text-main);">`;
+        nlReason += `<strong>AIによる高設定（${prob.toFixed(1)}%）推測の根拠：</strong><ul style="margin-top:4px; padding-left:20px;">`;
+        if (f.cons_neg >= 2) nlReason += `<li>現在 <b>${f.cons_neg}日連続で凹んで</b> おり、反発の期待値が高まっています。</li>`;
+        if (f.neg_after_pos === 1 || f.setting_change_signal === 1) nlReason += `<li>前日に <b>高設定挙動（推定4以上）を見せながら不発（マイナス終了）</b> だったため、据え置きでの出玉が狙い目です。</li>`;
+        if (f.prev_diff_1 != null) {
+            if (f.prev_diff_1 > 1500) nlReason += `<li>前日は <b>+${Math.round(f.prev_diff_1)}枚</b> と非常に好調で、勢いが持続する可能性があります。</li>`;
+            else if (f.prev_diff_1 < -1500) nlReason += `<li>前日は <b>${Math.round(f.prev_diff_1)}枚</b> と大きく凹んでおり、設定上げや反発の兆しがあります。</li>`;
+        }
+        if (f.cumul_14d_diff != null && f.cumul_14d_diff < -4000) nlReason += `<li>過去14日間の合計が <b>${Math.round(f.cumul_14d_diff)}枚</b> と大きく沈んでおり、そろそろ回収が終わるフェーズです。</li>`;
+        else if (f.cumul_7d_diff != null && f.cumul_7d_diff < -2000) nlReason += `<li>過去7日間の合計が <b>${Math.round(f.cumul_7d_diff)}枚</b> のマイナスで、還元される確率が高いです。</li>`;
+        if (f.island_trend != null && f.island_trend > 500) nlReason += `<li>この台が属する島全体が直近3日間で <b>平均+${Math.round(f.island_trend)}枚</b> と活気づいており、島単位での高設定投入が疑われます。</li>`;
+        if (f.island_high_ratio_3d != null && f.island_high_ratio_3d > 0.4) nlReason += `<li>過去3日間の <b>同じ島の高設定比率が${(f.island_high_ratio_3d*100).toFixed(1)}%</b> と非常に高く、全台系・対象島の可能性があります。</li>`;
+        if (f.store_high_ratio != null && f.store_high_ratio > 0.4) nlReason += `<li>店舗全体の高設定比率が <b>${(f.store_high_ratio*100).toFixed(1)}%</b> と高く、店舗全体のベース設定が高い状況です。</li>`;
+        if (f.adj_avg_diff_1 != null && f.adj_avg_diff_1 > 1000) nlReason += `<li>前日に <b>両隣の台が平均+${Math.round(f.adj_avg_diff_1)}枚</b> と大きく出ており、並びでの高設定（塊）の可能性があります。</li>`;
+        else if (f.adj_left_diff_1 != null && f.adj_left_diff_1 > 1500) nlReason += `<li>前日に <b>左隣の台が+${Math.round(f.adj_left_diff_1)}枚</b> と爆発しており、並びでの高設定（塊）の可能性があります。</li>`;
+        else if (f.adj_right_diff_1 != null && f.adj_right_diff_1 > 1500) nlReason += `<li>前日に <b>右隣の台が+${Math.round(f.adj_right_diff_1)}枚</b> と爆発しており、並びでの高設定（塊）の可能性があります。</li>`;
+        if (f.is_event_day === 1) nlReason += `<li>明日は <b>特定日(3,5,8の付く日)</b> のため、高設定投入率のベースが上がります。</li>`;
+        if (f.position === 0) nlReason += `<li><b>角台</b> という配置的な強みがあり、見せ台として選ばれる傾向があります。</li>`;
+        if (f.same_wd_avg_diff != null && f.same_wd_avg_diff > 500) nlReason += `<li>過去4週の <b>${dayStr}</b> は平均+${Math.round(f.same_wd_avg_diff)}枚と、この曜日に強い実績があります。</li>`;
+        if (nlReason.indexOf('<li>') === -1) nlReason += `<li>複数の細かな指標（移動平均やボラティリティ等）が複合的に作用し、AIが高評価を与えています。</li>`;
+        nlReason += `</ul></div>`;
+
+        let detailRows = Object.entries(f).map(([k, v]) => {
+            const name = featureNames[k] || k;
+            let vStr = v;
+            if (k === 'weekday') vStr = dayNames[v] || v;
+            else if (k === 'position') vStr = posNames[v] || v;
+            else if (typeof v === 'number' && !Number.isInteger(v)) vStr = v.toFixed(2);
+            return `<tr><td style="padding:2px 8px;color:var(--text-muted);font-size:0.75rem;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.02);">${name}</td><td style="padding:2px 8px;font-size:0.75rem;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.02);">${vStr}</td></tr>`;
+        }).join('');
+
+        tr.innerHTML = `
+            <td style="padding:8px 10px;text-align:center;vertical-align:top;border-bottom: 1px solid var(--glass-border);">${rankBadge}</td>
+            <td style="padding:8px 10px;font-weight:bold;font-size:1.05rem;vertical-align:top;white-space:nowrap;border-bottom: 1px solid var(--glass-border);">${p.machine}</td>
+            <td style="padding:8px 10px;color:${probColor};font-weight:bold;font-size:1.05rem;vertical-align:top;white-space:nowrap;text-align:center;border-bottom: 1px solid var(--glass-border);">${prob.toFixed(1)}%</td>
+            <td style="padding:8px 10px;color:${diffColor};font-weight:bold;vertical-align:top;white-space:nowrap;text-align:center;border-bottom: 1px solid var(--glass-border);">${diff >= 0 ? '+' : ''}${Math.round(diff)}枚</td>
+            <td style="padding:8px 10px;vertical-align:top;border-bottom: 1px solid var(--glass-border);">
+                ${nlReason}
+                <div style="margin-top:4px;">
+                    <button onclick="togglePredDetail('${detailId}')" style="padding:4px 12px;border-radius:4px;border:1px solid rgba(16,185,129,0.5);background:rgba(16,185,129,0.1);color:#10b981;font-size:0.8rem;cursor:pointer;transition:all 0.2s;font-weight:bold;">
+                        AIが読み込んだ詳細数値データを見る
+                    </button>
+                </div>
+                <div id="${detailId}" style="display:none;margin-top:10px;background:var(--bg-main);border-radius:6px;padding:8px;border:1px solid var(--glass-border);">
+                    <div style="max-height:200px;overflow-y:auto;">
+                        <table style="border-collapse:collapse;width:100%;">${detailRows}</table>
+                    </div>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function togglePredDetail(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const btn = el.previousElementSibling ? el.previousElementSibling.querySelector('button') : null;
+    if (el.style.display === 'none') {
+        el.style.display = 'block';
+        if (btn) btn.textContent = '詳細▲';
+    } else {
+        el.style.display = 'none';
+        if (btn) btn.textContent = '詳細▼';
+    }
+}
+
+
+function renderMLChartRF(fiList) {
+    if (!fiList) return;
+    const labels = fiList.map(f => f.feature_jp);
+    const vals = fiList.map(f => f.importance);
+    
+    const canvas = document.getElementById('ml-chart-rf');
+    const container = canvas.parentElement;
+    // Calculate required height based on number of features (e.g. 25px per bar)
+    const requiredHeight = Math.max(400, labels.length * 25);
+    container.style.height = `${requiredHeight}px`;
+    
+    const ctx = canvas;
+    if (charts['ml-rf']) charts['ml-rf'].destroy();
+    
+    const isDark = document.body.classList.contains('dark-theme');
+    const color = 'rgba(59, 130, 246, 0.8)';
+    
+    charts['ml-rf'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{ label: '重要度', data: vals, backgroundColor: color }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: {
+                    grid: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' },
+                    ticks: { color: isDark ? '#e2e8f0' : '#1e293b' }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: isDark ? '#e2e8f0' : '#1e293b' }
+                }
+            }
+        }
+    });
+}
+
+function renderMLAssoc(rules) {
+    const tbody = document.getElementById('ml-assoc-tbody');
+    tbody.innerHTML = '';
+    if (!rules || rules.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">条件が見つかりませんでした。</td></tr>';
+        return;
+    }
+    rules.forEach(r => {
+        const tr = document.createElement('tr');
+        const antStr = r.antecedents.map(a => `<span style="display:block;white-space:normal;word-break:break-word;padding:1px 0;">${a}</span>`).join('');
+        const consStr = r.consequents.map(c => `<span style="display:block;white-space:normal;word-break:break-word;padding:1px 0;">${c}</span>`).join('');
+        tr.innerHTML = `
+            <td style="padding:6px 8px;vertical-align:top;font-size:0.85rem;">${antStr}</td>
+            <td style="padding:6px 8px;vertical-align:top;font-size:0.85rem;">${consStr}</td>
+            <td style="padding:6px 8px;white-space:nowrap;">${r.support.toFixed(3)}</td>
+            <td style="padding:6px 8px;white-space:nowrap;">${(r.confidence * 100).toFixed(1)}%</td>
+            <td style="padding:6px 8px;font-weight:bold;color:var(--accent-red);white-space:nowrap;">${r.lift.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+
+function formatTreeRules(text, target) {
+    if (!text) return 'ルールがありません';
+    const lines = text.split('\n').filter(l => l.trim().length > 0);
+    
+    let html = '<div class="tree-rules" style="margin-left: 0;">';
+    
+    lines.forEach(line => {
+        const depth = (line.match(/\|\s+/g) || []).length;
+        let content = line.replace(/\|--- /g, '').replace(/\|\s+/g, '').trim();
+        const indent = depth * 20;
+        
+        if (content.startsWith('value:')) {
+            const valMatch = content.match(/\[([\d\.\-]+)/);
+            if (valMatch) {
+                const val = parseFloat(valMatch[1]);
+                let displayVal = '';
+                let colorClass = '';
+                
+                if (target === 'regression') {
+                    displayVal = `平均差枚 約 <span style="font-size:1.2em; font-weight:bold;">${Math.round(val)}</span> 枚`;
+                    if (val > 1000) colorClass = 'color: #ef4444;'; // 赤(良)
+                    else if (val > 0) colorClass = 'color: #fca5a5;'; // 薄赤
+                    else if (val < -500) colorClass = 'color: #64748b; opacity: 0.5;'; // グレー(悪)
+                    else colorClass = 'color: #94a3b8;'; // 少しグレー
+                } else {
+                    const prob = (val * 100).toFixed(1);
+                    displayVal = `高設定割合 約 <span style="font-size:1.2em; font-weight:bold;">${prob}%</span>`;
+                    if (val >= 0.5) colorClass = 'color: #ef4444;';
+                    else if (val >= 0.3) colorClass = 'color: #fca5a5;';
+                    else colorClass = 'color: #64748b; opacity: 0.5;';
+                }
+                
+                html += `<div style="margin-left: ${indent}px; padding: 6px 12px; border-left: 3px solid #ef4444; margin-top: 4px; margin-bottom: 12px; background: rgba(255,255,255,0.03); border-radius: 0 4px 4px 0;">
+                            ➡️ 結果: <span style="${colorClass}">${displayVal}</span>
+                         </div>`;
+            }
+        } else if (content.startsWith('class:')) {
+            const clsMatch = content.match(/class:\s*(\d+)/);
+            if (clsMatch) {
+                const cls = parseInt(clsMatch[1], 10);
+                let displayVal = cls === 1 ? '高設定の可能性が <span style="font-size:1.2em; font-weight:bold;">高い</span>' : '高設定の可能性が 低い';
+                let colorClass = cls === 1 ? 'color: #ef4444;' : 'color: #64748b; opacity: 0.5;';
+                
+                html += `<div style="margin-left: ${indent}px; padding: 6px 12px; border-left: 3px solid #ef4444; margin-top: 4px; margin-bottom: 12px; background: rgba(255,255,255,0.03); border-radius: 0 4px 4px 0;">
+                            ➡️ 結果: <span style="${colorClass}">${displayVal}</span>
+                         </div>`;
+            }
+        } else {
+            // Translate conditions
+            let label = content;
+            
+            // First, translate feature names dynamically
+            if (mlAnalysisData && mlAnalysisData.feature_names_jp) {
+                // Sort keys by length descending to prevent partial replacements (e.g. prev_diff_10 before prev_diff_1)
+                const sortedKeys = Object.keys(mlAnalysisData.feature_names_jp).sort((a, b) => b.length - a.length);
+                for (const key of sortedKeys) {
+                    const name = mlAnalysisData.feature_names_jp[key];
+                    label = label.replace(new RegExp(key, 'g'), name);
+                }
+            }
+            
+            // Then do value replacement based on translated Japanese strings
+            label = label.replace(/<=\s*([\d\.\-]+)/, (match, p1) => {
+                             let v = parseFloat(p1);
+                             if (label.includes('差枚')) {
+                                 v = Math.round(v / 100) * 100;
+                                 return ` が <span style="color:#fbbf24;">約 ${v} 枚 以下</span>`;
+                             } else if (label.includes('曜日') || label.includes('連続') || label.includes('設定')) {
+                                 v = Math.round(v);
+                                 return ` が <span style="color:#fbbf24;">${v} 以下</span>`;
+                             } else if (label.includes('ゲーム')) {
+                                 v = Math.round(v / 100) * 100;
+                                 return ` が <span style="color:#fbbf24;">約 ${v} G 以下</span>`;
+                             } else if (label.includes('イベント')) {
+                                 return ` が <span style="color:#fbbf24;">ない(0)</span>`;
+                             }
+                             return ` が <span style="color:#fbbf24;">${v.toFixed(1).replace('.0','')} 以下</span>`;
+                         })
+                         .replace(/>\s*([\d\.\-]+)/, (match, p1) => {
+                             let v = parseFloat(p1);
+                             if (label.includes('差枚')) {
+                                 v = Math.round(v / 100) * 100;
+                                 return ` が <span style="color:#fbbf24;">約 ${v} 枚 超過</span>`;
+                             } else if (label.includes('曜日') || label.includes('連続') || label.includes('設定')) {
+                                 v = Math.round(v);
+                                 return ` が <span style="color:#fbbf24;">${v} 超過</span>`;
+                             } else if (label.includes('ゲーム')) {
+                                 v = Math.round(v / 100) * 100;
+                                 return ` が <span style="color:#fbbf24;">約 ${v} G 超過</span>`;
+                             } else if (label.includes('イベント')) {
+                                 return ` が <span style="color:#fbbf24;">ある(1)</span>`;
+                             }
+                             return ` が <span style="color:#fbbf24;">${v.toFixed(1).replace('.0','')} 超過</span>`;
+                         });
+                         
+            // Wrap the feature name part with bold blue span (everything before ' が ')
+            if (label.includes(' が ')) {
+                const parts = label.split(' が ');
+                label = `<span style="color:#60a5fa; font-weight:bold;">${parts[0]}</span> が ${parts.slice(1).join(' が ')}`;
+            }
+            
+            html += `<div style="margin-left: ${indent}px; color: #e2e8f0; margin-top: 4px; display:flex; align-items:center; gap: 6px;">
+                        <span style="color:#94a3b8; font-size:1.2em;">🔹</span> <span>${label}</span>
+                     </div>`;
+        }
+    });
+    
+    html += '</div>';
+    return html;
 }
