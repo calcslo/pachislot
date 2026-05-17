@@ -29,7 +29,7 @@ OGIYA_BORDER_DICT = {
     "eﾘﾝｸﾞ最恐領域RHA": 17.4,
     "PA海物語極ｼﾞｬﾊﾟﾝHBD": 17.6,
     "PA大海物語5 HLD": 16.8,
-    "eｷﾞﾝﾊﾟﾗVIVA FESTA HTA2": 22.3,
+    "e ギンパラVIVA FESTA HTA2": 22.3,
 }
 
 # 有楽住吉北店用機種リスト (P's Cube表記)
@@ -88,6 +88,7 @@ COSMO_MACHINE_MAP = {
     #"e地獄少女 7500Ver.": [range(727, 733), range(768, 774)],
     "e 東京リベンジャーズ": [range(1826, 1838)],
     "P Re:ゼロから始める異世界生活 season2 129ver.": [range(816, 828)],
+    "e ギンパラVIVA FESTA HTA2": [range(708, 727)],
 }
 
 # 全店統合リスト (計算用)
@@ -302,7 +303,7 @@ ST_CONFIG = {
         "min": {"big": 74, "special": 74},
         "max": {"big": 20, "special": 74},
     },
-    "eｷﾞﾝﾊﾟﾗVIVA FESTA HTA2": {
+    "e ギンパラVIVA FESTA HTA2": {
         "all": {"big": 79, "special": 79}
     },
 }
