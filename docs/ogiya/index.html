@@ -1093,6 +1093,14 @@
                                 <span>的中率 (設定4以上):</span>
                                 <span id="ml-next-day-hit-rate" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
                             </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>候補化率:</span>
+                                <span id="ml-next-day-positive-rate" style="font-weight:bold; color:#60a5fa; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>再現率:</span>
+                                <span id="ml-next-day-recall" style="font-weight:bold; color:#a78bfa; font-size:1.1rem;">-</span>
+                            </div>
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <span>予想台の平均差枚:</span>
                                 <span id="ml-next-day-avg-diff" style="font-weight:bold; color:#fbbf24; font-size:1.1rem;">-</span>
@@ -1114,6 +1122,19 @@
                             </thead>
                             <tbody id="ml-next-day-tbody"></tbody>
                         </table>
+                    </div>
+                </div>
+                
+                <!-- Backtest Results Container -->
+                <div id="ml-backtest-container" class="glass-panel" style="margin-bottom: 2rem; border-color: var(--accent-blue);">
+                    <h3 style="display:flex; align-items:center; gap:0.5rem; color:var(--accent-blue); margin-bottom: 0.5rem;">
+                        AI予測バックテスト結果 (直近50日)
+                    </h3>
+                    <p class="section-note" style="margin-bottom:1rem;">
+                        過去のデータを使用し、AIモデルが毎日「高設定期待値トップ3台」を選択した場合の累積差枚推移グラフです。
+                    </p>
+                    <div style="text-align: center;">
+                        <img src="analysis_results_backtest.png" alt="バックテスト結果グラフ" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--glass-border);">
                     </div>
                 </div>
 

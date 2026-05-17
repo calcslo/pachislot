@@ -19,8 +19,6 @@ from sklearn.metrics import (mean_squared_error, r2_score,
                              precision_score, recall_score, f1_score,
                              accuracy_score, confusion_matrix)
 from mlxtend.frequent_patterns import apriori, association_rules
-import os
-import sys
 
 # ============================================================
 # 設定
@@ -75,7 +73,6 @@ base_feats = {
     'prev_setting_1': '前日設定',
     'prev_high_setting_1': '前日高設定(4以上)',
     'neg_after_pos': '前日高設定後凹み(0/1)',
-    'neg_low_and_high_diff_prev_1': '前日低設定かつ差枚大(誤爆)',
     'cumul_7d_diff': '過去7日累積差枚',
     'cumul_14d_diff': '過去14日累積差枚',
     'cumul_21d_diff': '過去21日累積差枚',
@@ -126,8 +123,7 @@ base_feats = {
     'adj_right_diff_1': '右隣前日差枚',
     'adj_left_win_rate_3d': '左隣過去3日勝率',
     'adj_right_win_rate_3d': '右隣過去3日勝率',
-    'adj_avg_diff_1': '両隣平均前日差枚',
-    'facing_avg_diff_1': '向かい台平均前日差枚'
+    'adj_avg_diff_1': '両隣平均前日差枚'
 }
 for k, v in base_feats.items():
     FEATURE_COLS.append(k)
@@ -443,26 +439,12 @@ def build_features(df, layout_lookup):
                 hist_feats[key]['adj_left_win_rate_3d'] = left_wins / left_count if left_count > 0 else 0
                 hist_feats[key]['adj_right_win_rate_3d'] = right_wins / right_count if right_count > 0 else 0
                 hist_feats[key]['island_high_ratio_3d'] = np.mean(island_high_ratios) if island_high_ratios else 0
-                    
-                # 同一列（向かい合う台）の前日差枚
-                col_idx = layout_lookup.get(num, {}).get('col', -1)
-                if col_idx >= 0 and past_date_1:
-                    facing_diffs = []
-                    for mn, info in layout_lookup.items():
-                        if info.get('col') == col_idx and mn != num:
-                            mn_int = int(mn)
-                            fd = daily_machine_stats[past_date_1].get(mn_int, {}).get('diff')
-                            if fd is not None:
-                                facing_diffs.append(fd)
-                    hist_feats[key]['facing_avg_diff_1'] = np.mean(facing_diffs) if facing_diffs else 0
-                else:
-                    hist_feats[key]['facing_avg_diff_1'] = 0
             else:
-                for col in ['adj_left_diff_1', 'adj_right_diff_1', 'adj_avg_diff_1', 'adj_left_win_rate_3d', 'adj_right_win_rate_3d', 'island_high_ratio_3d', 'facing_avg_diff_1']:
+                for col in ['adj_left_diff_1', 'adj_right_diff_1', 'adj_avg_diff_1', 'adj_left_win_rate_3d', 'adj_right_win_rate_3d', 'island_high_ratio_3d']:
                     hist_feats[key][col] = 0
 
     # 特徴量をDFにマージ
-    spatial_cols = ['adj_left_diff_1', 'adj_right_diff_1', 'adj_avg_diff_1', 'adj_left_win_rate_3d', 'adj_right_win_rate_3d', 'island_high_ratio_3d', 'facing_avg_diff_1']
+    spatial_cols = ['adj_left_diff_1', 'adj_right_diff_1', 'adj_avg_diff_1', 'adj_left_win_rate_3d', 'adj_right_win_rate_3d', 'island_high_ratio_3d']
     store_cols = ['store_high_ratio', 'store_high_prev_3d', 'store_avg_prev_1d', 'store_avg_prev_3d', 'store_win_prev_1d', 'store_win_prev_3d']
     machine_roll_cols = ['machine_high_rate_prev_14d', 'machine_avg_diff_prev_14d']
     for col in ['cons_neg', 'cons_pos', 'prev_setting_1', 'prev_high_setting_1', 'same_wd_avg_diff', 'same_wd_win_rate'] + store_cols + machine_roll_cols + spatial_cols:
@@ -477,7 +459,6 @@ def build_features(df, layout_lookup):
 
     # 派生特徴量
     df['neg_after_pos'] = ((df['prev_high_setting_1'] == 1) & (df['prev_diff_1'] < 0)).astype(int)
-    df['neg_low_and_high_diff_prev_1'] = ((df['prev_high_setting_1'] == 0) & (df['prev_diff_1'] > 1000)).astype(int)
     df['cumul_7d_diff'] = sum(df[f'prev_diff_{j}'] for j in range(1, 8))
     df['cumul_14d_diff'] = sum(df[f'prev_diff_{j}'] for j in range(1, 15))
     df['cumul_21d_diff'] = sum(df[f'prev_diff_{j}'] for j in range(1, 22))
@@ -537,49 +518,41 @@ def analyze_feature_importance(X, y, task='regression'):
             max_features=0.7, class_weight='balanced_subsample',
             random_state=42, n_jobs=-1
         )
+        scoring = ['accuracy', 'precision', 'recall', 'f1']
 
-    # 時系列分割に統一（StratifiedKFoldの未来リークを防止）
-    n_splits = min(5, len(X) // 20)
-    if n_splits < 2: n_splits = 2
-    tscv_cls = TimeSeriesSplit(n_splits=n_splits)
-    
     if task == 'regression':
-        cv_res = cross_validate(model, X, y, cv=tscv_cls, scoring=['r2'])
+        tscv = TimeSeriesSplit(n_splits=min(5, len(X) // 20))
+        cv_res = cross_validate(model, X, y, cv=tscv, scoring=scoring)
         model.fit(X, y)
         importances = model.feature_importances_
         fi = [{'feature': col, 'feature_jp': FEATURE_NAMES_JP[col], 'importance': float(v)} for col, v in sorted(zip(X.columns, importances), key=lambda x: -x[1])]
         result = {'feature_importances': fi, 'n_samples': len(X)}
         result['cv_r2'] = float(np.mean(cv_res['test_r2']))
     else:
-        # 手動OOFでTimeSeriesSplit対応（cross_val_predictはパーティション制約で使用不可）
-        oof_prob = np.full(len(X), np.nan)
-        for train_idx, val_idx in tscv_cls.split(X):
-            m_clone = model.__class__(**model.get_params())
-            m_clone.fit(X.iloc[train_idx], y.iloc[train_idx])
-            oof_prob[val_idx] = m_clone.predict_proba(X.iloc[val_idx])[:, 1]
+        from sklearn.model_selection import StratifiedKFold, cross_val_predict
+        n_splits = min(5, int(y.sum()), int(len(y) - y.sum()))
+        if n_splits < 2: n_splits = 2
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
         
-        # validationに含まれた部分のみ評価
-        valid_mask = ~np.isnan(oof_prob)
-        oof_valid = oof_prob[valid_mask]
-        y_valid = y.values[valid_mask]
+        oof_prob = cross_val_predict(model, X, y, cv=skf, method='predict_proba')[:, 1]
         
-        # 収支ベース閾値最適化
-        best_th = np.percentile(oof_valid, 100 * (1 - TARGET_POSITIVE_RATE))
-        y_pred_valid = (oof_valid >= best_th).astype(int)
+        # 評価用閾値: FPを抑えつつ見逃しを減らすため、上位25.5%を候補化する。
+        best_th = np.percentile(oof_prob, 100 * (1 - TARGET_POSITIVE_RATE))
+        y_pred = (oof_prob >= best_th).astype(int)
         
         model.fit(X, y)
         importances = model.feature_importances_
         fi = [{'feature': col, 'feature_jp': FEATURE_NAMES_JP[col], 'importance': float(v)} for col, v in sorted(zip(X.columns, importances), key=lambda x: -x[1])]
         
         result = {'feature_importances': fi, 'n_samples': len(X)}
-        result['cv_accuracy'] = float(np.mean(y_pred_valid == y_valid))
-        result['cv_precision'] = float(precision_score(y_valid, y_pred_valid, zero_division=0))
-        result['cv_recall'] = float(recall_score(y_valid, y_pred_valid, zero_division=0))
-        result['cv_f1'] = float(f1_score(y_valid, y_pred_valid, zero_division=0))
+        result['cv_accuracy'] = float(np.mean(y_pred == y))
+        result['cv_precision'] = float(precision_score(y, y_pred, zero_division=0))
+        result['cv_recall'] = float(recall_score(y, y_pred, zero_division=0))
+        result['cv_f1'] = float(f1_score(y, y_pred, zero_division=0))
         result['threshold'] = float(best_th)
-        result['positive_rate'] = float(np.mean(y_pred_valid))
+        result['positive_rate'] = float(np.mean(y_pred))
         
-        cm = confusion_matrix(y_valid, y_pred_valid)
+        cm = confusion_matrix(y, y_pred)
         result['confusion_matrix'] = cm.tolist()
         
         tn, fp, fn, tp = cm.ravel()
@@ -655,7 +628,7 @@ def analyze_association(df_period, task='regression'):
     except Exception as e:
         return {'error': str(e)}
 
-def predict_next_day(df_feat, layout_lookup=None):
+def predict_next_day(df_feat):
     max_date = df_feat['日付'].max()
     next_date = max_date + pd.Timedelta(days=1)
     
@@ -851,21 +824,6 @@ def predict_next_day(df_feat, layout_lookup=None):
             feat['adj_right_win_rate_3d'] = right_wins / right_count if right_count > 0 else 0
             feat['island_high_ratio_3d'] = np.mean(island_high_ratios) if island_high_ratios else 0
             
-            # 向かい台の前日差枚
-            num_pad = str(num).zfill(4)
-            col_idx = layout_lookup.get(num_pad, {}).get('col', -1) if layout_lookup else -1
-            if col_idx >= 0:
-                facing_diffs = []
-                for mn, info in layout_lookup.items():
-                    if info.get('col') == col_idx and mn != num_pad:
-                        mn_int = int(mn)
-                        fd_row = df_feat[(df_feat['日付'] == last_date) & (df_feat['台番号'].astype(int) == mn_int)]
-                        if not fd_row.empty:
-                            facing_diffs.append(fd_row['最終差枚'].values[0])
-                feat['facing_avg_diff_1'] = np.mean(facing_diffs) if facing_diffs else 0
-            else:
-                feat['facing_avg_diff_1'] = 0
-            
         else:
             feat['store_high_ratio'] = 0.0
             feat['store_high_prev_3d'] = 0.0
@@ -879,7 +837,6 @@ def predict_next_day(df_feat, layout_lookup=None):
             feat['adj_left_win_rate_3d'] = 0
             feat['adj_right_win_rate_3d'] = 0
             feat['island_high_ratio_3d'] = 0
-            feat['facing_avg_diff_1'] = 0
 
         next_X.append(feat)
         machines.append(num)
@@ -901,19 +858,16 @@ def predict_next_day(df_feat, layout_lookup=None):
     diff_cols_7 = [f'prev_diff_{j}' for j in range(1, 8)]
     df_next['ewm_diff_7d'] = df_next[diff_cols_7].apply(lambda row: pd.Series(row.values).ewm(span=3).mean().iloc[-1] if len(row.values) > 0 else 0, axis=1)
     df_next['setting_change_signal'] = ((df_next['prev_setting_1'] >= 4) & (df_next['prev_diff_1'] < -500)).astype(int)
-    df_next['neg_low_and_high_diff_prev_1'] = ((df_next['prev_high_setting_1'] == 0) & (df_next['prev_diff_1'] > 1000)).astype(int)
     df_next['momentum_1v3'] = df_next['prev_diff_1'] - df_next['prev_diff_3']
     df_next['revival_score'] = df_next['cons_neg'] * df_next['store_high_ratio']
 
     feat_cols = [c for c in FEATURE_COLS if c in df_next.columns]
 
-    # 回帰モデル (XGBoost) — 正則化を強化して過学習・過大評価を抑制
+    # 回帰モデル (XGBoost)
     X_train_reg = df_feat[feat_cols].copy()
     y_train_reg = df_feat['最終差枚'].copy()
-    reg_model = XGBRegressor(n_estimators=200, max_depth=3, learning_rate=0.03,
-                             reg_lambda=15, reg_alpha=5,
-                             subsample=0.7, colsample_bytree=0.6,
-                             min_child_weight=20,
+    reg_model = XGBRegressor(n_estimators=300, max_depth=6, learning_rate=0.05,
+                             subsample=0.8, colsample_bytree=0.8,
                              tree_method='hist', device='cuda', random_state=42)
     reg_model.fit(X_train_reg, y_train_reg)
     pred_diffs = reg_model.predict(df_next[feat_cols])
@@ -998,38 +952,21 @@ def predict_next_day(df_feat, layout_lookup=None):
         final_preds.append(model.predict_proba(df_next_selected)[:, 1])
     pred_probs = np.mean(final_preds, axis=0)
 
-    # 収支ベース閾値最適化: 最低選択率10%を保証しつつ平均差枚を最大化
-    eval_diffs = df_eval['最終差枚'].values
-    best_threshold = 0.3
-    best_avg_diff = -np.inf
-    n_eval_total = len(oof_probs)
-    for th_candidate in np.arange(0.15, 0.75, 0.005):
-        sel_mask = oof_probs >= th_candidate
-        n_sel = int(sel_mask.sum())
-        if n_sel < 3 or (n_sel / n_eval_total) < 0.10:
-            continue
-        avg_d = float(eval_diffs[sel_mask].mean())
-        # 精度が低すぎる場合はペナルティ
-        prec = float(y_eval.values[sel_mask].mean()) if n_sel > 0 else 0
-        score = avg_d * (1.0 if prec >= 0.20 else 0.5)
-        if score > best_avg_diff:
-            best_avg_diff = score
-            best_threshold = float(th_candidate)
-    
+    # 評価用閾値: FPを抑えつつ見逃しを減らすため、上位25.5%を候補化する。
+    best_threshold = np.percentile(oof_probs, 100 * (1 - TARGET_POSITIVE_RATE))
     pred_high = (oof_probs >= best_threshold).astype(int)
     
     best_hit_rate = precision_score(y_eval, pred_high, zero_division=0)
     best_recall = recall_score(y_eval, pred_high, zero_division=0)
     best_f1 = f1_score(y_eval, pred_high, zero_division=0)
     selected_diffs = df_eval['最終差枚'][pred_high == 1]
-    best_avg_diff = float(selected_diffs.mean()) if len(selected_diffs) > 0 else 0
+    best_avg_diff = selected_diffs.mean() if len(selected_diffs) > 0 else 0
 
     predictions = []
     for i, num in enumerate(machines):
         feat_clean = {k: (v.item() if hasattr(v, 'item') else v) for k, v in next_X[i].items()}
         # 派生特徴量も追加
         feat_clean['neg_after_pos'] = int((feat_clean.get('prev_high_setting_1', 0) == 1) and (feat_clean.get('prev_diff_1', 0) < 0))
-        feat_clean['neg_low_and_high_diff_prev_1'] = int((feat_clean.get('prev_high_setting_1', 0) == 0) and (feat_clean.get('prev_diff_1', 0) > 1000))
         feat_clean['cumul_7d_diff'] = float(sum(feat_clean.get(f'prev_diff_{j}', 0) for j in range(1, 8)))
         feat_clean['island_trend'] = float((feat_clean.get('island_avg_prev_1', 0) + feat_clean.get('island_avg_prev_2', 0) + feat_clean.get('island_avg_prev_3', 0)) / 3)
         
@@ -1038,17 +975,9 @@ def predict_next_day(df_feat, layout_lookup=None):
             if sp_col in df_next.columns:
                 feat_clean[sp_col] = float(df_next[sp_col].iloc[i])
                 
-        # 期待差枚: 回帰予測を分類確率で割り引き（過大評価抑制）
-        # 分類確率が高い→回帰予測を信頼、低い→全台平均に近づける
-        raw_diff = float(pred_diffs[i])
-        prob = float(pred_probs[i])
-        overall_avg = float(y_train_reg.mean())
-        adjusted_diff = prob * raw_diff + (1 - prob) * overall_avg
-                
         predictions.append({
             'machine': str(num).zfill(4),
-            'expected_diff': adjusted_diff,
-            'expected_diff_raw': raw_diff,
+            'expected_diff': float(pred_diffs[i]),
             'prob_high_setting': float(pred_probs[i]),
             'features': feat_clean
         })
@@ -1092,116 +1021,20 @@ def run_all_analysis(df_feat):
     return results
 
 if __name__ == '__main__':
-    from ml_improvements import (select_features_by_permutation,
-                                  optimize_threshold_by_profit,
-                                  run_backtest, plot_backtest)
-    
     df = load_data()
     layout = load_layout()
     lookup = build_layout_lookup(layout)
     df_feat = build_features(df, lookup)
-    
-    print("=== 特徴量選択 (Permutation Importance) ===")
-    # 分類タスクの特徴量選択
-    df_cls_sel = df_feat[df_feat['推定設定'].notna()].copy()
-    df_cls_sel['高設定フラグ'] = (df_cls_sel['推定設定'] >= 4).astype(int)
-    X_sel = df_cls_sel[FEATURE_COLS].replace([np.inf, -np.inf], 0).fillna(0)
-    y_sel = df_cls_sel['高設定フラグ']
-    
-    from sklearn.ensemble import ExtraTreesClassifier
-    selector_model = ExtraTreesClassifier(
-        n_estimators=300, max_depth=7, min_samples_leaf=25,
-        max_features=0.7, class_weight='balanced_subsample',
-        random_state=42, n_jobs=-1
-    )
-    selected_features = select_features_by_permutation(X_sel, y_sel, selector_model)
-    print(f"  選択された特徴量数: {len(selected_features)} / {len(FEATURE_COLS)}")
-    print(f"  除外された特徴量: {[c for c in FEATURE_COLS if c not in selected_features]}")
-    
     results = run_all_analysis(df_feat)
-    results['next_day_predictions'] = predict_next_day(df_feat, layout_lookup=lookup)
+    results['next_day_predictions'] = predict_next_day(df_feat)
     results['feature_names_jp'] = FEATURE_NAMES_JP
-    results['selected_features'] = selected_features
-    results['n_features_original'] = len(FEATURE_COLS)
-    results['n_features_selected'] = len(selected_features)
-    
-    # === バックテスト ===
-    print("\n=== バックテスト (Walk-forward) ===")
-    pos_sum = y_sel.sum()
-    spw = (len(y_sel) - pos_sum) / pos_sum if pos_sum > 0 else 1
-    
-    def model_factories_bt(spw_val):
-        from xgboost import XGBClassifier
-        import lightgbm as lgb
-        return [
-            XGBClassifier(
-                n_estimators=260, max_depth=3, learning_rate=0.02,
-                reg_lambda=20, reg_alpha=2, subsample=0.8, colsample_bytree=0.75,
-                gamma=1.5, min_child_weight=15, tree_method='hist',
-                random_state=42, scale_pos_weight=spw_val, eval_metric='logloss'
-            ),
-            lgb.LGBMClassifier(
-                n_estimators=260, max_depth=3, learning_rate=0.02,
-                reg_lambda=25, reg_alpha=3, subsample=0.8, colsample_bytree=0.75,
-                min_child_samples=100, num_leaves=10, random_state=42, verbose=-1,
-                scale_pos_weight=spw_val
-            ),
-            ExtraTreesClassifier(
-                n_estimators=500, max_depth=9, min_samples_leaf=25,
-                max_features=0.7, class_weight='balanced_subsample',
-                random_state=42, n_jobs=-1
-            )
-        ]
-    
-    def reg_factory_bt():
-        from xgboost import XGBRegressor
-        return XGBRegressor(n_estimators=200, max_depth=3, learning_rate=0.03,
-                            reg_lambda=15, reg_alpha=5,
-                            subsample=0.7, colsample_bytree=0.6,
-                            min_child_weight=20,
-                            tree_method='hist', device='cuda', random_state=42)
-    
-    # 選択された特徴量でバックテスト
-    feat_cols_bt = [c for c in selected_features if c in df_feat.columns]
-    bt_results = run_backtest(df_feat, feat_cols_bt, model_factories_bt, reg_factory_bt, spw, top_n=3)
-    
-    if bt_results:
-        active_days = [r for r in bt_results if not r.get('skipped', False)]
-        print(f"  バックテスト期間: {len(bt_results)}日")
-        print(f"  稼働日数: {len(active_days)}日")
-        if active_days:
-            final = bt_results[-1]
-            print(f"  最終累積収支: {final['cumulative_profit']:+,.0f}枚")
-            print(f"  ランダム選択: {final['random_cumulative']:+,.0f}枚")
-            print(f"  全台平均:     {final['avg_cumulative']:+,.0f}枚")
-            
-            avg_daily = final['cumulative_profit'] / len(active_days)
-            print(f"  平均日別収支: {avg_daily:+,.0f}枚")
-        
-        # グラフ出力
-        graph_path = OUTPUT_PATH.replace('.json', '_backtest.png')
-        plot_backtest(bt_results, graph_path)
-        print(f"  グラフ出力: {graph_path}")
-        
-        # バックテスト結果をJSONにも格納
-        bt_summary = {
-            'n_days': len(bt_results),
-            'n_active_days': len(active_days),
-            'final_cumulative_profit': float(bt_results[-1]['cumulative_profit']) if bt_results else 0,
-            'final_random_cumulative': float(bt_results[-1]['random_cumulative']) if bt_results else 0,
-            'final_avg_cumulative': float(bt_results[-1]['avg_cumulative']) if bt_results else 0,
-            'daily_avg_profit': float(final['cumulative_profit'] / len(active_days)) if active_days else 0,
-            'graph_path': graph_path,
-        }
-        results['backtest'] = bt_summary
-    
     import json
     json_str = pd.Series([results]).to_json(orient='records', force_ascii=False)
     json_str = json_str[1:-1]
     with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
         f.write(json_str)
         
-    print("\n=========================================")
+    print("=========================================")
     print(f"分析が完了しました！")
     print(f"結果を {OUTPUT_PATH} に出力しました。")
     print("=========================================")

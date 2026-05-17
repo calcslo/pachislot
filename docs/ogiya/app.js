@@ -3488,8 +3488,16 @@ function renderNextDayPredictions(predsData) {
 
     const hitRateEl = document.getElementById('ml-next-day-hit-rate');
     const avgDiffEl = document.getElementById('ml-next-day-avg-diff');
+    const positiveRateEl = document.getElementById('ml-next-day-positive-rate');
+    const recallEl = document.getElementById('ml-next-day-recall');
     if (hitRateEl && predsData.hit_rate != null) {
         hitRateEl.textContent = (predsData.hit_rate * 100).toFixed(1) + '%';
+    }
+    if (positiveRateEl && predsData.positive_rate != null) {
+        positiveRateEl.textContent = (predsData.positive_rate * 100).toFixed(1) + '%';
+    }
+    if (recallEl && predsData.recall != null) {
+        recallEl.textContent = (predsData.recall * 100).toFixed(1) + '%';
     }
     if (avgDiffEl && predsData.avg_diff != null) {
         const sign = predsData.avg_diff >= 0 ? '+' : '';

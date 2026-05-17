@@ -947,3 +947,31 @@ INFO:     connection open
 INFO:     connection closed
 INFO:     100.109.8.4:59148 - "WebSocket /ws" [accepted]
 INFO:     connection open
+INFO:     connection closed
+[2026-05-17 12:49:35] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=eF.%25E3%2581%258B%25E3%2582%2589%25E3%2581%258F%25E3%2582%258A%25EF%25BD%25BB%25EF%25BD%25B0%25EF%25BD%25B6%25EF%25BD%25BD2+R> (referer: https://www.google.com/)
+2026-05-17 12:49:35,676 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v05-003.php?cd_ps=1&bai=4&nmk_kisyu=eF.%25E3%2581%258B%25E3%2582%2589%25E3%2581%258F%25E3%2582%258A%25EF%25BD%25BB%25EF%25BD%25B0%25EF%25BD%25B6%25EF%25BD%25BD2+R> (referer: https://www.google.com/)
+INFO:     100.109.8.4:63500 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:63503 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:63506 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:51525 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:54912 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:63943 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     Started server process [33124]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     100.109.8.4:60762 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
