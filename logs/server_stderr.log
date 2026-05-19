@@ -975,3 +975,73 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 INFO:     100.109.8.4:60762 - "WebSocket /ws" [accepted]
 INFO:     connection open
 INFO:     connection closed
+2026-05-17 15:35:01,646 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+2026-05-17 15:35:02,282 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+2026-05-17 15:35:03,936 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "D:\Program Files\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "D:\Program Files\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] 既存の接続はリモート ホストに強制的に切断されました。
+INFO:     100.109.8.4:60568 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-17 15:37:08] INFO: Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#8;878> (referer: https://www.google.com/)
+2026-05-17 15:37:08,013 - scrapling - INFO - Fetched (200) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#8;878> (referer: https://www.google.com/)
+INFO:     connection closed
+INFO:     Started server process [29176]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started server process [29396]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     100.109.8.4:57670 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-18T08:26:45.342836800Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-05-18T08:26:45.357560900Z][Docker Desktop.exe] backend process started
+INFO:     connection closed
+INFO:     100.109.8.4:49711 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:65417 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     100.109.8.4:58092 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+[2026-05-18 18:09:04] WARNING: Attempt 1 failed: Response.all_headers: The object has been collected to prevent unbounded heap growth.. Retrying in 1s...
+2026-05-18 18:09:04,584 - scrapling - WARNING - Attempt 1 failed: Response.all_headers: The object has been collected to prevent unbounded heap growth.. Retrying in 1s...
+INFO:     100.109.8.4:63677 - "WebSocket /ws" [accepted]
+INFO:     connection open
+[2026-05-18 18:35:22] INFO: Fetched (502) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#8;1164.800048828125> (referer: https://www.google.com/)
+2026-05-18 18:35:22,626 - scrapling - INFO - Fetched (502) <GET https://www.pscube.jp/dedamajyoho-P-townDMMpachi/c759102/cgi-bin/nc-v03-001.php?cd_ps=1#8;1164.800048828125> (referer: https://www.google.com/)
+INFO:     connection closed
+INFO:     Started server process [1312]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started server process [29288]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started server process [28768]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
