@@ -48,6 +48,7 @@ let globalIslandDaily = {};
 let globalMachineDateMap = {};
 // ML Analysis State
 let mlAnalysisData = null;
+let specialDatesData = { restock_dates: [], tenun_dates: [] };
 let currentMlPeriod = 'all';
 let currentMlTarget = 'regression'; // 'regression' or 'classification'
 let currentMlAlgo = 'tree'; // 'tree', 'rf', 'assoc'
@@ -121,12 +122,17 @@ async function init() {
     setupTheme(); setupEventListeners();
     window.addEventListener('resize', () => requestAnimationFrame(applyHeatmapCellSizes));
     try {
-        const [dr, lr, mr] = await Promise.all([fetch('data.json'), fetch('layout.json'), fetch('analysis_results.json').catch(() => null)]);
+        const [dr, lr, mr, sr] = await Promise.all([fetch('data.json'), fetch('layout.json'), fetch('analysis_results.json').catch(() => null), fetch('special_dates.json').catch(() => null)]);
         rawData = await dr.json(); layoutData = await lr.json();
         if (mr && mr.ok) {
             mlAnalysisData = await mr.json();
         } else {
             console.warn('analysis_results.json not found or could not be loaded.');
+        }
+        if (sr && sr.ok) {
+            specialDatesData = await sr.json();
+        } else {
+            console.warn('special_dates.json not found or could not be loaded.');
         }
         updateMachineGroups(rawData); // Build groups dynamically from data
         const maxCols = layoutData.reduce((max, r) => Math.max(max, r.length), 0);
