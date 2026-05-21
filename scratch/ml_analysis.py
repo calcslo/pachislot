@@ -180,6 +180,12 @@ FEATURE_NAMES_JP['prev_reg_prob_1'] = '前日REG確率(1/確率)'
 FEATURE_COLS.append('prev_big_reg_ratio_1')
 FEATURE_NAMES_JP['prev_big_reg_ratio_1'] = '前日BIG/REG比率'
 
+# 特別日フラグ
+FEATURE_COLS.append('is_restock_date')
+FEATURE_NAMES_JP['is_restock_date'] = '景品入荷日'
+FEATURE_COLS.append('is_tenun_date')
+FEATURE_NAMES_JP['is_tenun_date'] = '合同営業日'
+
 def estimate_setting(model, games, big, reg):
     games, big, reg = int(games or 0), int(big or 0), int(reg or 0)
     if model not in MACHINE_PROBS or games < 100:
@@ -351,6 +357,29 @@ def build_features(df, layout_lookup):
     # 全日付一覧
     all_dates = sorted(df['日付'].unique())
     date_to_idx = {d: i for i, d in enumerate(all_dates)}
+
+    # 特別日フラグの読み込み
+    import json
+    import os
+    is_restock_date = {}
+    is_tenun_date = {}
+    special_dates_path = "docs/ogiya/special_dates.json"
+    if os.path.exists(special_dates_path):
+        with open(special_dates_path, 'r', encoding='utf-8') as f:
+            sp_data = json.load(f)
+            restocks = set(sp_data.get('restock_dates', []))
+            tenuns = set(sp_data.get('tenun_dates', []))
+            for date_dt in all_dates:
+                d_str = date_dt.strftime('%Y-%m-%d')
+                is_restock_date[date_dt] = int(d_str in restocks)
+                is_tenun_date[date_dt] = int(d_str in tenuns)
+    else:
+        for date_dt in all_dates:
+            is_restock_date[date_dt] = 0
+            is_tenun_date[date_dt] = 0
+            
+    df['is_restock_date'] = df['日付'].map(is_restock_date).fillna(0).astype(int)
+    df['is_tenun_date'] = df['日付'].map(is_tenun_date).fillna(0).astype(int)
 
     # 島ごとの日別平均を事前計算
     island_daily_avg = df.groupby(['日付', 'island_id'])['最終差枚'].mean().to_dict()
@@ -816,7 +845,7 @@ def analyze_association(df_period, task='regression'):
     except Exception as e:
         return {'error': str(e)}
 
-def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weights=False, use_lr_plus=False):
+def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weights=False, use_lr_plus=False, use_soft_labels=False, use_shap_pruning=False):
     max_date = df_feat['日付'].max()
     next_date = max_date + pd.Timedelta(days=1)
     
@@ -1145,9 +1174,36 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
     df_next['store_month_cumul_diff'] = float(
         store_this_month['最終差枚'].sum()) if not store_this_month.empty else 0.0
     feat_cols = [c for c in FEATURE_COLS if c in df_next.columns]
+    
+    # SHAP削減が有効な場合
+    current_feat_cols = list(feat_cols)
+    if use_shap_pruning:
+        try:
+            import shap
+            from sklearn.ensemble import ExtraTreesClassifier
+            shap_model = ExtraTreesClassifier(n_estimators=100, max_depth=7, random_state=42, n_jobs=-1)
+            X_train_full = df_feat[feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
+            y_train_full = (df_feat['推定設定'] >= 4).astype(int).values
+            shap_model.fit(X_train_full, y_train_full)
+            explainer = shap.TreeExplainer(shap_model)
+            shap_values = explainer.shap_values(X_train_full)
+            if isinstance(shap_values, list):
+                sv = shap_values[1]
+            elif hasattr(shap_values, 'ndim') and shap_values.ndim == 3:
+                sv = shap_values[:, :, 1]
+            else:
+                sv = shap_values
+            mean_abs_shap = np.abs(sv).mean(axis=0)
+            shap_df = pd.Series(mean_abs_shap, index=feat_cols).sort_values(ascending=False)
+            shap_threshold = shap_df.max() * 0.01
+            active_feats = shap_df[shap_df >= shap_threshold].index.tolist()
+            if len(active_feats) >= 5:
+                current_feat_cols = active_feats
+        except Exception as e_shap:
+            print(f"  [SHAP Pruning Error in Predict] {e_shap}")
 
     # 回帰モデル (XGBoost) — 正則化を強化して過学習・過大評価を抑制
-    X_train_reg = df_feat[feat_cols].copy()
+    X_train_reg = df_feat[current_feat_cols].copy()
     y_train_reg = df_feat['最終差枚'].copy()
     reg_model = XGBRegressor(n_estimators=200, max_depth=3, learning_rate=0.03,
                              reg_lambda=15, reg_alpha=5,
@@ -1155,17 +1211,34 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
                              min_child_weight=20,
                              tree_method='hist', device='cuda', random_state=42)
     reg_model.fit(X_train_reg, y_train_reg)
-    pred_diffs = reg_model.predict(df_next[feat_cols])
+    pred_diffs = reg_model.predict(df_next[current_feat_cols])
 
     # 分類モデル
     df_cls = df_feat[df_feat['推定設定'].notna()].copy()
     df_cls['高設定フラグ'] = (df_cls['推定設定'] >= 4).astype(int)
-    X_train_cls = df_cls[feat_cols].copy()
-    y_train_cls = df_cls['高設定フラグ'].copy()
-    pos_sum = y_train_cls.sum()
-    spw = (len(y_train_cls) - pos_sum) / pos_sum if pos_sum > 0 else 1
+    if '高設定確率' not in df_cls.columns:
+        df_cls['高設定確率'] = df_cls['高設定フラグ'].astype(float)
+    else:
+        df_cls['高設定確率'] = df_cls['高設定確率'].fillna(df_cls['高設定フラグ'].astype(float))
+        
+    X_train_cls = df_cls[current_feat_cols].copy()
     
-    cat_cols_present = [c for c in ['weekday', 'position', 'tail_digit', 'island_id_num'] if c in feat_cols]
+    # ターゲットと重みの定義
+    settings_train = df_cls['推定設定'].values
+    sample_weights = np.ones(len(df_cls))
+    if use_weights:
+        sample_weights[settings_train == 5] = 1.5
+        sample_weights[settings_train == 6] = 2.0
+        
+    if use_soft_labels:
+        y_train_cls = df_cls['高設定確率'].copy()
+    else:
+        y_train_cls = df_cls['高設定フラグ'].copy()
+
+    pos_sum = df_cls['高設定フラグ'].sum()
+    spw = (len(df_cls) - pos_sum) / pos_sum if pos_sum > 0 else 1
+    
+    cat_cols_present = [c for c in ['weekday', 'position', 'tail_digit', 'island_id_num'] if c in current_feat_cols]
     for c in cat_cols_present:
         X_train_cls[c] = X_train_cls[c].astype(int)
         df_next[c] = df_next[c].astype(int)
@@ -1173,7 +1246,7 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
     X_train_cls = X_train_cls.reset_index(drop=True).replace([np.inf, -np.inf], 0).fillna(0)
     y_train_cls = y_train_cls.reset_index(drop=True)
     df_cls = df_cls.reset_index(drop=True)
-    df_next_selected = df_next[feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
+    df_next_selected = df_next[current_feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
 
     from sklearn.ensemble import ExtraTreesClassifier
 
@@ -1190,10 +1263,33 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
             valid_pos = np.where(frame['日付'].isin(valid_dates))[0]
             if len(train_pos) == 0 or len(valid_pos) == 0:
                 continue
-            if y_train_cls.iloc[train_pos].nunique() < 2 or y_train_cls.iloc[valid_pos].nunique() < 2:
+            if df_cls['高設定フラグ'].iloc[train_pos].nunique() < 2 or df_cls['高設定フラグ'].iloc[valid_pos].nunique() < 2:
                 continue
             folds.append((train_pos, valid_pos))
         return folds
+
+    def to_regressor(clf):
+        from xgboost import XGBRegressor
+        import lightgbm as lgb
+        from sklearn.ensemble import ExtraTreesRegressor
+        from catboost import CatBoostRegressor
+        
+        clf_name = str(clf.__class__)
+        params = clf.get_params()
+        
+        # 不要なパラメータを削除
+        for key in ['scale_pos_weight', 'class_weight', 'auto_class_weights', 'eval_metric', 'tree_method', 'device', 'criterion', 'verbose', 'task_type']:
+            params.pop(key, None)
+            
+        if 'XGBClassifier' in clf_name:
+            return XGBRegressor(**params, tree_method='hist', device='cuda')
+        elif 'LGBMClassifier' in clf_name:
+            return lgb.LGBMRegressor(**params)
+        elif 'ExtraTreesClassifier' in clf_name:
+            return ExtraTreesRegressor(**params)
+        elif 'CatBoostClassifier' in clf_name:
+            return CatBoostRegressor(**params, verbose=0, task_type='GPU')
+        return clf
 
     def model_factories():
         from catboost import CatBoostClassifier as _CBC
@@ -1215,7 +1311,6 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
                 max_features=0.7, class_weight='balanced_subsample',
                 random_state=42, n_jobs=-1
             ),
-            # CatBoost: 対称木・順序統計量処理で他と異なる帰納バイアスを持つ
             _CBC(
                 iterations=250, depth=4, learning_rate=0.03,
                 l2_leaf_reg=15, bootstrap_type='Bernoulli', subsample=0.8,
@@ -1228,10 +1323,18 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
     oof_by_model = []
     for model_template in model_factories():
         oof = np.full(len(X_train_cls), np.nan)
+        m_cv = to_regressor(model_template) if use_soft_labels else model_template
         for train_pos, val_pos in folds:
-            model = model_template.__class__(**model_template.get_params())
-            model.fit(X_train_cls.iloc[train_pos], y_train_cls.iloc[train_pos])
-            oof[val_pos] = model.predict_proba(X_train_cls.iloc[val_pos])[:, 1]
+            model = m_cv.__class__(**m_cv.get_params())
+            if use_weights or use_soft_labels:
+                model.fit(X_train_cls.iloc[train_pos], y_train_cls.iloc[train_pos], sample_weight=sample_weights[train_pos])
+            else:
+                model.fit(X_train_cls.iloc[train_pos], y_train_cls.iloc[train_pos])
+            
+            if use_soft_labels:
+                oof[val_pos] = np.clip(model.predict(X_train_cls.iloc[val_pos]), 0.0, 1.0)
+            else:
+                oof[val_pos] = model.predict_proba(X_train_cls.iloc[val_pos])[:, 1]
         oof_by_model.append(oof)
 
     # LightGBM LambdaRank OOF (LTR: Learning to Rank)
@@ -1424,7 +1527,6 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
                 feat_clean[sp_col] = float(df_next[sp_col].iloc[i])
                 
         # 期待差枚: 回帰予測を分類確率で割り引き（過大評価抑制）
-        # 分類確率が高い→回帰予測を信頼、低い→全台平均に近づける
         raw_diff = float(pred_diffs[i])
         prob = float(pred_probs[i])
         overall_avg = float(y_train_reg.mean())
@@ -1489,10 +1591,8 @@ if __name__ == '__main__':
     df_feat = build_features(df, lookup)
     
     print("=== 特徴量選択 (Permutation Importance) ===")
-    # 分類タスクの特徴量選択
     df_cls_sel = df_feat[df_feat['推定設定'].notna()].copy()
     df_cls_sel['高設定フラグ'] = (df_cls_sel['推定設定'] >= 4).astype(int)
-    # 高設定確率 = P(設定>=4 | data), build_features で計算済み。None は 高設定フラグ の float で補完
     if '高設定確率' in df_cls_sel.columns:
         df_cls_sel['高設定確率'] = df_cls_sel['高設定確率'].fillna(df_cls_sel['高設定フラグ'].astype(float))
     else:
@@ -1511,19 +1611,12 @@ if __name__ == '__main__':
     print(f"  除外された特徴量: {[c for c in FEATURE_COLS if c not in selected_features]}")
     
     results = run_all_analysis(df_feat)
-    # predict_next_day is called later
     results['feature_names_jp'] = FEATURE_NAMES_JP
     results['selected_features'] = selected_features
     results['n_features_original'] = len(FEATURE_COLS)
     results['n_features_selected'] = len(selected_features)
     
-    # === バックテスト (新特徴量 vs 旧特徴量 の成績比較) ===
-    print("\n=== バックテスト (Walk-forward) ===")
-    pos_sum = y_sel.sum()
-    spw = (len(y_sel) - pos_sum) / pos_sum if pos_sum > 0 else 1
-
     # ── 特徴量グループ定義 ──
-    # GROUP_0: 前回追加分 (イベント翌日 + 全体ewm/cumul)
     GROUP_0 = (
         ['is_next_day_after_event'] +
         [f'ewm_diff_{w}d' for w in (30, 60, 90)] +
@@ -1531,330 +1624,24 @@ if __name__ == '__main__':
         [f'ewm_win_rate_{w}d' for w in (30, 60, 90)] +
         [f'cumul_{w}d_diff' for w in (30, 60, 90)]
     )
-    # GROUP_A: 台番号別長期時間減衰差枚
     GROUP_A = [f'machine_ewm_diff_{w}d' for w in (30, 60, 90)]
-    # GROUP_B: 島別長期時間減衰差枚
     GROUP_B = [f'island_ewm_diff_{w}d' for w in (30, 60, 90)]
-    # GROUP_C: 月間累計差枚 (台・店舗全体)
     GROUP_C = ['machine_month_cumul_diff', 'store_month_cumul_diff']
-    # GROUP_D: 特定条件 (イベント翌日高設定不発など)
     GROUP_D = ['event_next_high_neg_1', 'neg_low_and_high_diff_prev_1']
 
     ALL_NEW_FEATURES = GROUP_0 + GROUP_A + GROUP_B + GROUP_C + GROUP_D
 
-    def _quick_oof_score(feat_cols_q, label='', use_weights=False, use_lr_plus=False, use_soft_labels=False):
-        """軽量OOF CV で精度を高速測定 (フルバックテストより大幅に高速)"""
-        import numpy as np
-        from sklearn.ensemble import ExtraTreesClassifier as _ETC
-        from sklearn.model_selection import TimeSeriesSplit as _TSCV
-        from xgboost import XGBRegressor as _XGBR
-        df_q = df_cls_sel.copy()
-        cols_q = [c for c in feat_cols_q if c in df_q.columns]
-        X_q = df_q[cols_q].replace([np.inf, -np.inf], 0).fillna(0)
-        settings_q = df_q['推定設定'].values
-        
-        # use_soft_labels=True の場合: P(高設定) を目的変数にして XGBRegressor で学習
-        if use_soft_labels:
-            soft_y = df_q['高設定確率'].fillna(df_q['高設定フラグ'].astype(float))
-            y_q = soft_y
-        else:
-            y_q = df_q['高設定フラグ']
-        
-        n_splits = min(5, len(X_q) // 20)
-        if n_splits < 2:
-            return {'profit': 0, 'precision': 0, 'f1': 0, 'avg_diff': 0, 'lr_plus': 0}
-            
-        sample_weights = np.ones(len(y_q))
-        if use_weights:
-            sample_weights[settings_q == 5] = 1.5
-            sample_weights[settings_q == 6] = 2.0
-            
-        tscv = _TSCV(n_splits=n_splits)
-        oof = np.full(len(X_q), np.nan)
-        
-        if use_soft_labels:
-            # XGBoostRegressorで確率を直接予測（ソフトラベル）
-            mdl = _XGBR(n_estimators=100, max_depth=5, learning_rate=0.05,
-                         reg_lambda=10, subsample=0.8, colsample_bytree=0.8,
-                         random_state=42, device='cuda')
-            for tr_idx, va_idx in tscv.split(X_q):
-                m = _XGBR(**mdl.get_params())
-                m.fit(X_q.iloc[tr_idx], y_q.iloc[tr_idx],
-                      sample_weight=sample_weights[tr_idx])
-                oof[va_idx] = np.clip(m.predict(X_q.iloc[va_idx]), 0.0, 1.0)
-            # 二値ラベルに戻して精度評価
-            y_eval_bin = df_q['高設定フラグ'].values
-        else:
-            mdl = _ETC(n_estimators=100, max_depth=7, min_samples_leaf=20,
-                       max_features=0.7, class_weight='balanced_subsample',
-                       random_state=42, n_jobs=-1)
-            for tr_idx, va_idx in tscv.split(X_q):
-                m = _ETC(**mdl.get_params())
-                m.fit(X_q.iloc[tr_idx], y_q.iloc[tr_idx], sample_weight=sample_weights[tr_idx])
-                oof[va_idx] = m.predict_proba(X_q.iloc[va_idx])[:, 1]
-            y_eval_bin = y_q.values
-
-        vm = ~np.isnan(oof)
-        oof_v = oof[vm]; y_v = y_eval_bin[vm]
-        diff_v = df_q['最終差枚'].values[vm]
-        
-        best_score = -np.inf
-        best_metrics = {}
-        for th in np.arange(0.15, 0.75, 0.01):
-            pred_v = (oof_v >= th).astype(int)
-            n_pred = pred_v.sum()
-            if n_pred < 3 or (n_pred / len(pred_v)) < 0.05:
-                continue
-                
-            tp = ((y_v == 1) & (pred_v == 1)).sum()
-            fp = ((y_v == 0) & (pred_v == 1)).sum()
-            tn = ((y_v == 0) & (pred_v == 0)).sum()
-            fn = ((y_v == 1) & (pred_v == 0)).sum()
-            
-            tpr = tp / (tp + fn) if (tp + fn) > 0 else 0
-            fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
-            lr_plus = tpr / fpr if fpr > 0 else (tpr / 0.0001)
-            prec = tp / (tp + fp) if (tp + fp) > 0 else 0
-            f1 = 2 * prec * tpr / (prec + tpr) if (prec + tpr) > 0 else 0
-            
-            avg_d = float(diff_v[pred_v == 1].mean()) if n_pred > 0 else 0.0
-            
-            if use_lr_plus:
-                score = avg_d * (1.0 if lr_plus >= 1.5 else 0.5)
-            else:
-                score = avg_d * (1.0 if prec >= 0.20 else 0.5)
-                
-            if score > best_score:
-                best_score = score
-                best_metrics = {'precision': float(prec), 'f1': float(f1), 'avg_diff': float(avg_d), 'lr_plus': float(lr_plus)}
-                
-        if not best_metrics:
-            best_metrics = {'precision': 0.0, 'f1': 0.0, 'avg_diff': 0.0, 'lr_plus': 0.0}
-            
-        if label:
-            if use_lr_plus:
-                print(f"    {label}: lr+={best_metrics['lr_plus']:.2f}  avg_diff={best_metrics['avg_diff']:+.0f}枚")
-            else:
-                print(f"    {label}: precision={best_metrics['precision']:.3f}  f1={best_metrics['f1']:.3f}  avg_diff={best_metrics['avg_diff']:+.0f}枚")
-        return best_metrics
-
-    # ── ① アブレーション測定 ──
-    print("\n=== 特徴量グループ別アブレーション測定 (軽量OOF CV) ===")
-    # ベースライン: 今回追加した特徴量をすべて除外
-    base_cols_abl = [c for c in selected_features if c not in ALL_NEW_FEATURES and c in df_feat.columns]
-    sc_base = _quick_oof_score(base_cols_abl, 'ベースライン (今回追加なし)')
-
-    # 各グループを個別に追加して測定
-    abl_results = {}
-    for gname, gcols in [('GROUP_0 (前回追加)', GROUP_0), ('GROUP_A (台別長期)', GROUP_A),
-                          ('GROUP_B (島別長期)', GROUP_B), ('GROUP_C (月間累計)', GROUP_C),
-                          ('GROUP_D (特定条件)', GROUP_D)]:
-        test_cols = base_cols_abl + [c for c in gcols if c in df_feat.columns]
-        sc = _quick_oof_score(test_cols, gname)
-        abl_results[gname] = sc
-
-    # 全グループ追加
-    all_new_cols = [c for c in ALL_NEW_FEATURES if c in df_feat.columns]
-    test_all_cols = base_cols_abl + all_new_cols
-    sc_all = _quick_oof_score(test_all_cols, '全グループ追加')
-
-    # ── ② 採用グループを決定 ──
-    # precision が baseline 以上 かつ avg_diff が baseline 以上のグループを採用
-    adopted_groups = []
-    for gname, gcols in [('GROUP_0', GROUP_0), ('GROUP_A', GROUP_A),
-                          ('GROUP_B', GROUP_B), ('GROUP_C', GROUP_C), ('GROUP_D', GROUP_D)]:
-        sc = abl_results.get(f'{gname} (前回追加)' if gname == 'GROUP_0'
-                              else f'{gname} (台別長期)' if gname == 'GROUP_A'
-                              else f'{gname} (島別長期)' if gname == 'GROUP_B'
-                              else f'{gname} (月間累計)' if gname == 'GROUP_C'
-                              else f'{gname} (特定条件)', {})
-        # キー名の揺れを吸収
-        sc = next((v for k, v in abl_results.items() if gname in k), {})
-        prec_ok = sc.get('precision', 0) >= sc_base.get('precision', 0) - 0.005
-        diff_ok = sc.get('avg_diff', 0) >= sc_base.get('avg_diff', 0) - 50
-        if prec_ok and diff_ok:
-            adopted_groups.append(gcols)
-            print(f"  ✅ 採用: {gname}")
-        else:
-            print(f"  ❌ 除外: {gname} (precision: {sc.get('precision',0):.3f} vs base {sc_base.get('precision',0):.3f})")
-
-    adopted_new_feats = [c for g in adopted_groups for c in g]
-    print(f"\n  採用された新特徴量数: {len(adopted_new_feats)}")
-
-    # ── ③ バックテスト2段階目 (ステップワイズ特徴量探索) ──
-    print("\n=== バックテスト2段階目 (ステップワイズ特徴量探索) ===")
-    old_selected = [c for c in selected_features if c not in ALL_NEW_FEATURES and c in df_feat.columns]
+    print("\n=== フルバックテストによる個別ロジック評価 ===")
     
-    current_best_features = list(old_selected)
-    current_best_score = _quick_oof_score(current_best_features).get('avg_diff', 0)
-    print(f"  初期ベース(旧特徴量): {len(current_best_features)}個, スコア: {current_best_score:+.0f}枚")
-    
-    all_possible_features = [c for c in FEATURE_COLS if c in df_feat.columns]
-    
-    improved = True
-    step = 0
-    while improved:
-        improved = False
-        step += 1
-        best_step_score = current_best_score
-        best_step_features = None
-        best_action = ""
-        
-        # 1つ追加をテスト
-        for f in all_possible_features:
-            if f not in current_best_features:
-                test_feats = current_best_features + [f]
-                sc = _quick_oof_score(test_feats).get('avg_diff', 0)
-                if sc > best_step_score:
-                    best_step_score = sc
-                    best_step_features = test_feats
-                    best_action = f"+ {f}"
-                    
-        # 1つ削除をテスト
-        for f in current_best_features:
-            test_feats = [c for c in current_best_features if c != f]
-            if len(test_feats) < 5: continue
-            sc = _quick_oof_score(test_feats).get('avg_diff', 0)
-            if sc > best_step_score:
-                best_step_score = sc
-                best_step_features = test_feats
-                best_action = f"- {f}"
-                
-        if best_step_features is not None and best_step_score > current_best_score:
-            print(f"  Step {step}: {best_action} -> スコア更新: {best_step_score:+.0f}枚")
-            current_best_features = best_step_features
-            current_best_score = best_step_score
-            improved = True
-        else:
-            print(f"  Step {step}: 改善なし。探索終了。")
-            
-    print(f"  探索完了: 最終特徴量 {len(current_best_features)}個, スコア: {current_best_score:+.0f}枚")
-    optimal_feat_cols = current_best_features
-
-    # --- 独立テスト (今回のみ) ---
-    print("\n=== 独立テスト1: 設定の段階の重みづけ ===")
-    sc_base_test = _quick_oof_score(current_best_features)
-    sc_weight_test = _quick_oof_score(current_best_features, use_weights=True)
-    print(f"  ベース: {sc_base_test['avg_diff']:+.0f}枚")
-    print(f"  重み付(設定5=1.5, 6=2.0): {sc_weight_test['avg_diff']:+.0f}枚")
-    USE_SAMPLE_WEIGHTS = False
-    if sc_weight_test['avg_diff'] > sc_base_test['avg_diff']:
-        print("  ✅ 性能が向上したため、設定の重みづけを採用します。")
-        USE_SAMPLE_WEIGHTS = True
-    else:
-        print("  ❌ 性能が悪化したため、設定の重みづけは不採用とします。")
-
-    print("\n=== 独立テスト2: 陽性尤度比(LR+)の使用 ===")
-    sc_lr_test = _quick_oof_score(current_best_features, use_weights=USE_SAMPLE_WEIGHTS, use_lr_plus=True)
-    base_avg_diff = sc_weight_test['avg_diff'] if USE_SAMPLE_WEIGHTS else sc_base_test['avg_diff']
-    print(f"  LR+ベース: {sc_lr_test['avg_diff']:+.0f}枚")
-    USE_LR_PLUS = False
-    if sc_lr_test['avg_diff'] > base_avg_diff:
-        print("  ✅ 性能が向上したため、陽性尤度比(LR+)を採用します。")
-        USE_LR_PLUS = True
-    else:
-        print("  ❌ 性能が悪化したため、陽性尤度比(LR+)は不採用とします。")
-
-    # === 独立テスト3: 目的変数を確率に変更 ===
-    print("\n=== 独立テスト3: 目的変数を確率（ソフトラベル）に変更 ===")
-    sc_soft_test = _quick_oof_score(current_best_features, use_soft_labels=True)
-    _base_for_soft = _quick_oof_score(current_best_features)  # バイナリベース再測定
-    print(f"  バイナリラベル: {_base_for_soft['avg_diff']:+.0f}枚")
-    print(f"  確率ラベル:     {sc_soft_test['avg_diff']:+.0f}枚")
-    USE_SOFT_LABELS = False
-    if sc_soft_test['avg_diff'] > _base_for_soft['avg_diff']:
-        print("  ✅ 性能が向上したため、確率目的変数を採用します。")
-        USE_SOFT_LABELS = True
-    else:
-        print("  ❌ 性能が悪化したため、確率目的変数は不採用とします。")
-
-    # === 独立テスト4: SHAP値による特徴量削減 ===
-    print("\n=== 独立テスト4: SHAP値による特徴量削減 ===")
-    try:
-        import shap as _shap
-        from sklearn.ensemble import ExtraTreesClassifier as _ETC4
-        _cols4 = [c for c in current_best_features if c in df_cls_sel.columns]
-        _X4 = df_cls_sel[_cols4].replace([np.inf, -np.inf], 0).fillna(0)
-        _y4 = df_cls_sel['高設定フラグ']
-        _mdl4 = _ETC4(n_estimators=200, max_depth=7, min_samples_leaf=20,
-                       max_features=0.7, class_weight='balanced_subsample',
-                       random_state=42, n_jobs=-1)
-        _mdl4.fit(_X4, _y4)
-        _expl4 = _shap.TreeExplainer(_mdl4)
-        _shap_vals4 = _expl4.shap_values(_X4)
-        # SHAPの返り値は新API(v0.44+)でndarrayになり shape=(n_samples, n_features, n_classes)
-        # 旧APIはlistで [class0_matrix, class1_matrix]
-        if isinstance(_shap_vals4, list):
-            # 旧API: クラス1の SHAP 値を使用
-            _sv4 = _shap_vals4[1]
-        elif hasattr(_shap_vals4, 'ndim') and _shap_vals4.ndim == 3:
-            # 新API 3D: shape=(n_samples, n_features, n_classes) -> クラス1スライス
-            _sv4 = _shap_vals4[:, :, 1]
-        else:
-            _sv4 = _shap_vals4
-        _mean_abs_shap = np.abs(_sv4).mean(axis=0)
-        _shap_df4 = pd.Series(_mean_abs_shap, index=_cols4).sort_values(ascending=False)
-        print("  SHAP重要度 下位10特徴量:")
-        for _fn, _fv in _shap_df4.tail(10).items():
-            print(f"    {_fn}: {_fv:.5f}")
-        # SHAP≈0 の特徴量を除去（閾値: mean_abs_SHAP < 1% of max）
-        _shap_threshold = _shap_df4.max() * 0.01
-        _low_shap_feats = _shap_df4[_shap_df4 < _shap_threshold].index.tolist()
-        print(f"  SHAP閾値以下の特徴量数: {len(_low_shap_feats)} / {len(_cols4)}")
-        if _low_shap_feats:
-            _feats_after_shap = [c for c in current_best_features if c not in _low_shap_feats]
-            sc_shap_test = _quick_oof_score(_feats_after_shap)
-            sc_shap_base = _quick_oof_score(current_best_features)
-            print(f"  SHAP削減前: {sc_shap_base['avg_diff']:+.0f}枚 ({len(current_best_features)}特徴量)")
-            print(f"  SHAP削減後: {sc_shap_test['avg_diff']:+.0f}枚 ({len(_feats_after_shap)}特徴量)")
-            if sc_shap_test['avg_diff'] >= sc_shap_base['avg_diff']:
-                print(f"  ✅ 性能が維持/向上したため、SHAP削減を採用します。({len(_low_shap_feats)}特徴量除去)")
-                current_best_features = _feats_after_shap
-                optimal_feat_cols = _feats_after_shap
-                current_best_score = sc_shap_test['avg_diff']
-            else:
-                print(f"  ❌ 性能が悪化したため、SHAP削減は不採用とします。")
-        else:
-            print("  SHAP閾値以下の特徴量なし。削減不要。")
-    except ImportError:
-        print("  ⚠️ shapライブラリが見つかりません。pip install shap でインストールしてください。スキップします。")
-    except Exception as _e_shap:
-        print(f"  ⚠️ SHAPエラー: {_e_shap}. スキップします。")
-
-    # === 独立テスト5: 前日REG系特徴量を1つずつテスト ===
-    print("\n=== 独立テスト5: 前日REG系特徴量の追加テスト ===")
-    _reg_new_feats = [
-        ('prev_reg_count_1', '前日REG回数'),
-        ('prev_reg_prob_1',  '前日REG確率'),
-        ('prev_big_reg_ratio_1', '前日BIG/REG比率'),
-    ]
-    _reg_base_score = _quick_oof_score(current_best_features).get('avg_diff', 0)
-    print(f"  ベース: {_reg_base_score:+.0f}枚 ({len(current_best_features)}特徴量)")
-    for _rfeat, _rfeat_label in _reg_new_feats:
-        if _rfeat not in df_cls_sel.columns:
-            print(f"  ⚠️ {_rfeat_label}({_rfeat})がデータに存在しません。スキップ。")
-            continue
-        _test_feats = current_best_features + [_rfeat] if _rfeat not in current_best_features else current_best_features
-        sc_r = _quick_oof_score(_test_feats).get('avg_diff', 0)
-        if sc_r > _reg_base_score:
-            print(f"  ✅ {_rfeat_label}: {sc_r:+.0f}枚 (改善: {sc_r - _reg_base_score:+.0f}枚) → 採用")
-            current_best_features = _test_feats
-            optimal_feat_cols = _test_feats
-            _reg_base_score = sc_r
-        else:
-            print(f"  ❌ {_rfeat_label}: {sc_r:+.0f}枚 (改善なし: {sc_r - _reg_base_score:+.0f}枚) → 不採用")
-    print(f"  最終特徴量: {len(current_best_features)}個, スコア: {_reg_base_score:+.0f}枚")
-
-
-    # ── ④ バックテスト: 旧セット vs 最適セット vs 採用新特徴量セット ──
-    print("\n=== バックテスト (Walk-forward) ===")
+    # 共通定義
     pos_sum = y_sel.sum()
     spw = (len(y_sel) - pos_sum) / pos_sum if pos_sum > 0 else 1
-
+    
     def model_factories_bt(spw_val):
         from xgboost import XGBClassifier
         import lightgbm as lgb
         from catboost import CatBoostClassifier
+        from sklearn.ensemble import ExtraTreesClassifier
         return [
             XGBClassifier(
                 n_estimators=260, max_depth=3, learning_rate=0.02,
@@ -1873,7 +1660,6 @@ if __name__ == '__main__':
                 max_features=0.7, class_weight='balanced_subsample',
                 random_state=42, n_jobs=-1
             ),
-            # CatBoost: 順序型特徴量を自動的に扱えるため多様性に貢献
             CatBoostClassifier(
                 iterations=250, depth=4, learning_rate=0.03,
                 l2_leaf_reg=15, bootstrap_type='Bernoulli', subsample=0.8,
@@ -1891,7 +1677,6 @@ if __name__ == '__main__':
                             tree_method='hist', device='cuda', random_state=42)
 
     def _extract_bt_metrics(bt_res):
-        """バックテスト結果から成績指標を抽出するヘルパー"""
         if not bt_res:
             return {'profit': 0.0, 'hit_rate': 0.0, 'tp_ratio': 0.0, 'fp_ratio': 0.0, 'daily_avg': 0.0}
         active = [r for r in bt_res if not r.get('skipped', False)]
@@ -1899,78 +1684,93 @@ if __name__ == '__main__':
         profit = float(final.get('cumulative_profit', 0))
         daily_avg = profit / len(active) if active else 0.0
         hit_rates = [r.get('hit_rate', 0) for r in active if 'hit_rate' in r]
-        tp_ratios  = [r.get('tp_ratio', 0) for r in active if 'tp_ratio' in r]
-        fp_ratios  = [r.get('fp_ratio', 0) for r in active if 'fp_ratio' in r]
         return {
             'profit':    profit,
             'daily_avg': daily_avg,
             'hit_rate':  float(np.mean(hit_rates)) if hit_rates else 0.0,
-            'tp_ratio':  float(np.mean(tp_ratios)) if tp_ratios else 0.0,
-            'fp_ratio':  float(np.mean(fp_ratios)) if fp_ratios else 0.0,
         }
 
-    # 今回追加した全新特徴量 (採否に関わらずロールバック判定に使う)
-    NEW_FEATURES = ALL_NEW_FEATURES
-
-
-    print("  [旧特徴量セット] バックテスト中...")
-    old_selected = [c for c in selected_features if c not in ALL_NEW_FEATURES]
-    feat_cols_old = [c for c in old_selected if c in df_feat.columns]
-    bt_old = run_backtest(df_feat, feat_cols_old, model_factories_bt, reg_factory_bt, spw, top_n=3)
-    metrics_old = _extract_bt_metrics(bt_old)
-    print(f"    累積収支: {metrics_old['profit']:+,.0f}枚 | "
-          f"日次平均: {metrics_old['daily_avg']:+,.0f}枚 | "
-          f"的中率: {metrics_old['hit_rate']:.3f}")
-
-    print("  [後退選択・最適特徴量セット] バックテスト中...")
-    feat_cols_optimal = [c for c in optimal_feat_cols if c in df_feat.columns]
-    bt_opt = run_backtest(df_feat, feat_cols_optimal, model_factories_bt, reg_factory_bt, spw, top_n=3)
-    metrics_opt = _extract_bt_metrics(bt_opt)
-    print(f"    累積収支: {metrics_opt['profit']:+,.0f}枚 | "
-          f"日次平均: {metrics_opt['daily_avg']:+,.0f}枚 | "
-          f"的中率: {metrics_opt['hit_rate']:.3f}  ({len(feat_cols_optimal)}特徴量)")
-
-    print("  [採用新特徴量セット] バックテスト中...")
-    feat_cols_adopted = feat_cols_old + [c for c in adopted_new_feats if c in df_feat.columns and c in selected_features]
-    bt_new = run_backtest(df_feat, feat_cols_adopted, model_factories_bt, reg_factory_bt, spw, top_n=3)
-    metrics_new = _extract_bt_metrics(bt_new)
-    print(f"    累積収支: {metrics_new['profit']:+,.0f}枚 | "
-          f"日次平均: {metrics_new['daily_avg']:+,.0f}枚 | "
-          f"的中率: {metrics_new['hit_rate']:.3f}")
-
-    # ── ⑤ 三者比較で最良セットを採用 ──
-    # 最良 = 累積収支が最も高いセット
-    _candidates_bt = [
-        ('old',     metrics_old['profit'], bt_old,  feat_cols_old,     'old (baseline)'),
-        ('optimal', metrics_opt['profit'], bt_opt,  feat_cols_optimal, f'optimal (backward-elim {len(feat_cols_optimal)}feat)'),
-        ('new',     metrics_new['profit'], bt_new,  feat_cols_adopted, 'new (adopted groups)'),
+    # 特徴量定義
+    old_selected = [c for c in selected_features if c not in ALL_NEW_FEATURES and c in df_feat.columns]
+    
+    # 1. ベースライン (旧特徴量セット) の測定
+    print("  [1] ベースライン (旧特徴量) バックテスト走行中...")
+    bt_base = run_backtest(df_feat, old_selected, model_factories_bt, reg_factory_bt, spw)
+    m_base = _extract_bt_metrics(bt_base)
+    print(f"      => 累積収支: {m_base['profit']:+,.0f}枚 (日次平均: {m_base['daily_avg']:+,.0f}枚)")
+    
+    best_profit = m_base['profit']
+    best_config = {
+        'feat_cols': list(old_selected),
+        'use_weights': False,
+        'use_lr_plus': False,
+        'use_soft_labels': False,
+        'use_shap_pruning': False,
+        'label': 'ベースライン (旧特徴量)'
+    }
+    
+    # 各種パラメータと新特徴量の追加を Greedy に評価する
+    evaluations = [
+        # (設定名, 特徴量セット, use_weights, use_lr_plus, use_soft_labels, use_shap_pruning)
+        ("新特徴量グループ (GROUP_A+B+C) 追加", old_selected + [c for c in GROUP_A + GROUP_B + GROUP_C if c in df_feat.columns], False, False, False, False),
+        ("設定の段階の重みづけ (設定5=1.5, 6=2.0)", old_selected, True, False, False, False),
+        ("陽性尤度比 (LR+) の使用", old_selected, False, True, False, False),
+        ("目的変数を確率 (ソフトラベル) に変更", old_selected, False, False, True, False),
+        ("SHAP値による特徴量削減", old_selected, False, False, False, True),
+        ("前日REG確率の追加", old_selected + ['prev_reg_prob_1'] if 'prev_reg_prob_1' in df_feat.columns else old_selected, False, False, False, False),
+        ("前日BIG/REG比率の追加", old_selected + ['prev_big_reg_ratio_1'] if 'prev_big_reg_ratio_1' in df_feat.columns else old_selected, False, False, False, False),
+        ("前日REG回数の追加", old_selected + ['prev_reg_count_1'] if 'prev_reg_count_1' in df_feat.columns else old_selected, False, False, False, False),
+        ("特別日フラグの追加", old_selected + ['is_restock_date', 'is_tenun_date'] if 'is_restock_date' in df_feat.columns else old_selected, False, False, False, False),
+        ("特別日フラグ + SHAP削減", old_selected + ['is_restock_date', 'is_tenun_date'] if 'is_restock_date' in df_feat.columns else old_selected, False, False, False, True),
     ]
-    _best = max(_candidates_bt, key=lambda x: x[1])
-    _best_key, _best_profit, bt_results, feat_cols_bt, feature_set_label = _best
-
-    print(f"\n  🏆 最良セット: [{_best_key}] 累積収支={_best_profit:+,.0f}枚")
-    for _key, _profit, _, _, _label in _candidates_bt:
-        _mark = '✅' if _key == _best_key else '  '
-        print(f"    {_mark} {_label}: {_profit:+,.0f}枚")
-
-    # ロールバック判定: 最良が旧セット未満(5%以上悪化)なら旧にフォールバック
-    if _best_profit < metrics_old['profit'] * 0.95:
-        print("  ⚠️ 全セットが旧セット比5%以上悪化 → 旧セットにロールバック")
-        bt_results = bt_old
-        feat_cols_bt = feat_cols_old
-        feature_set_label = 'old (rollback)'
-        FEATURE_COLS[:] = [c for c in FEATURE_COLS if c not in ALL_NEW_FEATURES]
-    elif _best_key != 'old':
-        # 最良が old でなければ FEATURE_COLS を最良セットに更新
-        FEATURE_COLS[:] = [c for c in FEATURE_COLS if c in feat_cols_bt]
-
-    results['feature_set_used'] = feature_set_label
-    results['backtest_metrics_old'] = metrics_old
-    results['backtest_metrics_optimal'] = metrics_opt
-    results['backtest_metrics_new'] = metrics_new
-    results['optimal_features'] = feat_cols_optimal
-    results['ablation_results'] = {k: v for k, v in abl_results.items()}
-
+    
+    for label, feats, u_w, u_lr, u_soft, u_shap in evaluations:
+        feats_unique = list(dict.fromkeys(feats))
+        print(f"  [*] {label} バックテスト走行中...")
+        bt_res = run_backtest(
+            df_feat, feats_unique, model_factories_bt, reg_factory_bt, spw,
+            use_weights=u_w, use_lr_plus=u_lr, use_soft_labels=u_soft, use_shap_pruning=u_shap
+        )
+        m_eval = _extract_bt_metrics(bt_res)
+        improved = m_eval['profit'] > best_profit
+        mark = "✅ 採用" if improved else "❌ 不採用"
+        print(f"      => 累積収支: {m_eval['profit']:+,.0f}枚 (日次平均: {m_eval['daily_avg']:+,.0f}枚) - {mark}")
+        
+        if improved:
+            best_profit = m_eval['profit']
+            best_config = {
+                'feat_cols': feats_unique,
+                'use_weights': u_w,
+                'use_lr_plus': u_lr,
+                'use_soft_labels': u_soft,
+                'use_shap_pruning': u_shap,
+                'label': label
+            }
+            
+    print(f"\n🏆 最良構成の決定: {best_config['label']}")
+    print(f"  最終累積収支: {best_profit:+,.0f}枚")
+    
+    # 最終的なベスト設定でバックテストの最終結果を算出
+    bt_results = run_backtest(
+        df_feat, best_config['feat_cols'], model_factories_bt, reg_factory_bt, spw,
+        use_weights=best_config['use_weights'],
+        use_lr_plus=best_config['use_lr_plus'],
+        use_soft_labels=best_config['use_soft_labels'],
+        use_shap_pruning=best_config['use_shap_pruning']
+    )
+    
+    # 特徴量リストを最終決定されたもので置き換え
+    FEATURE_COLS[:] = [c for c in FEATURE_COLS if c in best_config['feat_cols']]
+    
+    # UI/予測用にフラグをグローバルに伝搬（あるいは predict_next_day で使用）
+    USE_SAMPLE_WEIGHTS = best_config['use_weights']
+    USE_LR_PLUS = best_config['use_lr_plus']
+    USE_SOFT_LABELS = best_config['use_soft_labels']
+    USE_SHAP_PRUNING = best_config['use_shap_pruning']
+    
+    results['feature_set_used'] = best_config['label']
+    results['backtest_metrics_best'] = _extract_bt_metrics(bt_results)
+    results['optimal_features'] = best_config['feat_cols']
 
     if bt_results:
         active_days = [r for r in bt_results if not r.get('skipped', False)]
@@ -1997,7 +1797,7 @@ if __name__ == '__main__':
             'final_avg_cumulative': float(bt_results[-1]['avg_cumulative']) if bt_results else 0,
             'daily_avg_profit': float(final['cumulative_profit'] / len(active_days)) if active_days else 0,
             'graph_path': graph_path,
-            'feature_set_used': feature_set_label,
+            'feature_set_used': best_config['label'],
         }
         results['backtest'] = bt_summary
     
@@ -2005,10 +1805,12 @@ if __name__ == '__main__':
     print("\n=== 翌日予測の生成 ===")
     results['next_day_predictions'] = predict_next_day(
         df_feat, 
-        selected_feats=feat_cols_optimal, 
+        selected_feats=best_config['feat_cols'], 
         layout_lookup=lookup, 
-        use_weights=USE_SAMPLE_WEIGHTS, 
-        use_lr_plus=USE_LR_PLUS
+        use_weights=best_config['use_weights'], 
+        use_lr_plus=best_config['use_lr_plus'],
+        use_soft_labels=best_config['use_soft_labels'],
+        use_shap_pruning=best_config['use_shap_pruning']
     )
 
     import json
@@ -2046,4 +1848,3 @@ if __name__ == '__main__':
             print("変更がないため、コミットとプッシュをスキップしました。")
     except subprocess.CalledProcessError as e:
         print(f"Git操作中にエラーが発生しました: {e}")
-

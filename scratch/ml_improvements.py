@@ -76,7 +76,8 @@ def optimize_threshold_by_profit(oof_probs, y_true, diffs):
     return best_th, best_stats
 
 
-def run_backtest(df_feat, feat_cols, model_factories_fn, reg_factory_fn, spw, top_n=3):
+def run_backtest(df_feat, feat_cols, model_factories_fn, reg_factory_fn, spw, top_n=3,
+                 use_weights=False, use_lr_plus=False, use_soft_labels=False, use_shap_pruning=False):
     """
     Walk-forward バックテスト。
     学習期間を徐々に拡大しながら、毎日Top-N台を選択した場合の累積収支を計算。
@@ -90,7 +91,11 @@ def run_backtest(df_feat, feat_cols, model_factories_fn, reg_factory_fn, spw, to
     
     df_cls = df_feat[df_feat['推定設定'].notna()].copy()
     df_cls['高設定フラグ'] = (df_cls['推定設定'] >= 4).astype(int)
-    
+    if '高設定確率' not in df_cls.columns:
+        df_cls['高設定確率'] = df_cls['高設定フラグ'].astype(float)
+    else:
+        df_cls['高設定確率'] = df_cls['高設定確率'].fillna(df_cls['高設定フラグ'].astype(float))
+        
     daily_results = []
     cumulative_profit = 0
     random_cumulative = 0
@@ -101,7 +106,31 @@ def run_backtest(df_feat, feat_cols, model_factories_fn, reg_factory_fn, spw, to
     trained_reg_model = None
     trained_threshold = 0.5
     last_train_idx = -retrain_interval
+    current_feat_cols = list(feat_cols)
     
+    def to_regressor(clf):
+        from xgboost import XGBRegressor
+        import lightgbm as lgb
+        from sklearn.ensemble import ExtraTreesRegressor
+        from catboost import CatBoostRegressor
+        
+        clf_name = str(clf.__class__)
+        params = clf.get_params()
+        
+        # 不要なパラメータを削除
+        for key in ['scale_pos_weight', 'class_weight', 'auto_class_weights', 'eval_metric', 'tree_method', 'device', 'criterion', 'verbose', 'task_type']:
+            params.pop(key, None)
+            
+        if 'XGBClassifier' in clf_name:
+            return XGBRegressor(**params, tree_method='hist', device='cuda')
+        elif 'LGBMClassifier' in clf_name:
+            return lgb.LGBMRegressor(**params)
+        elif 'ExtraTreesClassifier' in clf_name:
+            return ExtraTreesRegressor(**params)
+        elif 'CatBoostClassifier' in clf_name:
+            return CatBoostRegressor(**params, verbose=0, task_type='GPU')
+        return clf
+
     for eval_idx in range(train_end_idx, n_dates):
         eval_date = all_dates[eval_idx]
         train_dates = all_dates[:eval_idx]
@@ -113,52 +142,140 @@ def run_backtest(df_feat, feat_cols, model_factories_fn, reg_factory_fn, spw, to
         train_cls = df_cls[df_cls['日付'].isin(train_dates)]
         if len(train_cls) < 30 or train_cls['高設定フラグ'].sum() < 5:
             continue
-        
-        X_train = train_cls[feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
-        y_train = train_cls['高設定フラグ']
-        
+            
+        # ターゲットとサンプルの重みを決定
+        settings_train = train_cls['推定設定'].values
+        sample_weights = np.ones(len(train_cls))
+        if use_weights:
+            sample_weights[settings_train == 5] = 1.5
+            sample_weights[settings_train == 6] = 2.0
+            
+        if use_soft_labels:
+            y_train = train_cls['高設定確率'].values
+        else:
+            y_train = train_cls['高設定フラグ'].values
+            
         train_reg = df_feat[df_feat['日付'].isin(train_dates)]
-        X_train_reg = train_reg[feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
         y_train_reg = train_reg['最終差枚']
         overall_avg = float(y_train_reg.mean())
         
         if eval_idx - last_train_idx >= retrain_interval or trained_models is None:
+            # 特徴量決定（SHAP削減）
+            X_train_full = train_cls[feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
+            if use_shap_pruning:
+                try:
+                    import shap
+                    from sklearn.ensemble import ExtraTreesClassifier
+                    shap_model = ExtraTreesClassifier(n_estimators=100, max_depth=7, random_state=42, n_jobs=-1)
+                    shap_model.fit(X_train_full, train_cls['高設定フラグ'])
+                    explainer = shap.TreeExplainer(shap_model)
+                    shap_values = explainer.shap_values(X_train_full)
+                    if isinstance(shap_values, list):
+                        sv = shap_values[1]
+                    elif hasattr(shap_values, 'ndim') and shap_values.ndim == 3:
+                        sv = shap_values[:, :, 1]
+                    else:
+                        sv = shap_values
+                    mean_abs_shap = np.abs(sv).mean(axis=0)
+                    shap_df = pd.Series(mean_abs_shap, index=feat_cols).sort_values(ascending=False)
+                    shap_threshold = shap_df.max() * 0.01
+                    active_feats = shap_df[shap_df >= shap_threshold].index.tolist()
+                    if len(active_feats) >= 5:
+                        current_feat_cols = active_feats
+                    else:
+                        current_feat_cols = list(feat_cols)
+                except Exception as e_shap:
+                    print(f"  [SHAP Pruning Error] {e_shap}")
+                    current_feat_cols = list(feat_cols)
+            else:
+                current_feat_cols = list(feat_cols)
+                
+            X_train = train_cls[current_feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
+            X_train_reg = train_reg[current_feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
+            
             trained_models = []
             for factory in model_factories_fn(spw):
-                m = factory
-                m.fit(X_train, y_train)
+                m = to_regressor(factory) if use_soft_labels else factory
+                if use_weights or use_soft_labels:
+                    m.fit(X_train, y_train, sample_weight=sample_weights)
+                else:
+                    m.fit(X_train, y_train)
                 trained_models.append(m)
-            
+                
             trained_reg_model = reg_factory_fn()
             trained_reg_model.fit(X_train_reg, y_train_reg)
             
-            n_splits = min(3, int(y_train.sum()), int(len(y_train) - y_train.sum()))
+            # OOFによる重み決定
+            n_splits = min(3, int(train_cls['高設定フラグ'].sum()))
             if n_splits < 2:
                 n_splits = 2
             tscv = TimeSeriesSplit(n_splits=n_splits)
-            oof_probs = np.zeros(len(X_train))
-            oof_count = np.zeros(len(X_train))
-            for m_template in model_factories_fn(spw):
+            n_models = len(trained_models)
+            oof_by_m = [np.full(len(X_train), np.nan) for _ in range(n_models)]
+            
+            for m_i, m_template in enumerate(model_factories_fn(spw)):
+                m_cv = to_regressor(m_template) if use_soft_labels else m_template
                 for tr_idx, val_idx in tscv.split(X_train):
-                    m_cv = m_template.__class__(**m_template.get_params())
-                    m_cv.fit(X_train.iloc[tr_idx], y_train.iloc[tr_idx])
-                    oof_probs[val_idx] += m_cv.predict_proba(X_train.iloc[val_idx])[:, 1]
-                    oof_count[val_idx] += 1
-            valid_mask = oof_count > 0
-            if valid_mask.sum() > 10:
-                oof_probs[valid_mask] /= oof_count[valid_mask]
+                    m_cv_clone = m_cv.__class__(**m_cv.get_params())
+                    if use_weights or use_soft_labels:
+                        m_cv_clone.fit(X_train.iloc[tr_idx], y_train[tr_idx], sample_weight=sample_weights[tr_idx])
+                    else:
+                        m_cv_clone.fit(X_train.iloc[tr_idx], y_train[tr_idx])
+                        
+                    if use_soft_labels:
+                        oof_by_m[m_i][val_idx] = np.clip(m_cv_clone.predict(X_train.iloc[val_idx]), 0.0, 1.0)
+                    else:
+                        oof_by_m[m_i][val_idx] = m_cv_clone.predict_proba(X_train.iloc[val_idx])[:, 1]
+                        
+            train_diffs = train_cls['最終差枚'].values
+            TARGET_RATE = 0.25
+            model_weights = []
+            for m_i in range(n_models):
+                m_oof = oof_by_m[m_i]
+                valid = ~np.isnan(m_oof)
+                if valid.sum() < 5:
+                    model_weights.append(0.0)
+                    continue
+                v = m_oof[valid]
+                v_min, v_max = v.min(), v.max()
+                if v_max > v_min:
+                    v_norm = (v - v_min) / (v_max - v_min)
+                else:
+                    v_norm = v
+                th_top = np.percentile(v_norm, 100 * (1 - TARGET_RATE))
+                sel = v_norm >= th_top
+                avg_d = float(train_diffs[valid][sel].mean()) if sel.sum() > 0 else 0.0
+                model_weights.append(max(0.0, avg_d))
+                
+            w_sum = sum(model_weights)
+            if w_sum <= 0:
+                trained_weights = np.ones(n_models) / n_models
+            else:
+                trained_weights = np.array(model_weights) / w_sum
+                
+            # 重み付きOOFで閾値最適化
+            all_valid = np.all(~np.isnan(np.vstack(oof_by_m)), axis=0)
+            if all_valid.sum() > 10:
+                oof_weighted = np.average(
+                    np.vstack([o[all_valid] for o in oof_by_m]), axis=0,
+                    weights=trained_weights
+                )
                 trained_threshold, _ = optimize_threshold_by_profit(
-                    oof_probs[valid_mask],
-                    y_train.values[valid_mask],
-                    train_cls['最終差枚'].values[valid_mask]
+                    oof_weighted,
+                    train_cls['高設定フラグ'].values[all_valid],
+                    train_cls['最終差枚'].values[all_valid]
                 )
             last_train_idx = eval_idx
+            
+        X_eval = eval_df[current_feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
         
-        X_eval = eval_df[feat_cols].replace([np.inf, -np.inf], 0).fillna(0)
-        preds = np.zeros(len(X_eval))
+        preds_stack = []
         for m in trained_models:
-            preds += m.predict_proba(X_eval)[:, 1]
-        preds /= len(trained_models)
+            if use_soft_labels:
+                preds_stack.append(np.clip(m.predict(X_eval), 0.0, 1.0))
+            else:
+                preds_stack.append(m.predict_proba(X_eval)[:, 1])
+        preds = np.average(np.vstack(preds_stack), axis=0, weights=trained_weights)
         
         eval_df = eval_df.copy()
         eval_df['pred_prob'] = preds
@@ -170,16 +287,13 @@ def run_backtest(df_feat, feat_cols, model_factories_fn, reg_factory_fn, spw, to
         avg_profit = float(eval_df['最終差枚'].mean())
         
         if len(candidates) == 0:
-            # 閾値超えがなくてもTop-Nを選択（バックテスト用：モデルの順位付け能力を評価）
-            # 回帰モデルの期待差枚順でフォールバック
             candidates = eval_df.nlargest(top_n, 'adjusted_diff')
-        
-        # 候補の中から期待差枚が最も高いTop-Nを選択
+            
         selected = candidates.nlargest(top_n, 'adjusted_diff')
         selected_profit = float(selected['最終差枚'].mean())
         random_profit = float(eval_df['最終差枚'].sample(
             min(top_n, len(eval_df)), random_state=eval_idx).mean())
-        
+            
         cumulative_profit += selected_profit
         random_cumulative += random_profit
         avg_cumulative += avg_profit
@@ -187,7 +301,7 @@ def run_backtest(df_feat, feat_cols, model_factories_fn, reg_factory_fn, spw, to
         selected_high = 0
         if '推定設定' in selected.columns:
             selected_high = int((selected['推定設定'].dropna() >= 4).sum())
-        
+            
         daily_results.append({
             'date': eval_date,
             'selected_profit': selected_profit,
@@ -199,10 +313,12 @@ def run_backtest(df_feat, feat_cols, model_factories_fn, reg_factory_fn, spw, to
             'random_cumulative': random_cumulative,
             'avg_cumulative': avg_cumulative,
             'threshold': trained_threshold,
+            'model_weights': trained_weights.tolist(),
             'skipped': False,
         })
-    
+        
     return daily_results
+
 
 
 def plot_backtest(daily_results, output_path):

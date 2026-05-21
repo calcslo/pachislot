@@ -84954,3 +84954,13 @@ cleaned:    スタート   出玉  種別
 5 1124 792 11320 792
 5 1145 771 11320 771
 5 1149 767 11320 767
+INFO:     100.109.8.4:55515 - "GET /apple-touch-icon-precomposed.png HTTP/1.1" 404 Not Found
+INFO:     100.109.8.4:55516 - "GET / HTTP/1.1" 200 OK
+INFO:     100.109.8.4:55517 - "GET /apple-touch-icon.png HTTP/1.1" 404 Not Found
+INFO:     100.109.8.4:55518 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     100.109.8.4:57155 - "GET / HTTP/1.1" 200 OK
+INFO:     100.109.8.4:57154 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     100.109.8.4:57155 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     100.109.8.4:57156 - "GET /apple-touch-icon-precomposed.png HTTP/1.1" 404 Not Found
+INFO:     100.109.8.4:57157 - "GET /apple-touch-icon.png HTTP/1.1" 404 Not Found
+INFO:     100.109.8.4:57158 - "GET /favicon.ico HTTP/1.1" 404 Not Found

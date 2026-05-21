@@ -1655,6 +1655,7 @@ function renderCumulAnalysis(data) {
     renderIslandPastDiffAnalysis(data);
     renderUnexplodedAnalysis(data);
     renderAccidentalExplosionAnalysis(data);
+    renderSpecialDaysAnalysis(data);
 }
 
 // ==========================================
@@ -3367,6 +3368,95 @@ function renderAccidentalExplosionAnalysis(data) {
 
     drawBar('chart-accidental-explosion-diff', diffLabels, diffVals, '翌日 平均差枚', { datasetExtras: { backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(16,185,129,0.7)', 'rgba(59,130,246,0.7)'] } });
     drawBar('chart-accidental-explosion-setting', setLabels, setVals, '翌日 平均設定', { datasetExtras: { backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(16,185,129,0.7)', 'rgba(59,130,246,0.7)'] } });
+}
+
+// 特定日（景品入荷・天運総撃）の集計とグラフ表示
+function renderSpecialDaysAnalysis(data) {
+    const yLabel = analysisMode === 'setting' ? '平均設定' : '平均差枚';
+    
+    // specialDatesDataから景品入荷日と天運総撃日の日付セットを作成
+    const restockSet = new Set(specialDatesData && specialDatesData.restock_dates ? specialDatesData.restock_dates : []);
+    const tenunSet = new Set(specialDatesData && specialDatesData.tenun_dates ? specialDatesData.tenun_dates : []);
+    
+    let restockC = 0, restockDiff = 0, restockSetSum = 0, restockSetC = 0;
+    let tenunC = 0, tenunDiff = 0, tenunSetSum = 0, tenunSetC = 0;
+    let eventC = 0, eventDiff = 0, eventSetSum = 0, eventSetC = 0;
+    let regularC = 0, regularDiff = 0, regularSetSum = 0, regularSetC = 0;
+    
+    data.forEach(row => {
+        const d = row['日付'];
+        const diff = Number(row['最終差枚']) || 0;
+        const g = Number(row['累計ゲーム']) || 0;
+        const model = row['機種名'];
+        
+        let estSettingVal = 0;
+        let hasSetting = false;
+        const est = estimateSetting(model, g, row['BIG'], row['REG']);
+        if (est) {
+            estSettingVal = est.setting;
+            hasSetting = true;
+        }
+        
+        if (restockSet.has(d)) {
+            restockC++;
+            restockDiff += diff;
+            if (hasSetting) {
+                restockSetSum += estSettingVal;
+                restockSetC++;
+            }
+        } else if (tenunSet.has(d)) {
+            tenunC++;
+            tenunDiff += diff;
+            if (hasSetting) {
+                tenunSetSum += estSettingVal;
+                tenunSetC++;
+            }
+        } else {
+            // イベント日（3・5・8の付く日）の判定
+            const dayStr = d.split('-')[2];
+            if (dayStr && (dayStr.endsWith('3') || dayStr.endsWith('5') || dayStr.endsWith('8'))) {
+                eventC++;
+                eventDiff += diff;
+                if (hasSetting) {
+                    eventSetSum += estSettingVal;
+                    eventSetC++;
+                }
+            } else {
+                regularC++;
+                regularDiff += diff;
+                if (hasSetting) {
+                    regularSetSum += estSettingVal;
+                    regularSetC++;
+                }
+            }
+        }
+    });
+    
+    const labels = ['景品入荷日', '天運総撃', '通常日', 'イベント日(3・5・8)'];
+    const vals = [];
+    
+    if (analysisMode === 'setting') {
+        vals.push(restockSetC > 0 ? restockSetSum / restockSetC : 0);
+        vals.push(tenunSetC > 0 ? tenunSetSum / tenunSetC : 0);
+        vals.push(regularSetC > 0 ? regularSetSum / regularSetC : 0);
+        vals.push(eventSetC > 0 ? eventSetSum / eventSetC : 0);
+    } else {
+        vals.push(restockC > 0 ? restockDiff / restockC : 0);
+        vals.push(tenunC > 0 ? tenunDiff / tenunC : 0);
+        vals.push(regularC > 0 ? regularDiff / regularC : 0);
+        vals.push(eventC > 0 ? eventDiff / eventC : 0);
+    }
+    
+    drawBar('chart-special-days-diff', labels, vals, yLabel, {
+        datasetExtras: {
+            backgroundColor: [
+                'rgba(9, 109, 217, 0.7)',   // 景品入荷日
+                'rgba(212, 56, 13, 0.7)',   // 天運総撃
+                'rgba(148, 163, 184, 0.7)',  // 通常日
+                'rgba(168, 85, 247, 0.7)'   // イベント日
+            ]
+        }
+    });
 }
 
 // ==========================================
