@@ -32,12 +32,11 @@ TARGET_POSITIVE_RATE = 0.255
 
 MACHINE_PROBS = {
     'LBﾆｭｰｷﾝｸﾞﾊﾅﾊﾅV': {
-        1: {'big': 319, 'reg': 619},
-        2: {'big': 299, 'reg': 510},
-        3: {'big': 282, 'reg': 469},
-        4: {'big': 265, 'reg': 387},
-        5: {'big': 248, 'reg': 325},
-        6: {'big': 230, 'reg': 273},
+        1: {'big': 299, 'reg': 496},
+        2: {'big': 291, 'reg': 471},
+        3: {'big': 281, 'reg': 442},
+        4: {'big': 268, 'reg': 409},
+        5: {'big': 253, 'reg': 372},
     }
 }
 
@@ -1341,7 +1340,9 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
     n_pred_positive = pred_high.sum()
     k = 20
     top_k_idx = np.argsort(oof_probs)[-k:]
-    for s in [4, 5, 6]:
+    # 推定設定のうち、高設定（4以上）で実際に存在する値のみ動的に抽出
+    unique_high_settings = sorted([int(s) for s in np.unique(eval_settings) if not pd.isna(s) and s >= 4], reverse=True)
+    for s in unique_high_settings:
         n_actual = (eval_settings == s).sum()
         n_correct = ((pred_high == 1) & (eval_settings == s)).sum()
         ppv = float(n_correct / n_pred_positive) if n_pred_positive > 0 else 0.0

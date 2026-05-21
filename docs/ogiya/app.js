@@ -3514,14 +3514,20 @@ function renderNextDayPredictions(predsData) {
     if (smEl) {
         smEl.innerHTML = '';
         if (predsData.setting_metrics) {
-            [6, 5, 4].forEach(s => {
-                const sm = predsData.setting_metrics[`setting_${s}`];
+            const keys = Object.keys(predsData.setting_metrics).sort((a, b) => b.localeCompare(a));
+            keys.forEach(key => {
+                const sm = predsData.setting_metrics[key];
                 if (sm) {
+                    const sNum = key.replace('setting_', '');
+                    let sLabel = `設定${sNum}`;
+                    if (sNum === '5') {
+                        sLabel = '設定V';
+                    }
                     const row = document.createElement('div');
                     row.style.display = 'flex';
                     row.style.justifyContent = 'space-between';
                     row.innerHTML = `
-                        <span style="color:var(--text-muted)">設定${s}:</span>
+                        <span style="color:var(--text-muted)">${sLabel}:</span>
                         <span>
                             <span title="陽性的中率(PPV)" style="color:#10b981;">的中:${(sm.ppv * 100).toFixed(1)}%</span> | 
                             <span title="Precision@${sm.k}" style="color:#60a5fa;">P@${sm.k}:${(sm.precision_at_k * 100).toFixed(1)}%</span> | 
