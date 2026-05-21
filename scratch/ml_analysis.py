@@ -172,6 +172,14 @@ FEATURE_NAMES_JP['machine_month_cumul_diff'] = '台月間累計差枚'
 FEATURE_COLS.append('store_month_cumul_diff')
 FEATURE_NAMES_JP['store_month_cumul_diff'] = '店全体月間累計差枚'
 
+# 前日REG系特徴量
+FEATURE_COLS.append('prev_reg_count_1')
+FEATURE_NAMES_JP['prev_reg_count_1'] = '前日REG回数'
+FEATURE_COLS.append('prev_reg_prob_1')
+FEATURE_NAMES_JP['prev_reg_prob_1'] = '前日REG確率(1/確率)'
+FEATURE_COLS.append('prev_big_reg_ratio_1')
+FEATURE_NAMES_JP['prev_big_reg_ratio_1'] = '前日BIG/REG比率'
+
 def estimate_setting(model, games, big, reg):
     games, big, reg = int(games or 0), int(big or 0), int(reg or 0)
     if model not in MACHINE_PROBS or games < 100:
@@ -193,6 +201,25 @@ def estimate_setting(model, games, big, reg):
         if p > best_p:
             best_p, best = p, s
     return int(best) if best is not None else None
+
+def estimate_setting_prob(model, games, big, reg, high_threshold=4):
+    """高設定(high_threshold以上)の事後確率を返す。ゲーム数不足の場合は None を返す。"""
+    games, big, reg = int(games or 0), int(big or 0), int(reg or 0)
+    if model not in MACHINE_PROBS or games < 100:
+        return None
+    probs = MACHINE_PROBS[model]
+    log_w, max_lw = {}, -math.inf
+    for s, p in probs.items():
+        pB = 1 / p['big']
+        pR = 1 / p['reg']
+        pN = 1 - pB - pR
+        if pN <= 0: continue
+        lw = big * math.log(pB) + reg * math.log(pR) + (games - big - reg) * math.log(pN)
+        log_w[s] = lw
+        if lw > max_lw: max_lw = lw
+    total = sum(math.exp(lw - max_lw) for lw in log_w.values())
+    high_prob = sum(math.exp(lw - max_lw) / total for s, lw in log_w.items() if s >= high_threshold)
+    return float(high_prob)
 
 def build_layout_lookup(layout_data):
     rows = len(layout_data)
@@ -282,6 +309,7 @@ def build_features(df, layout_lookup):
     df['日付'] = pd.to_datetime(df['日付'])
     df['台番号_pad'] = df['台番号'].astype(str).str.zfill(4)
     df['推定設定'] = df.apply(lambda r: estimate_setting(r['機種名'], r['累計ゲーム'], r['BIG'], r['REG']), axis=1)
+    df['高設定確率'] = df.apply(lambda r: estimate_setting_prob(r['機種名'], r['累計ゲーム'], r['BIG'], r['REG']), axis=1)
 
     df['position'] = df['台番号_pad'].apply(lambda x: layout_lookup.get(x, {}).get('pos', -1))
     df['position'] = df['position'].apply(lambda x: x if x in [0, 1, 2] else 3)
@@ -397,6 +425,8 @@ def build_features(df, layout_lookup):
         diffs = grp['最終差枚'].tolist()
         settings = grp['推定設定'].tolist()
         games = grp['累計ゲーム'].tolist()
+        bigs = grp['BIG'].tolist()
+        regs = grp['REG'].tolist()
         dates = grp['日付'].tolist()
         island = grp['island_id'].iloc[0]
 
@@ -406,7 +436,8 @@ def build_features(df, layout_lookup):
         _machine_month = None
         _machine_month_cumul = 0.0
         
-        m_data = {d: {'diff': df_, 'set': st, 'game': gm} for d, df_, st, gm in zip(dates, diffs, settings, games)}
+        m_data = {d: {'diff': df_, 'set': st, 'game': gm, 'big': bg, 'reg': rg}
+                  for d, df_, st, gm, bg, rg in zip(dates, diffs, settings, games, bigs, regs)}
         
         for i, date in enumerate(dates):
             date_idx = date_to_idx[date]
@@ -451,6 +482,13 @@ def build_features(df, layout_lookup):
                 if j == 1:
                     hist_feats[key]['prev_setting_1'] = pd_set
                     hist_feats[key]['prev_high_setting_1'] = 1 if pd_set >= 4 else 0
+                    # 前日REG系特徴量
+                    pd_big = m_data[past_date]['big'] if past_date and past_date in m_data else 0
+                    pd_reg = m_data[past_date]['reg'] if past_date and past_date in m_data else 0
+                    pd_game = m_data[past_date]['game'] if past_date and past_date in m_data else 0
+                    hist_feats[key]['prev_reg_count_1'] = int(pd_reg)
+                    hist_feats[key]['prev_reg_prob_1'] = float(pd_game / pd_reg) if pd_reg > 0 else 0.0
+                    hist_feats[key]['prev_big_reg_ratio_1'] = float(pd_big / pd_reg) if pd_reg > 0 else 0.0
 
             # 同曜日の過去パターン（直近4週）
             same_wd_diffs = []
@@ -528,7 +566,8 @@ def build_features(df, layout_lookup):
     spatial_cols = ['adj_left_diff_1', 'adj_right_diff_1', 'adj_avg_diff_1', 'adj_left_win_rate_3d', 'adj_right_win_rate_3d', 'island_high_ratio_3d', 'facing_avg_diff_1']
     store_cols = ['store_high_ratio', 'store_high_prev_3d', 'store_avg_prev_1d', 'store_avg_prev_3d', 'store_win_prev_1d', 'store_win_prev_3d']
     machine_roll_cols = ['machine_high_rate_prev_14d', 'machine_avg_diff_prev_14d']
-    for col in ['cons_neg', 'cons_pos', 'prev_setting_1', 'prev_high_setting_1', 'same_wd_avg_diff', 'same_wd_win_rate'] + store_cols + machine_roll_cols + spatial_cols:
+    reg_feat_cols = ['prev_reg_count_1', 'prev_reg_prob_1', 'prev_big_reg_ratio_1']
+    for col in ['cons_neg', 'cons_pos', 'prev_setting_1', 'prev_high_setting_1', 'same_wd_avg_diff', 'same_wd_win_rate'] + store_cols + machine_roll_cols + spatial_cols + reg_feat_cols:
         df[col] = df.apply(lambda r: hist_feats[(r['台番号_pad'], r['日付'])].get(col, 0), axis=1)
 
     df = df.copy()
@@ -895,18 +934,31 @@ def predict_next_day(df_feat, selected_feats=None, layout_lookup=None, use_weigh
                     if j == 1:
                         feat['prev_setting_1'] = r_hist['推定設定'] if pd.notna(r_hist['推定設定']) else -1
                         feat['prev_high_setting_1'] = 1 if feat['prev_setting_1'] >= 4 else 0
+                        # 前日REG系特徴量
+                        pd_reg = int(r_hist.get('REG', 0) or 0)
+                        pd_big = int(r_hist.get('BIG', 0) or 0)
+                        pd_game = int(r_hist.get('累計ゲーム', 0) or 0)
+                        feat['prev_reg_count_1'] = pd_reg
+                        feat['prev_reg_prob_1'] = float(pd_game / pd_reg) if pd_reg > 0 else 0.0
+                        feat['prev_big_reg_ratio_1'] = float(pd_big / pd_reg) if pd_reg > 0 else 0.0
                 else:
                     feat[f'prev_diff_{j}'] = 0
                     feat[f'prev_games_{j}'] = 0
                     if j == 1:
                         feat['prev_setting_1'] = -1
                         feat['prev_high_setting_1'] = 0
+                        feat['prev_reg_count_1'] = 0
+                        feat['prev_reg_prob_1'] = 0.0
+                        feat['prev_big_reg_ratio_1'] = 0.0
             else:
                 feat[f'prev_diff_{j}'] = 0
                 feat[f'prev_games_{j}'] = 0
                 if j == 1:
                     feat['prev_setting_1'] = -1
                     feat['prev_high_setting_1'] = 0
+                    feat['prev_reg_count_1'] = 0
+                    feat['prev_reg_prob_1'] = 0.0
+                    feat['prev_big_reg_ratio_1'] = 0.0
                     
             if j % 7 == 0 and j <= 28:
                 # same weekday diffs
@@ -1440,6 +1492,11 @@ if __name__ == '__main__':
     # 分類タスクの特徴量選択
     df_cls_sel = df_feat[df_feat['推定設定'].notna()].copy()
     df_cls_sel['高設定フラグ'] = (df_cls_sel['推定設定'] >= 4).astype(int)
+    # 高設定確率 = P(設定>=4 | data), build_features で計算済み。None は 高設定フラグ の float で補完
+    if '高設定確率' in df_cls_sel.columns:
+        df_cls_sel['高設定確率'] = df_cls_sel['高設定確率'].fillna(df_cls_sel['高設定フラグ'].astype(float))
+    else:
+        df_cls_sel['高設定確率'] = df_cls_sel['高設定フラグ'].astype(float)
     X_sel = df_cls_sel[FEATURE_COLS].replace([np.inf, -np.inf], 0).fillna(0)
     y_sel = df_cls_sel['高設定フラグ']
     
@@ -1485,16 +1542,23 @@ if __name__ == '__main__':
 
     ALL_NEW_FEATURES = GROUP_0 + GROUP_A + GROUP_B + GROUP_C + GROUP_D
 
-    def _quick_oof_score(feat_cols_q, label='', use_weights=False, use_lr_plus=False):
+    def _quick_oof_score(feat_cols_q, label='', use_weights=False, use_lr_plus=False, use_soft_labels=False):
         """軽量OOF CV で精度を高速測定 (フルバックテストより大幅に高速)"""
         import numpy as np
         from sklearn.ensemble import ExtraTreesClassifier as _ETC
         from sklearn.model_selection import TimeSeriesSplit as _TSCV
+        from xgboost import XGBRegressor as _XGBR
         df_q = df_cls_sel.copy()
         cols_q = [c for c in feat_cols_q if c in df_q.columns]
         X_q = df_q[cols_q].replace([np.inf, -np.inf], 0).fillna(0)
-        y_q = df_q['高設定フラグ']
         settings_q = df_q['推定設定'].values
+        
+        # use_soft_labels=True の場合: P(高設定) を目的変数にして XGBRegressor で学習
+        if use_soft_labels:
+            soft_y = df_q['高設定確率'].fillna(df_q['高設定フラグ'].astype(float))
+            y_q = soft_y
+        else:
+            y_q = df_q['高設定フラグ']
         
         n_splits = min(5, len(X_q) // 20)
         if n_splits < 2:
@@ -1507,17 +1571,31 @@ if __name__ == '__main__':
             
         tscv = _TSCV(n_splits=n_splits)
         oof = np.full(len(X_q), np.nan)
-        mdl = _ETC(n_estimators=100, max_depth=7, min_samples_leaf=20,
-                   max_features=0.7, class_weight='balanced_subsample',
-                   random_state=42, n_jobs=-1)
-                   
-        for tr_idx, va_idx in tscv.split(X_q):
-            m = _ETC(**mdl.get_params())
-            m.fit(X_q.iloc[tr_idx], y_q.iloc[tr_idx], sample_weight=sample_weights[tr_idx])
-            oof[va_idx] = m.predict_proba(X_q.iloc[va_idx])[:, 1]
-            
+        
+        if use_soft_labels:
+            # XGBoostRegressorで確率を直接予測（ソフトラベル）
+            mdl = _XGBR(n_estimators=100, max_depth=5, learning_rate=0.05,
+                         reg_lambda=10, subsample=0.8, colsample_bytree=0.8,
+                         random_state=42, device='cuda')
+            for tr_idx, va_idx in tscv.split(X_q):
+                m = _XGBR(**mdl.get_params())
+                m.fit(X_q.iloc[tr_idx], y_q.iloc[tr_idx],
+                      sample_weight=sample_weights[tr_idx])
+                oof[va_idx] = np.clip(m.predict(X_q.iloc[va_idx]), 0.0, 1.0)
+            # 二値ラベルに戻して精度評価
+            y_eval_bin = df_q['高設定フラグ'].values
+        else:
+            mdl = _ETC(n_estimators=100, max_depth=7, min_samples_leaf=20,
+                       max_features=0.7, class_weight='balanced_subsample',
+                       random_state=42, n_jobs=-1)
+            for tr_idx, va_idx in tscv.split(X_q):
+                m = _ETC(**mdl.get_params())
+                m.fit(X_q.iloc[tr_idx], y_q.iloc[tr_idx], sample_weight=sample_weights[tr_idx])
+                oof[va_idx] = m.predict_proba(X_q.iloc[va_idx])[:, 1]
+            y_eval_bin = y_q.values
+
         vm = ~np.isnan(oof)
-        oof_v = oof[vm]; y_v = y_q.values[vm]
+        oof_v = oof[vm]; y_v = y_eval_bin[vm]
         diff_v = df_q['最終差枚'].values[vm]
         
         best_score = -np.inf
@@ -1676,6 +1754,97 @@ if __name__ == '__main__':
         USE_LR_PLUS = True
     else:
         print("  ❌ 性能が悪化したため、陽性尤度比(LR+)は不採用とします。")
+
+    # === 独立テスト3: 目的変数を確率に変更 ===
+    print("\n=== 独立テスト3: 目的変数を確率（ソフトラベル）に変更 ===")
+    sc_soft_test = _quick_oof_score(current_best_features, use_soft_labels=True)
+    _base_for_soft = _quick_oof_score(current_best_features)  # バイナリベース再測定
+    print(f"  バイナリラベル: {_base_for_soft['avg_diff']:+.0f}枚")
+    print(f"  確率ラベル:     {sc_soft_test['avg_diff']:+.0f}枚")
+    USE_SOFT_LABELS = False
+    if sc_soft_test['avg_diff'] > _base_for_soft['avg_diff']:
+        print("  ✅ 性能が向上したため、確率目的変数を採用します。")
+        USE_SOFT_LABELS = True
+    else:
+        print("  ❌ 性能が悪化したため、確率目的変数は不採用とします。")
+
+    # === 独立テスト4: SHAP値による特徴量削減 ===
+    print("\n=== 独立テスト4: SHAP値による特徴量削減 ===")
+    try:
+        import shap as _shap
+        from sklearn.ensemble import ExtraTreesClassifier as _ETC4
+        _cols4 = [c for c in current_best_features if c in df_cls_sel.columns]
+        _X4 = df_cls_sel[_cols4].replace([np.inf, -np.inf], 0).fillna(0)
+        _y4 = df_cls_sel['高設定フラグ']
+        _mdl4 = _ETC4(n_estimators=200, max_depth=7, min_samples_leaf=20,
+                       max_features=0.7, class_weight='balanced_subsample',
+                       random_state=42, n_jobs=-1)
+        _mdl4.fit(_X4, _y4)
+        _expl4 = _shap.TreeExplainer(_mdl4)
+        _shap_vals4 = _expl4.shap_values(_X4)
+        # SHAPの返り値は新API(v0.44+)でndarrayになり shape=(n_samples, n_features, n_classes)
+        # 旧APIはlistで [class0_matrix, class1_matrix]
+        if isinstance(_shap_vals4, list):
+            # 旧API: クラス1の SHAP 値を使用
+            _sv4 = _shap_vals4[1]
+        elif hasattr(_shap_vals4, 'ndim') and _shap_vals4.ndim == 3:
+            # 新API 3D: shape=(n_samples, n_features, n_classes) -> クラス1スライス
+            _sv4 = _shap_vals4[:, :, 1]
+        else:
+            _sv4 = _shap_vals4
+        _mean_abs_shap = np.abs(_sv4).mean(axis=0)
+        _shap_df4 = pd.Series(_mean_abs_shap, index=_cols4).sort_values(ascending=False)
+        print("  SHAP重要度 下位10特徴量:")
+        for _fn, _fv in _shap_df4.tail(10).items():
+            print(f"    {_fn}: {_fv:.5f}")
+        # SHAP≈0 の特徴量を除去（閾値: mean_abs_SHAP < 1% of max）
+        _shap_threshold = _shap_df4.max() * 0.01
+        _low_shap_feats = _shap_df4[_shap_df4 < _shap_threshold].index.tolist()
+        print(f"  SHAP閾値以下の特徴量数: {len(_low_shap_feats)} / {len(_cols4)}")
+        if _low_shap_feats:
+            _feats_after_shap = [c for c in current_best_features if c not in _low_shap_feats]
+            sc_shap_test = _quick_oof_score(_feats_after_shap)
+            sc_shap_base = _quick_oof_score(current_best_features)
+            print(f"  SHAP削減前: {sc_shap_base['avg_diff']:+.0f}枚 ({len(current_best_features)}特徴量)")
+            print(f"  SHAP削減後: {sc_shap_test['avg_diff']:+.0f}枚 ({len(_feats_after_shap)}特徴量)")
+            if sc_shap_test['avg_diff'] >= sc_shap_base['avg_diff']:
+                print(f"  ✅ 性能が維持/向上したため、SHAP削減を採用します。({len(_low_shap_feats)}特徴量除去)")
+                current_best_features = _feats_after_shap
+                optimal_feat_cols = _feats_after_shap
+                current_best_score = sc_shap_test['avg_diff']
+            else:
+                print(f"  ❌ 性能が悪化したため、SHAP削減は不採用とします。")
+        else:
+            print("  SHAP閾値以下の特徴量なし。削減不要。")
+    except ImportError:
+        print("  ⚠️ shapライブラリが見つかりません。pip install shap でインストールしてください。スキップします。")
+    except Exception as _e_shap:
+        print(f"  ⚠️ SHAPエラー: {_e_shap}. スキップします。")
+
+    # === 独立テスト5: 前日REG系特徴量を1つずつテスト ===
+    print("\n=== 独立テスト5: 前日REG系特徴量の追加テスト ===")
+    _reg_new_feats = [
+        ('prev_reg_count_1', '前日REG回数'),
+        ('prev_reg_prob_1',  '前日REG確率'),
+        ('prev_big_reg_ratio_1', '前日BIG/REG比率'),
+    ]
+    _reg_base_score = _quick_oof_score(current_best_features).get('avg_diff', 0)
+    print(f"  ベース: {_reg_base_score:+.0f}枚 ({len(current_best_features)}特徴量)")
+    for _rfeat, _rfeat_label in _reg_new_feats:
+        if _rfeat not in df_cls_sel.columns:
+            print(f"  ⚠️ {_rfeat_label}({_rfeat})がデータに存在しません。スキップ。")
+            continue
+        _test_feats = current_best_features + [_rfeat] if _rfeat not in current_best_features else current_best_features
+        sc_r = _quick_oof_score(_test_feats).get('avg_diff', 0)
+        if sc_r > _reg_base_score:
+            print(f"  ✅ {_rfeat_label}: {sc_r:+.0f}枚 (改善: {sc_r - _reg_base_score:+.0f}枚) → 採用")
+            current_best_features = _test_feats
+            optimal_feat_cols = _test_feats
+            _reg_base_score = sc_r
+        else:
+            print(f"  ❌ {_rfeat_label}: {sc_r:+.0f}枚 (改善なし: {sc_r - _reg_base_score:+.0f}枚) → 不採用")
+    print(f"  最終特徴量: {len(current_best_features)}個, スコア: {_reg_base_score:+.0f}枚")
+
 
     # ── ④ バックテスト: 旧セット vs 最適セット vs 採用新特徴量セット ──
     print("\n=== バックテスト (Walk-forward) ===")
