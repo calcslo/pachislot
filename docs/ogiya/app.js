@@ -3510,6 +3510,30 @@ function renderNextDayPredictions(predsData) {
         avgDiffEl.textContent = sign + Math.round(predsData.avg_diff) + ' 枚';
     }
 
+    const smEl = document.getElementById('ml-next-day-setting-metrics');
+    if (smEl) {
+        smEl.innerHTML = '';
+        if (predsData.setting_metrics) {
+            [6, 5, 4].forEach(s => {
+                const sm = predsData.setting_metrics[`setting_${s}`];
+                if (sm) {
+                    const row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.justifyContent = 'space-between';
+                    row.innerHTML = `
+                        <span style="color:var(--text-muted)">設定${s}:</span>
+                        <span>
+                            <span title="陽性的中率(PPV)" style="color:#10b981;">的中:${(sm.ppv * 100).toFixed(1)}%</span> | 
+                            <span title="Precision@${sm.k}" style="color:#60a5fa;">P@${sm.k}:${(sm.precision_at_k * 100).toFixed(1)}%</span> | 
+                            <span title="Recall@${sm.k}" style="color:#a78bfa;">R@${sm.k}:${(sm.recall_at_k * 100).toFixed(1)}%</span>
+                        </span>
+                    `;
+                    smEl.appendChild(row);
+                }
+            });
+        }
+    }
+
     const tbody = document.getElementById('ml-next-day-tbody');
     tbody.innerHTML = '';
 
@@ -3806,3 +3830,4 @@ function formatTreeRules(text, target) {
     html += '</div>';
     return html;
 }
+
