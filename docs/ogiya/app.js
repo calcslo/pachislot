@@ -31,7 +31,8 @@ const MACHINE_PROBS = {
     'ｺﾞｰｺﾞｰｼﾞｬｸﾞﾗｰ3': { 1: { big: 259, reg: 354.2 }, 2: { big: 258, reg: 332.7 }, 3: { big: 257, reg: 306.2 }, 4: { big: 254, reg: 268.6 }, 5: { big: 247.3, reg: 247.3 }, 6: { big: 234.9, reg: 234.9 } },
     'ｳﾙﾄﾗﾐﾗｸﾙｼﾞｬｸﾞﾗｰ': { 1: { big: 267.5, reg: 425.6 }, 2: { big: 261.1, reg: 402.1 }, 3: { big: 256, reg: 350.5 }, 4: { big: 242.7, reg: 322.8 }, 5: { big: 233.2, reg: 297.9 }, 6: { big: 216.3, reg: 277.7 } },
     'ｼﾞｬｸﾞﾗｰｶﾞｰﾙｽﾞSS': { 1: { big: 273.1, reg: 381 }, 2: { big: 270.8, reg: 350.5 }, 3: { big: 260.1, reg: 316.6 }, 4: { big: 250.1, reg: 281.3 }, 5: { big: 243.6, reg: 270.8 }, 6: { big: 226, reg: 252.1 } },
-    'ﾐｽﾀｰｼﾞｬｸﾞﾗｰ': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257 }, 6: { big: 237.4, reg: 237.4 } }
+    'ﾐｽﾀｰｼﾞｬｸﾞﾗｰ': { 1: { big: 268.6, reg: 374.5 }, 2: { big: 267.5, reg: 354.2 }, 3: { big: 260.1, reg: 331 }, 4: { big: 249.2, reg: 291.3 }, 5: { big: 240.9, reg: 257 }, 6: { big: 237.4, reg: 237.4 } },
+    'ﾄﾞﾗｺﾞﾝﾊﾅﾊﾅ~閃光~30': { 1: { 'big': 256, 'reg': 642 }, 2: { 'big': 246, 'reg': 585 }, 3: { 'big': 235, 'reg': 537 }, 4: { 'big': 224, 'reg': 489 }, 5: { 'big': 212, 'reg': 442 }, 6: { 'big': 199, 'reg': 399 } }
 };
 
 let rawData = [], layoutData = [], layoutLookup = {};
@@ -373,7 +374,7 @@ function setupEventListeners() {
             if (currentSection === 'analysis-section') updateDashboard();
         });
     });
-    
+
     document.querySelectorAll('#past-diff-period-tabs .tab-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             document.querySelectorAll('#past-diff-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
@@ -1339,7 +1340,7 @@ function drawBar(id, labels, vals, label, extraOpts = {}) {
         scales.x.min = -2000;
         scales.x.max = 2000;
     }
-    
+
     if (analysisMode === 'setting' || label.includes('設定')) {
         const pVals = vals.filter(v => v > 0);
         if (pVals.length > 0) {
@@ -1421,42 +1422,42 @@ function renderAnalysis(data) {
     data.forEach(row => {
         const d = row['日付'], diff = Number(row['最終差枚']) || 0, g = Number(row['累計ゲーム']) || 0;
         const num = normalizeNum(row['台番号']), model = row['機種名'];
-        
+
         let estSettingVal = 0; let hasSetting = false;
         const est = estimateSetting(model, g, row['BIG'], row['REG']);
         if (est) { estSettingVal = est.setting; hasSetting = true; }
 
         const digit = parseInt(num.slice(-1));
-        if (!isNaN(digit)) { digits[digit].diff += diff; digits[digit].g += g; digits[digit].c++; if(hasSetting){ digits[digit].setSum += estSettingVal; digits[digit].setC++; } }
+        if (!isNaN(digit)) { digits[digit].diff += diff; digits[digit].g += g; digits[digit].c++; if (hasSetting) { digits[digit].setSum += estSettingVal; digits[digit].setC++; } }
         const dayStr = d.split('-')[2], nday = parseInt(dayStr.slice(-1));
-        ndays[nday].diff += diff; ndays[nday].g += g; ndays[nday].c++; if(hasSetting){ ndays[nday].setSum += estSettingVal; ndays[nday].setC++; }
-        const wd = new Date(d).getDay(); wdays[wd].diff += diff; wdays[wd].g += g; wdays[wd].c++; if(hasSetting){ wdays[wd].setSum += estSettingVal; wdays[wd].setC++; }
+        ndays[nday].diff += diff; ndays[nday].g += g; ndays[nday].c++; if (hasSetting) { ndays[nday].setSum += estSettingVal; ndays[nday].setC++; }
+        const wd = new Date(d).getDay(); wdays[wd].diff += diff; wdays[wd].g += g; wdays[wd].c++; if (hasSetting) { wdays[wd].setSum += estSettingVal; wdays[wd].setC++; }
         if (!models[model]) models[model] = { diff: 0, g: 0, c: 0, setSum: 0, setC: 0 };
-        models[model].diff += diff; models[model].g += g; models[model].c++; if(hasSetting){ models[model].setSum += estSettingVal; models[model].setC++; }
+        models[model].diff += diff; models[model].g += g; models[model].c++; if (hasSetting) { models[model].setSum += estSettingVal; models[model].setC++; }
         const loc = layoutLookup[num];
         if (loc) {
             const pk = loc.pos === 0 ? '角' : loc.pos === 1 ? '角2' : loc.pos === 2 ? '角3' : 'その他';
-            positions[pk].diff += diff; positions[pk].c++; if(hasSetting){ positions[pk].setSum += estSettingVal; positions[pk].setC++; }
+            positions[pk].diff += diff; positions[pk].c++; if (hasSetting) { positions[pk].setSum += estSettingVal; positions[pk].setC++; }
         }
         if (!mHistory[num]) mHistory[num] = [];
         mHistory[num].push({ ...row, diff, g, estSettingVal, hasSetting });
         // Day of month
         const dom = parseInt(d.split('-')[2], 10);
-        if (dom >= 1 && dom <= 31) { dayOfMonth[dom].diff += diff; dayOfMonth[dom].g += g; dayOfMonth[dom].c++; if(hasSetting){ dayOfMonth[dom].setSum += estSettingVal; dayOfMonth[dom].setC++; } }
+        if (dom >= 1 && dom <= 31) { dayOfMonth[dom].diff += diff; dayOfMonth[dom].g += g; dayOfMonth[dom].c++; if (hasSetting) { dayOfMonth[dom].setSum += estSettingVal; dayOfMonth[dom].setC++; } }
     });
 
-    const buildCD = obj => { 
-        let labels = [], dVal = []; 
-        for (const [k, v] of Object.entries(obj)) { 
-            if (v.c === 0) continue; 
-            labels.push(k); 
+    const buildCD = obj => {
+        let labels = [], dVal = [];
+        for (const [k, v] of Object.entries(obj)) {
+            if (v.c === 0) continue;
+            labels.push(k);
             if (analysisMode === 'setting') {
                 dVal.push(v.setC > 0 ? v.setSum / v.setC : 0);
             } else {
                 dVal.push(v.c > 0 ? v.diff / v.c : 0);
             }
-        } 
-        return { labels, dVal }; 
+        }
+        return { labels, dVal };
     };
 
     drawBar('chart-digit', buildCD(digits).labels, buildCD(digits).dVal, yLabel);
@@ -1471,12 +1472,12 @@ function renderAnalysis(data) {
 
     // Day of month (1-31) bar charts
     const domLabels = [], domVal = [], domPayout = [];
-    for (let i = 1; i <= 31; i++) { 
-        if (dayOfMonth[i].c > 0) { 
-            domLabels.push(`${i}日`); 
-            domVal.push(analysisMode === 'setting' ? (dayOfMonth[i].setC > 0 ? dayOfMonth[i].setSum / dayOfMonth[i].setC : 0) : (dayOfMonth[i].diff / dayOfMonth[i].c)); 
-            domPayout.push(payout(dayOfMonth[i].diff, dayOfMonth[i].g)); 
-        } 
+    for (let i = 1; i <= 31; i++) {
+        if (dayOfMonth[i].c > 0) {
+            domLabels.push(`${i}日`);
+            domVal.push(analysisMode === 'setting' ? (dayOfMonth[i].setC > 0 ? dayOfMonth[i].setSum / dayOfMonth[i].setC : 0) : (dayOfMonth[i].diff / dayOfMonth[i].c));
+            domPayout.push(payout(dayOfMonth[i].diff, dayOfMonth[i].g));
+        }
     }
     drawBar('chart-dayofmonth-diff', domLabels, domVal, yLabel);
     drawDotChart('chart-dayofmonth-payout', domLabels, domPayout, '出率(%)');
@@ -1500,7 +1501,7 @@ function renderAnalysis(data) {
         for (let i = 1; i < hist.length; i++) {
             const prev = hist[i - 1];
             const row = hist[i];
-            
+
             const prevDiff = prev.diff;
             if (prevDiff < 0) { negS++; posS = 0; } else if (prevDiff > 0) { posS++; negS = 0; } else { negS = 0; posS = 0; }
 
@@ -1536,12 +1537,12 @@ function renderAnalysis(data) {
             }
         }
     }
-    
+
     const cNegVals = consNeg.map(v => analysisMode === 'setting' ? (v.setC ? v.setSum / v.setC : 0) : (v.c ? v.diff / v.c : 0));
     drawBar('chart-cons-neg', ['0日', '1日', '2日', '3日', '4日', '5日', '6日以上'], cNegVals, '翌日' + yLabel);
     const cPosVals = consPos.map(v => analysisMode === 'setting' ? (v.setC ? v.setSum / v.setC : 0) : (v.c ? v.diff / v.c : 0));
     drawBar('chart-cons-pos', ['0日', '1日', '2日', '3日', '4日', '5日', '6日以上'], cPosVals, '翌日' + yLabel);
-    
+
     drawBar('chart-neighbor-diff', buildCD(neiDiffBuckets).labels, buildCD(neiDiffBuckets).dVal, yLabel);
     drawBar('chart-neighbor-setting', buildCD(neiSetBuckets).labels, buildCD(neiSetBuckets).dVal, '自台平均設定'); // This explicitly targets setting
     drawBar('chart-both-neighbor-diff', buildCD(bothDiffBuckets).labels, buildCD(bothDiffBuckets).dVal, yLabel);
@@ -1649,7 +1650,7 @@ function renderCumulAnalysis(data) {
             }
         });
     }
-    
+
     renderGameCountAnalysis();
     renderPastDiffAnalysis(data);
     renderIslandPastDiffAnalysis(data);
@@ -2097,7 +2098,7 @@ function setupExclusionToggle() {
     const toggle = document.getElementById('exclude-cond-toggle');
     const grid = document.getElementById('exclude-conditions-grid');
     if (!toggle || !grid) return;
-    
+
     // タップ・クリック両方に対応し、伝播を適切に処理
     const handleToggle = (e) => {
         if (e) e.preventDefault();
@@ -2107,7 +2108,7 @@ function setupExclusionToggle() {
         const icon = document.getElementById('exclude-toggle-icon');
         if (icon) icon.textContent = isOpen ? '+' : '−';
     };
-    
+
     toggle.addEventListener('click', handleToggle);
 }
 
@@ -2240,7 +2241,7 @@ function renderTargetSupport(filteredData) {
     const prioConds = [...document.querySelectorAll('.prio-chk:checked')].map(c => c.value);
     // diff priority
     const diffPriority = document.querySelector('input[name="diff-priority"]:checked')?.value || 'machine';
-    
+
     // Sort by match count checkbox
     const sortByMatchCount = document.getElementById('sort-by-match-count')?.checked;
 
@@ -2286,7 +2287,7 @@ function renderTargetSupport(filteredData) {
         // --- Exclusion Logic (Highest Priority) ---
         const ex = conds.exclude;
         let isExcluded = false;
-        
+
         if (ex.consNeg.enabled && (ex.consNeg.vals.length === 0 || ex.consNeg.vals.some(v => v === 7 ? sk.neg >= 7 : sk.neg === v))) isExcluded = true;
         if (ex.consPos.enabled && (ex.consPos.vals.length === 0 || ex.consPos.vals.some(v => v === 7 ? sk.pos >= 7 : sk.pos === v))) isExcluded = true;
         if (ex.position.enabled && (ex.position.vals.length === 0 || ex.position.vals.includes(posVal))) isExcluded = true;
@@ -2294,7 +2295,7 @@ function renderTargetSupport(filteredData) {
         if (ex.islandAvg.enabled && iAvg !== null && iAvg > 0) isExcluded = true;
         if (ex.machineAvg.enabled && mAvg !== null && mAvg > 0) isExcluded = true;
         if (ex.modelAvg.enabled && modelAvg[model] !== undefined && modelAvg[model] > 0) isExcluded = true;
-        
+
         if (ex.pastGame.enabled && ex.pastGame.periods.length > 0) {
             const latestIdx = dateIdxMap[latestDate];
             if (latestIdx !== undefined) {
@@ -2369,7 +2370,7 @@ function renderTargetSupport(filteredData) {
                     let bucket = 0;
                     if (avgG > 10000) bucket = 10;
                     else if (avgG > 0) bucket = Math.floor((avgG - 1) / 1000);
-                    
+
                     results.push(pCond.ranges.length === 0 || pCond.ranges.includes(bucket));
                 }
                 if (conds.pastGame.logic === 'and') {
@@ -2467,7 +2468,7 @@ function renderTargetSupport(filteredData) {
             const tr = document.createElement('tr');
             tr.style.borderLeft = `4px solid ${colorMap[m.num] === 'transparent' ? '#444' : colorMap[m.num]}`;
             tr.classList.add('clickable');
-            
+
             const mc = m.matchedConds;
             const mAvgVal = m.mAvg !== null ? Math.round(m.mAvg) : null;
             const iAvgVal = m.iAvg !== null ? Math.round(m.iAvg) : null;
@@ -2495,13 +2496,13 @@ function renderTargetSupport(filteredData) {
                     document.querySelectorAll('#target-heatmap-wrapper .highlight-machine').forEach(c => {
                         c.classList.remove('highlight-machine');
                     });
-                    
+
                     // ハイライト用クラスを追加 (!importantがあるためインラインスタイルより優先される)
                     cell.classList.add('highlight-machine');
-                    
+
                     // スムーズスクロール
                     cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-                    
+
                     // 強制再描画（アニメーションを即時開始させるため）
                     void cell.offsetWidth;
                 }
@@ -2694,7 +2695,7 @@ function setupTargetSection() {
         const res = document.getElementById('target-results');
         if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
     });
-    
+
     document.querySelectorAll('.period-all-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             const row = e.target.closest('.past-game-period-row');
@@ -2716,7 +2717,7 @@ function setupTargetSection() {
             if (res && res.style.display !== 'none') renderTargetSupport(getFilteredData());
         });
     });
-    
+
     // Add listeners for other conditions
     const otherSelectors = [
         '#cond-cons-neg-enabled', '#cond-cons-pos-enabled', '#cond-position-enabled', '#cond-digit-enabled',
@@ -2829,7 +2830,7 @@ function loadTargetConditions() {
             setEnabled('cond-machine-avg-enabled', config.enabled.machineAvg);
             setEnabled('cond-model-avg-enabled', config.enabled.modelAvg);
             setEnabled('cond-past-game-enabled', config.enabled.pastGame);
-            
+
             setEnabled('ex-cond-cons-neg-enabled', config.enabled.exConsNeg);
             setEnabled('ex-cond-cons-pos-enabled', config.enabled.exConsPos);
             setEnabled('ex-cond-position-enabled', config.enabled.exPosition);
@@ -2847,7 +2848,7 @@ function loadTargetConditions() {
             setChecks('.pos-chk', config.vals.position);
             setChecks('.digit-chk', config.vals.digit);
             setChecks('.prio-chk', config.vals.prioConds);
-            
+
             setChecks('.ex-cons-neg-chk', config.vals.exConsNeg);
             setChecks('.ex-cons-pos-chk', config.vals.exConsPos);
             setChecks('.ex-pos-chk', config.vals.exPosition);
@@ -3049,7 +3050,7 @@ function loadTargetConditions() {
             const r = document.querySelector(`input[name="diff-priority"][value="${config.vals.diffPriority}"]`);
             if (r) r.checked = true;
         }
-        
+
         if (config.vals.sortByMatchCount !== undefined) {
             const cb = document.getElementById('sort-by-match-count');
             if (cb) cb.checked = config.vals.sortByMatchCount;
@@ -3115,13 +3116,13 @@ function getPastDiffKeys(stepSize) {
 
 function renderPastDiffAnalysis(data) {
     const period = parseInt(pastDiffPeriod, 10);
-    
+
     const bKeys = getPastDiffKeys(pastDiffStepSize);
     const buckets = {};
     bKeys.forEach(k => { buckets[k] = { diff: 0, c: 0, setSum: 0, setC: 0 }; });
 
     const dataSet = new Set(data);
-    
+
     for (const [m, hist] of Object.entries(globalMHist)) {
         for (const targetRow of hist) {
             if (!dataSet.has(targetRow)) continue;
@@ -3145,7 +3146,7 @@ function renderPastDiffAnalysis(data) {
 
             const pastAvg = pastDiffSum / period;
             const bName = getBucketName(pastAvg, pastDiffStepSize);
-            
+
             const trDiff = Number(targetRow['最終差枚']) || 0;
             if (buckets[bName]) {
                 buckets[bName].diff += trDiff;
@@ -3178,7 +3179,7 @@ function renderPastDiffAnalysis(data) {
 
 function renderIslandPastDiffAnalysis(data) {
     const period = parseInt(islandPastDiffPeriod, 10);
-    
+
     const bKeys = getPastDiffKeys(islandPastDiffStepSize);
     const buckets = {};
     bKeys.forEach(k => { buckets[k] = { diff: 0, c: 0, setSum: 0, setC: 0 }; });
@@ -3196,7 +3197,7 @@ function renderIslandPastDiffAnalysis(data) {
             const tDate = targetRow['日付'];
             const tDateIdx = globalAllDates.indexOf(tDate);
             if (tDateIdx < period) continue;
-            
+
             let pastDiffSum = 0;
             let valid = true;
             for (let j = 1; j <= period; j++) {
@@ -3212,7 +3213,7 @@ function renderIslandPastDiffAnalysis(data) {
             const pastAvg = pastDiffSum / period;
             const bName = getBucketName(pastAvg, islandPastDiffStepSize);
             const trDiff = Number(targetRow['最終差枚']) || 0;
-            
+
             if (buckets[bName]) {
                 buckets[bName].diff += trDiff;
                 buckets[bName].c++;
@@ -3247,7 +3248,7 @@ function renderUnexplodedAnalysis(data) {
         const dd = parseInt(d.split('-')[2], 10);
         return dd === 3 || dd === 5 || dd === 8 || dd === 13 || dd === 15 || dd === 18 || dd === 23 || dd === 25 || dd === 28;
     };
-    
+
     let targetC = 0, targetDiff = 0, targetSetSum = 0, targetSetC = 0;
     let subC = 0, subDiff = 0, subSetSum = 0, subSetC = 0;
     let baselineC = 0, baselineDiff = 0, baselineSetSum = 0, baselineSetC = 0;
@@ -3256,7 +3257,7 @@ function renderUnexplodedAnalysis(data) {
         const m = targetRow['機種名'];
         const tDate = targetRow['日付'];
         const num = normalizeNum(targetRow['台番号']);
-        
+
         const tDateIdx = globalAllDates.indexOf(tDate);
         if (tDateIdx < 1) return;
         const prevDate = globalAllDates[tDateIdx - 1];
@@ -3294,7 +3295,7 @@ function renderUnexplodedAnalysis(data) {
         subC > 0 ? subDiff / subC : 0,
         baselineC > 0 ? baselineDiff / baselineC : 0
     ];
-    
+
     const setLabels = ['条件合致台 (前日5,6かつマイナス)', '前日5,6全体', '比較用全体平均'];
     const setVals = [
         targetSetC > 0 ? targetSetSum / targetSetC : 0,
@@ -3320,7 +3321,7 @@ function renderAccidentalExplosionAnalysis(data) {
         const m = targetRow['機種名'];
         const tDate = targetRow['日付'];
         const num = normalizeNum(targetRow['台番号']);
-        
+
         const tDateIdx = globalAllDates.indexOf(tDate);
         if (tDateIdx < 1) return;
         const prevDate = globalAllDates[tDateIdx - 1];
@@ -3358,7 +3359,7 @@ function renderAccidentalExplosionAnalysis(data) {
         subC > 0 ? subDiff / subC : 0,
         baselineC > 0 ? baselineDiff / baselineC : 0
     ];
-    
+
     const setLabels = ['条件合致台 (前日1〜3かつ+2000枚)', '前日1〜3全体', '比較用全体平均'];
     const setVals = [
         targetSetC > 0 ? targetSetSum / targetSetC : 0,
@@ -3373,22 +3374,22 @@ function renderAccidentalExplosionAnalysis(data) {
 // 特定日（景品入荷・天運総撃）の集計とグラフ表示
 function renderSpecialDaysAnalysis(data) {
     const yLabel = analysisMode === 'setting' ? '平均設定' : '平均差枚';
-    
+
     // specialDatesDataから景品入荷日と天運総撃日の日付セットを作成
     const restockSet = new Set(specialDatesData && specialDatesData.restock_dates ? specialDatesData.restock_dates : []);
     const tenunSet = new Set(specialDatesData && specialDatesData.tenun_dates ? specialDatesData.tenun_dates : []);
-    
+
     let restockC = 0, restockDiff = 0, restockSetSum = 0, restockSetC = 0;
     let tenunC = 0, tenunDiff = 0, tenunSetSum = 0, tenunSetC = 0;
     let eventC = 0, eventDiff = 0, eventSetSum = 0, eventSetC = 0;
     let regularC = 0, regularDiff = 0, regularSetSum = 0, regularSetC = 0;
-    
+
     data.forEach(row => {
         const d = row['日付'];
         const diff = Number(row['最終差枚']) || 0;
         const g = Number(row['累計ゲーム']) || 0;
         const model = row['機種名'];
-        
+
         let estSettingVal = 0;
         let hasSetting = false;
         const est = estimateSetting(model, g, row['BIG'], row['REG']);
@@ -3396,7 +3397,7 @@ function renderSpecialDaysAnalysis(data) {
             estSettingVal = est.setting;
             hasSetting = true;
         }
-        
+
         if (restockSet.has(d)) {
             restockC++;
             restockDiff += diff;
@@ -3431,10 +3432,10 @@ function renderSpecialDaysAnalysis(data) {
             }
         }
     });
-    
+
     const labels = ['景品入荷日', '天運総撃', '通常日', 'イベント日(3・5・8)'];
     const vals = [];
-    
+
     if (analysisMode === 'setting') {
         vals.push(restockSetC > 0 ? restockSetSum / restockSetC : 0);
         vals.push(tenunSetC > 0 ? tenunSetSum / tenunSetC : 0);
@@ -3446,7 +3447,7 @@ function renderSpecialDaysAnalysis(data) {
         vals.push(regularC > 0 ? regularDiff / regularC : 0);
         vals.push(eventC > 0 ? eventDiff / eventC : 0);
     }
-    
+
     drawBar('chart-special-days-diff', labels, vals, yLabel, {
         datasetExtras: {
             backgroundColor: [
@@ -3467,44 +3468,44 @@ function renderMLAnalysis() {
     const loading = document.getElementById('ml-loading');
     const err = document.getElementById('ml-error');
     const content = document.getElementById('ml-content');
-    
+
     if (!mlAnalysisData) {
         loading.style.display = 'block'; err.style.display = 'none'; content.style.display = 'none';
         return;
     }
     loading.style.display = 'none';
-    
+
     const periodData = mlAnalysisData[currentMlPeriod];
     if (!periodData) {
         err.style.display = 'block'; err.textContent = 'データがありません。'; content.style.display = 'none';
         return;
     }
-    
+
     const keyPrefix = currentMlTarget === 'regression' ? 'regression' : 'cls';
     const algoKey = currentMlAlgo === 'tree' ? keyPrefix + '_tree' :
-                    currentMlAlgo === 'rf' ? keyPrefix + '_rf' :
-                    keyPrefix + '_assoc';
+        currentMlAlgo === 'rf' ? keyPrefix + '_rf' :
+            keyPrefix + '_assoc';
     const res = periodData[algoKey];
-    
+
     if (!res || res.error) {
         err.style.display = 'block'; err.textContent = res ? res.error : 'データがありません。';
         content.style.display = 'none';
         return;
     }
-    
+
     err.style.display = 'none';
     content.style.display = 'block';
-    
+
     // Update Stats
     document.getElementById('ml-stat-samples').textContent = (res.n_samples || periodData.n_total).toLocaleString() + '件';
-    
+
     const highWrap = document.getElementById('ml-stat-high-wrap');
     const confWrap = document.getElementById('ml-stat-confusion-wrap');
     if (currentMlTarget === 'classification') {
         highWrap.style.display = 'block';
         const p = periodData.n_cls > 0 ? ((periodData.n_high / periodData.n_cls) * 100).toFixed(1) : 0;
-        document.getElementById('ml-stat-high').textContent = `${(periodData.n_high||0).toLocaleString()} (${p}%)`;
-        
+        document.getElementById('ml-stat-high').textContent = `${(periodData.n_high || 0).toLocaleString()} (${p}%)`;
+
         if (periodData.cls_rf && periodData.cls_rf.tn_ratio !== undefined) {
             confWrap.style.display = 'block';
             document.getElementById('ml-stat-tn').textContent = (periodData.cls_rf.tn_ratio * 100).toFixed(1) + '%';
@@ -3518,7 +3519,7 @@ function renderMLAnalysis() {
         highWrap.style.display = 'none';
         confWrap.style.display = 'none';
     }
-    
+
     // Render features list
     if (mlAnalysisData && mlAnalysisData.feature_names_jp) {
         const featList = document.getElementById('ml-features-list');
@@ -3530,7 +3531,7 @@ function renderMLAnalysis() {
             featList.appendChild(el);
         }
     }
-    
+
     // Metrics
     const mLabel = document.getElementById('ml-stat-metric-label');
     const mVal = document.getElementById('ml-stat-metric-val');
@@ -3544,12 +3545,12 @@ function renderMLAnalysis() {
         mVal.textContent = (periodData.cls_rf && periodData.cls_rf.cv_f1 !== undefined) ? periodData.cls_rf.cv_f1.toFixed(4) : '-';
         if (mDesc) mDesc.innerHTML = '1に近いほど「高設定を正確に見抜けている」ことを示します。<br><span style="color:#60a5fa;">※ 分類モデル（設定4以上の判別）では、ヒキに左右されにくいため一定の精度が出やすくなっています。</span>';
     }
-    
+
     // Hide all algo blocks
     document.getElementById('ml-algo-tree').style.display = 'none';
     document.getElementById('ml-algo-rf').style.display = 'none';
     document.getElementById('ml-algo-assoc').style.display = 'none';
-    
+
     // Render selected algo
     if (currentMlAlgo === 'tree') {
         document.getElementById('ml-algo-tree').style.display = 'block';
@@ -3561,7 +3562,7 @@ function renderMLAnalysis() {
         document.getElementById('ml-algo-assoc').style.display = 'block';
         renderMLAssoc(res.rules);
     }
-    
+
     // Render Next Day Predictions
     if (mlAnalysisData && mlAnalysisData.next_day_predictions) {
         renderNextDayPredictions(mlAnalysisData.next_day_predictions);
@@ -3655,7 +3656,7 @@ function renderNextDayPredictions(predsData) {
         if (index === 0) rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:gold;color:#000;font-weight:bold;font-size:0.85rem;">1</span>`;
         else if (index === 1) rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:silver;color:#000;font-weight:bold;font-size:0.85rem;">2</span>`;
         else if (index === 2) rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#cd7f32;color:#fff;font-weight:bold;font-size:0.85rem;">3</span>`;
-        else rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(59,130,246,0.2);color:var(--accent-blue);font-weight:bold;font-size:0.85rem;">${index+1}</span>`;
+        else rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(59,130,246,0.2);color:var(--accent-blue);font-weight:bold;font-size:0.85rem;">${index + 1}</span>`;
 
         const f = p.features;
         const detailId = `pred-detail-${index}`;
@@ -3664,7 +3665,7 @@ function renderNextDayPredictions(predsData) {
         const dayStr = dayNames[f.weekday] ? dayNames[f.weekday] + '曜' : '';
         const posNames = ['角', '角2', '角3', 'その他(内側)'];
         const posStr = posNames[f.position] || '';
-        
+
         let reasons = [];
         if (f.cons_neg >= 2) reasons.push(`現在 <b>${f.cons_neg}日連続で凹んで</b> おり、反発の期待値が高まっています。`);
         if (f.neg_after_pos === 1 || f.setting_change_signal === 1) reasons.push(`前日に <b>高設定挙動（推定4以上）を見せながら不発（マイナス終了）</b> だったため、据え置きでの出玉が狙い目です。`);
@@ -3675,8 +3676,8 @@ function renderNextDayPredictions(predsData) {
         if (f.cumul_14d_diff != null && f.cumul_14d_diff < -4000) reasons.push(`過去14日間の合計が <b>${Math.round(f.cumul_14d_diff)}枚</b> と大きく沈んでおり、そろそろ回収が終わるフェーズです。`);
         else if (f.cumul_7d_diff != null && f.cumul_7d_diff < -2000) reasons.push(`過去7日間の合計が <b>${Math.round(f.cumul_7d_diff)}枚</b> のマイナスで、還元される確率が高いです。`);
         if (f.island_trend != null && f.island_trend > 500) reasons.push(`この台が属する島全体が直近3日間で <b>平均+${Math.round(f.island_trend)}枚</b> と活気づいており、島単位での高設定投入が疑われます。`);
-        if (f.island_high_ratio_3d != null && f.island_high_ratio_3d > 0.4) reasons.push(`過去3日間の <b>同じ島の高設定比率が${(f.island_high_ratio_3d*100).toFixed(1)}%</b> と非常に高く、全台系・対象島の可能性があります。`);
-        if (f.store_high_ratio != null && f.store_high_ratio > 0.4) reasons.push(`店舗全体の高設定比率が <b>${(f.store_high_ratio*100).toFixed(1)}%</b> と高く、店舗全体のベース設定が高い状況です。`);
+        if (f.island_high_ratio_3d != null && f.island_high_ratio_3d > 0.4) reasons.push(`過去3日間の <b>同じ島の高設定比率が${(f.island_high_ratio_3d * 100).toFixed(1)}%</b> と非常に高く、全台系・対象島の可能性があります。`);
+        if (f.store_high_ratio != null && f.store_high_ratio > 0.4) reasons.push(`店舗全体の高設定比率が <b>${(f.store_high_ratio * 100).toFixed(1)}%</b> と高く、店舗全体のベース設定が高い状況です。`);
         if (f.adj_avg_diff_1 != null && f.adj_avg_diff_1 > 1000) reasons.push(`前日に <b>両隣の台が平均+${Math.round(f.adj_avg_diff_1)}枚</b> と大きく出ており、並びでの高設定（塊）の可能性があります。`);
         else if (f.adj_left_diff_1 != null && f.adj_left_diff_1 > 1500) reasons.push(`前日に <b>左隣の台が+${Math.round(f.adj_left_diff_1)}枚</b> と爆発しており、並びでの高設定（塊）の可能性があります。`);
         else if (f.adj_right_diff_1 != null && f.adj_right_diff_1 > 1500) reasons.push(`前日に <b>右隣の台が+${Math.round(f.adj_right_diff_1)}枚</b> と爆発しており、並びでの高設定（塊）の可能性があります。`);
@@ -3755,19 +3756,19 @@ function renderMLChartRF(fiList) {
     if (!fiList) return;
     const labels = fiList.map(f => f.feature_jp);
     const vals = fiList.map(f => f.importance);
-    
+
     const canvas = document.getElementById('ml-chart-rf');
     const container = canvas.parentElement;
     // Calculate required height based on number of features (e.g. 25px per bar)
     const requiredHeight = Math.max(400, labels.length * 25);
     container.style.height = `${requiredHeight}px`;
-    
+
     const ctx = canvas;
     if (charts['ml-rf']) charts['ml-rf'].destroy();
-    
+
     const isDark = document.body.classList.contains('dark-theme');
     const color = 'rgba(59, 130, 246, 0.8)';
-    
+
     charts['ml-rf'] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -3819,21 +3820,21 @@ function renderMLAssoc(rules) {
 function formatTreeRules(text, target) {
     if (!text) return 'ルールがありません';
     const lines = text.split('\n').filter(l => l.trim().length > 0);
-    
+
     let html = '<div class="tree-rules" style="margin-left: 0;">';
-    
+
     lines.forEach(line => {
         const depth = (line.match(/\|\s+/g) || []).length;
         let content = line.replace(/\|--- /g, '').replace(/\|\s+/g, '').trim();
         const indent = depth * 20;
-        
+
         if (content.startsWith('value:')) {
             const valMatch = content.match(/\[([\d\.\-]+)/);
             if (valMatch) {
                 const val = parseFloat(valMatch[1]);
                 let displayVal = '';
                 let colorClass = '';
-                
+
                 if (target === 'regression') {
                     displayVal = `平均差枚 約 <span style="font-size:1.2em; font-weight:bold;">${Math.round(val)}</span> 枚`;
                     if (val > 1000) colorClass = 'color: #ef4444;'; // 赤(良)
@@ -3847,7 +3848,7 @@ function formatTreeRules(text, target) {
                     else if (val >= 0.3) colorClass = 'color: #fca5a5;';
                     else colorClass = 'color: #64748b; opacity: 0.5;';
                 }
-                
+
                 html += `<div style="margin-left: ${indent}px; padding: 6px 12px; border-left: 3px solid #ef4444; margin-top: 4px; margin-bottom: 12px; background: rgba(255,255,255,0.03); border-radius: 0 4px 4px 0;">
                             ➡️ 結果: <span style="${colorClass}">${displayVal}</span>
                          </div>`;
@@ -3858,7 +3859,7 @@ function formatTreeRules(text, target) {
                 const cls = parseInt(clsMatch[1], 10);
                 let displayVal = cls === 1 ? '高設定の可能性が <span style="font-size:1.2em; font-weight:bold;">高い</span>' : '高設定の可能性が 低い';
                 let colorClass = cls === 1 ? 'color: #ef4444;' : 'color: #64748b; opacity: 0.5;';
-                
+
                 html += `<div style="margin-left: ${indent}px; padding: 6px 12px; border-left: 3px solid #ef4444; margin-top: 4px; margin-bottom: 12px; background: rgba(255,255,255,0.03); border-radius: 0 4px 4px 0;">
                             ➡️ 結果: <span style="${colorClass}">${displayVal}</span>
                          </div>`;
@@ -3866,7 +3867,7 @@ function formatTreeRules(text, target) {
         } else {
             // Translate conditions
             let label = content;
-            
+
             // First, translate feature names dynamically
             if (mlAnalysisData && mlAnalysisData.feature_names_jp) {
                 // Sort keys by length descending to prevent partial replacements (e.g. prev_diff_10 before prev_diff_1)
@@ -3876,53 +3877,53 @@ function formatTreeRules(text, target) {
                     label = label.replace(new RegExp(key, 'g'), name);
                 }
             }
-            
+
             // Then do value replacement based on translated Japanese strings
             label = label.replace(/<=\s*([\d\.\-]+)/, (match, p1) => {
-                             let v = parseFloat(p1);
-                             if (label.includes('差枚')) {
-                                 v = Math.round(v / 100) * 100;
-                                 return ` が <span style="color:#fbbf24;">約 ${v} 枚 以下</span>`;
-                             } else if (label.includes('曜日') || label.includes('連続') || label.includes('設定')) {
-                                 v = Math.round(v);
-                                 return ` が <span style="color:#fbbf24;">${v} 以下</span>`;
-                             } else if (label.includes('ゲーム')) {
-                                 v = Math.round(v / 100) * 100;
-                                 return ` が <span style="color:#fbbf24;">約 ${v} G 以下</span>`;
-                             } else if (label.includes('イベント')) {
-                                 return ` が <span style="color:#fbbf24;">ない(0)</span>`;
-                             }
-                             return ` が <span style="color:#fbbf24;">${v.toFixed(1).replace('.0','')} 以下</span>`;
-                         })
-                         .replace(/>\s*([\d\.\-]+)/, (match, p1) => {
-                             let v = parseFloat(p1);
-                             if (label.includes('差枚')) {
-                                 v = Math.round(v / 100) * 100;
-                                 return ` が <span style="color:#fbbf24;">約 ${v} 枚 超過</span>`;
-                             } else if (label.includes('曜日') || label.includes('連続') || label.includes('設定')) {
-                                 v = Math.round(v);
-                                 return ` が <span style="color:#fbbf24;">${v} 超過</span>`;
-                             } else if (label.includes('ゲーム')) {
-                                 v = Math.round(v / 100) * 100;
-                                 return ` が <span style="color:#fbbf24;">約 ${v} G 超過</span>`;
-                             } else if (label.includes('イベント')) {
-                                 return ` が <span style="color:#fbbf24;">ある(1)</span>`;
-                             }
-                             return ` が <span style="color:#fbbf24;">${v.toFixed(1).replace('.0','')} 超過</span>`;
-                         });
-                         
+                let v = parseFloat(p1);
+                if (label.includes('差枚')) {
+                    v = Math.round(v / 100) * 100;
+                    return ` が <span style="color:#fbbf24;">約 ${v} 枚 以下</span>`;
+                } else if (label.includes('曜日') || label.includes('連続') || label.includes('設定')) {
+                    v = Math.round(v);
+                    return ` が <span style="color:#fbbf24;">${v} 以下</span>`;
+                } else if (label.includes('ゲーム')) {
+                    v = Math.round(v / 100) * 100;
+                    return ` が <span style="color:#fbbf24;">約 ${v} G 以下</span>`;
+                } else if (label.includes('イベント')) {
+                    return ` が <span style="color:#fbbf24;">ない(0)</span>`;
+                }
+                return ` が <span style="color:#fbbf24;">${v.toFixed(1).replace('.0', '')} 以下</span>`;
+            })
+                .replace(/>\s*([\d\.\-]+)/, (match, p1) => {
+                    let v = parseFloat(p1);
+                    if (label.includes('差枚')) {
+                        v = Math.round(v / 100) * 100;
+                        return ` が <span style="color:#fbbf24;">約 ${v} 枚 超過</span>`;
+                    } else if (label.includes('曜日') || label.includes('連続') || label.includes('設定')) {
+                        v = Math.round(v);
+                        return ` が <span style="color:#fbbf24;">${v} 超過</span>`;
+                    } else if (label.includes('ゲーム')) {
+                        v = Math.round(v / 100) * 100;
+                        return ` が <span style="color:#fbbf24;">約 ${v} G 超過</span>`;
+                    } else if (label.includes('イベント')) {
+                        return ` が <span style="color:#fbbf24;">ある(1)</span>`;
+                    }
+                    return ` が <span style="color:#fbbf24;">${v.toFixed(1).replace('.0', '')} 超過</span>`;
+                });
+
             // Wrap the feature name part with bold blue span (everything before ' が ')
             if (label.includes(' が ')) {
                 const parts = label.split(' が ');
                 label = `<span style="color:#60a5fa; font-weight:bold;">${parts[0]}</span> が ${parts.slice(1).join(' が ')}`;
             }
-            
+
             html += `<div style="margin-left: ${indent}px; color: #e2e8f0; margin-top: 4px; display:flex; align-items:center; gap: 6px;">
                         <span style="color:#94a3b8; font-size:1.2em;">🔹</span> <span>${label}</span>
                      </div>`;
         }
     });
-    
+
     html += '</div>';
     return html;
 }
