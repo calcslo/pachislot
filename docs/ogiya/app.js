@@ -428,23 +428,23 @@ function setupEventListeners() {
     }
 
     // --- ML Analysis Section Events ---
-    document.querySelectorAll('#ml-period-tabs .tab-btn').forEach(btn => {
+    [].forEach(btn => {
         btn.addEventListener('click', e => {
-            document.querySelectorAll('#ml-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            [].forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             currentMlPeriod = e.target.dataset.mlPeriod;
             if (currentSection === 'ml-analysis-section') renderMLAnalysis();
         });
     });
-    document.querySelectorAll('input[name="ml-target"]').forEach(radio => {
+    [].forEach(radio => {
         radio.addEventListener('change', e => {
             currentMlTarget = e.target.value;
             if (currentSection === 'ml-analysis-section') renderMLAnalysis();
         });
     });
-    document.querySelectorAll('#ml-algo-tabs .tab-btn').forEach(btn => {
+    [].forEach(btn => {
         btn.addEventListener('click', e => {
-            document.querySelectorAll('#ml-algo-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            [].forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             currentMlAlgo = e.target.dataset.mlAlgo;
             if (currentSection === 'ml-analysis-section') renderMLAnalysis();
