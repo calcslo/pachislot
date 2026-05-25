@@ -3583,6 +3583,27 @@ function renderNextDayPredictions(predsData) {
     const eventText = predsData.is_event ? ' <span style="color:#ef4444;">(イベント日)</span>' : '';
     info.innerHTML = `予想対象日: <span style="color:#60a5fa;">${predsData.target_date}</span>${eventText}`;
 
+    const isKen = predsData.is_ken === true || predsData.recommendation === 'ken';
+    container.classList.toggle('ml-next-day-ken', isKen);
+    const kenAlert = document.getElementById('ml-next-day-ken-alert');
+    if (kenAlert) {
+        if (isKen) {
+            const topProb = predsData.max_next_prob != null ? `${(predsData.max_next_prob * 100).toFixed(1)}%` : '-';
+            const threshold = predsData.ken_threshold != null ? `${(predsData.ken_threshold * 100).toFixed(1)}%` : '-';
+            const reason = predsData.ken_reason || '最上位台の高設定確率が稼働基準を下回っています。';
+            kenAlert.style.display = 'block';
+            kenAlert.innerHTML = `
+                <strong>明日は見送り推奨です。</strong>
+                <span>${reason} 最上位 ${topProb} / 基準 ${threshold}</span>
+            `;
+        } else {
+            kenAlert.style.display = 'block';
+            kenAlert.className = 'ml-ken-alert ken-false';
+            kenAlert.innerHTML = `🔥 【AI判断】明日は<strong>「勝負」推奨日</strong>です！`;
+            kenAlert.style.color = '#ef4444';
+        }
+    }
+
     const hitRateTop1El = document.getElementById('ml-next-day-hit-rate-top1');
     const hitRateTop3El = document.getElementById('ml-next-day-hit-rate-top3');
     const profitTop3El = document.getElementById('ml-next-day-profit-top3');
