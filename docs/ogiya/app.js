@@ -2157,7 +2157,10 @@ function renderMLTargets() {
     container.innerHTML = "";
 
     const preds = mlAnalysisData.next_day_predictions.slice(0, 5);
-    if (mlAnalysisData.prediction_mode) {
+    if (mlAnalysisData.target_date) {
+        const mode = mlAnalysisData.prediction_mode === 'event_day' ? 'イベント日用モデル適用' : '通常日用モデル適用';
+        dateLabel.textContent = `${mlAnalysisData.target_date} の予測 (${mode})`;
+    } else if (mlAnalysisData.prediction_mode) {
         dateLabel.textContent = mlAnalysisData.prediction_mode === 'event_day' ? "イベント日用モデル適用中" : "通常日用モデル適用中";
     }
 
