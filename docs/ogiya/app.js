@@ -3586,7 +3586,7 @@ function renderNextDayPredictions(predsData) {
     const hitRateTop1El = document.getElementById('ml-next-day-hit-rate-top1');
     const hitRateTop3El = document.getElementById('ml-next-day-hit-rate-top3');
     const profitTop3El = document.getElementById('ml-next-day-profit-top3');
-    const positiveRateEl = document.getElementById('ml-next-day-positive-rate');
+    const hitRateEl = document.getElementById('ml-next-day-hit-rate');
     const avgDiffEl = document.getElementById('ml-next-day-avg-diff');
     
     if (predsData.bt_summary) {
@@ -3607,8 +3607,8 @@ function renderNextDayPredictions(predsData) {
         if (profitTop3El) profitTop3El.textContent = '-';
     }
 
-    if (positiveRateEl && predsData.positive_rate != null) {
-        positiveRateEl.textContent = (predsData.positive_rate * 100).toFixed(1) + '%';
+    if (hitRateEl && predsData.hit_rate != null) {
+        hitRateEl.textContent = (predsData.hit_rate * 100).toFixed(1) + '%';
     }
     if (avgDiffEl && predsData.avg_diff != null) {
         const sign = predsData.avg_diff >= 0 ? '+' : '';
