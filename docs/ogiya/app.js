@@ -2187,7 +2187,6 @@ function renderMLTargets() {
 }
 
 function renderTargetSupport(filteredData) {
-    renderMLTargets();
     // 1. Compute latest streaks (ignores filter)
     const streaks = computeLatestStreaks();
     // 2. Compute machine/island/model avgs from filtered data
@@ -3513,6 +3512,7 @@ function renderSpecialDaysAnalysis(data) {
 // ML Analysis Rendering
 // ==========================================
 function renderMLAnalysis() {
+    renderMLTargets();
     const wrap = document.getElementById('ml-results-container');
     const loading = document.getElementById('ml-loading');
     const err = document.getElementById('ml-error');

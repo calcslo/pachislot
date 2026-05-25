@@ -83,7 +83,7 @@
             <button class="nav-btn" data-section="machine-section">台番号別差枚</button>
             <button class="nav-btn" data-section="analysis-section">詳細分析</button>
             <button class="nav-btn" data-section="target-section">狙い台</button>
-            <button class="nav-btn" data-section="ml-analysis-section">傾向分析</button>
+            <button class="nav-btn" data-section="ml-analysis-section">機械学習</button>
         </div>
 
         <!-- Main Content Grid -->
@@ -454,18 +454,6 @@
                 <h2 class="section-title">狙い台サポートツール</h2>
                 <p class="section-note">
                     条件を設定して翌日の狙い台を絞り込みます。差枚・島平均はページ上部の期間・特定日フィルタを反映。連続凹み/凸は最新日時点（フィルタ無視）。フィルタ変更時は自動再計算。</p>
-
-                <!-- ML AI Prediction Panel -->
-                <div class="ml-target-panel glass-panel" style="margin-bottom: 2rem; border-color: var(--accent-blue);">
-                    <h3 class="target-panel-title" style="color: var(--accent-blue); display: flex; align-items: center; justify-content: space-between;">
-                        <span>AI 期待値抽出 (Next Day ML Target)</span>
-                        <span id="ml-target-date" style="font-size: 0.9rem; color: var(--text-muted);"></span>
-                    </h3>
-                    <div id="ml-target-container" style="display: flex; flex-direction: column; gap: 1rem; padding-top: 1rem;">
-                        <div id="ml-target-loading" style="color: var(--text-muted); text-align: center;">AI予測データを読み込み中...</div>
-                        <div id="ml-target-results" style="display: none; display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                    </div>
-                </div>
 
                 <!-- Condition Settings Panel -->
                 <div class="target-conditions-panel glass-panel">
@@ -1086,6 +1074,19 @@
 
             <!-- 6. ML Analysis Section -->
             <section id="ml-analysis-section" class="glass-panel" style="display:none;">
+<!-- ML AI Prediction Panel -->
+                <div class="ml-target-panel glass-panel" style="margin-bottom: 2rem; border-color: var(--accent-blue);">
+                    <h3 class="target-panel-title" style="color: var(--accent-blue); display: flex; align-items: center; justify-content: space-between;">
+                        <span>AI 期待値抽出 (Next Day ML Target)</span>
+                        <span id="ml-target-date" style="font-size: 0.9rem; color: var(--text-muted);"></span>
+                    </h3>
+                    <div id="ml-target-container" style="display: flex; flex-direction: column; gap: 1rem; padding-top: 1rem;">
+                        <div id="ml-target-loading" style="color: var(--text-muted); text-align: center;">AI予測データを読み込み中...</div>
+                        <div id="ml-target-results" style="display: none; display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                    </div>
+                </div>
+
+                
                 <h2 class="section-title">傾向分析 (機械学習) <span
                         style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">対象: ハナハナのみ</span></h2>
                 <p class="section-note">
