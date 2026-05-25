@@ -2138,7 +2138,56 @@ function setupMobilePopupClose() {
 /**
  * Main render function for target support tool.
  */
+
+function renderMLTargets() {
+    const container = document.getElementById('ml-target-results');
+    const loading = document.getElementById('ml-target-loading');
+    const dateLabel = document.getElementById('ml-target-date');
+    if (!container || !loading || !dateLabel) return;
+
+    if (!mlAnalysisData || !mlAnalysisData.next_day_predictions || mlAnalysisData.next_day_predictions.length === 0) {
+        loading.textContent = "AI予測データが見つかりません。";
+        loading.style.display = "block";
+        container.style.display = "none";
+        return;
+    }
+
+    loading.style.display = "none";
+    container.style.display = "flex";
+    container.innerHTML = "";
+
+    const preds = mlAnalysisData.next_day_predictions.slice(0, 5);
+    if (mlAnalysisData.prediction_mode) {
+        dateLabel.textContent = mlAnalysisData.prediction_mode === 'event_day' ? "イベント日用モデル適用中" : "通常日用モデル適用中";
+    }
+
+    preds.forEach(p => {
+        const card = document.createElement('div');
+        const decisionHtml = p.decision === "GO" ? `<span style="color: #10b981; font-weight: bold;">[GO]</span>` : `<span style="color: #f59e0b; font-weight: bold;">[SKIP]</span>`;
+        card.style = `background: var(--card-bg); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;`;
+        card.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                <div style="font-size: 1.1rem; font-weight:bold; color: var(--text-main);">
+                    <span style="color: var(--accent-blue); margin-right: 0.5rem;">#${p.rank}</span>
+                    台番号: ${p.machine_num} (${p.machine_name})
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                    期待収支: ${p.expected_profit ? '+' + p.expected_profit.toLocaleString() : '---'}枚 
+                    | 信頼度(標準化): ${(p.norm_confidence || 0).toFixed(2)} 
+                    | 予測スコア: ${(p.pred_prob || 0).toFixed(4)}
+                </div>
+            </div>
+            <div style="font-size: 1.2rem; text-align: right;">
+                ${decisionHtml}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${p.ken_reason || ''}</div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
 function renderTargetSupport(filteredData) {
+    renderMLTargets();
     // 1. Compute latest streaks (ignores filter)
     const streaks = computeLatestStreaks();
     // 2. Compute machine/island/model avgs from filtered data
@@ -3599,7 +3648,7 @@ function renderNextDayPredictions(predsData) {
         } else {
             kenAlert.style.display = 'block';
             kenAlert.className = 'ml-ken-alert ken-false';
-            kenAlert.innerHTML = `🔥 【AI判断】明日は<strong>「勝負」推奨日</strong>です！`;
+            kenAlert.innerHTML = `【AI判断】明日は<strong>抽選参加推奨日</strong>です`;
             kenAlert.style.color = '#ef4444';
         }
     }
@@ -3609,7 +3658,7 @@ function renderNextDayPredictions(predsData) {
     const profitTop3El = document.getElementById('ml-next-day-profit-top3');
     const hitRateEl = document.getElementById('ml-next-day-hit-rate');
     const avgDiffEl = document.getElementById('ml-next-day-avg-diff');
-    
+
     if (predsData.bt_summary) {
         const bs = predsData.bt_summary;
         if (hitRateTop1El && bs.hit_rate_top_1 != null) {

@@ -1,0 +1,42 @@
+[
+  {
+    "min_confidence": 0.0,
+    "expected_profit": 1054.5641025641025,
+    "sample_count": 39
+  },
+  {
+    "min_confidence": 0.2,
+    "expected_profit": 312.04,
+    "sample_count": 25
+  },
+  {
+    "min_confidence": 0.4,
+    "expected_profit": 762.6190476190476,
+    "sample_count": 21
+  },
+  {
+    "min_confidence": 0.6,
+    "expected_profit": 748.9411764705883,
+    "sample_count": 17
+  },
+  {
+    "min_confidence": 0.8,
+    "expected_profit": -334.375,
+    "sample_count": 8
+  },
+  {
+    "min_confidence": 1.0,
+    "expected_profit": 459.92857142857144,
+    "sample_count": 14
+  },
+  {
+    "min_confidence": 1.5,
+    "expected_profit": 1906.5714285714287,
+    "sample_count": 7
+  },
+  {
+    "min_confidence": 2.0,
+    "expected_profit": 486.6666666666667,
+    "sample_count": 3
+  }
+]
