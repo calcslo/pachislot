@@ -3583,18 +3583,32 @@ function renderNextDayPredictions(predsData) {
     const eventText = predsData.is_event ? ' <span style="color:#ef4444;">(イベント日)</span>' : '';
     info.innerHTML = `予想対象日: <span style="color:#60a5fa;">${predsData.target_date}</span>${eventText}`;
 
-    const hitRateEl = document.getElementById('ml-next-day-hit-rate');
-    const avgDiffEl = document.getElementById('ml-next-day-avg-diff');
+    const hitRateTop1El = document.getElementById('ml-next-day-hit-rate-top1');
+    const hitRateTop3El = document.getElementById('ml-next-day-hit-rate-top3');
+    const profitTop3El = document.getElementById('ml-next-day-profit-top3');
     const positiveRateEl = document.getElementById('ml-next-day-positive-rate');
-    const recallEl = document.getElementById('ml-next-day-recall');
-    if (hitRateEl && predsData.hit_rate != null) {
-        hitRateEl.textContent = (predsData.hit_rate * 100).toFixed(1) + '%';
+    const avgDiffEl = document.getElementById('ml-next-day-avg-diff');
+    
+    if (predsData.bt_summary) {
+        const bs = predsData.bt_summary;
+        if (hitRateTop1El && bs.hit_rate_top_1 != null) {
+            hitRateTop1El.textContent = (bs.hit_rate_top_1 * 100).toFixed(1) + '%';
+        }
+        if (hitRateTop3El && bs.hit_rate_top_3 != null) {
+            hitRateTop3El.textContent = (bs.hit_rate_top_3 * 100).toFixed(1) + '%';
+        }
+        if (profitTop3El && bs.profit_top_3 != null) {
+            const sign = bs.profit_top_3 > 0 ? '+' : '';
+            profitTop3El.textContent = sign + Math.round(bs.profit_top_3).toLocaleString() + ' 枚';
+        }
+    } else {
+        if (hitRateTop1El && predsData.hit_rate != null) hitRateTop1El.textContent = (predsData.hit_rate * 100).toFixed(1) + '%';
+        if (hitRateTop3El) hitRateTop3El.textContent = '-';
+        if (profitTop3El) profitTop3El.textContent = '-';
     }
+
     if (positiveRateEl && predsData.positive_rate != null) {
         positiveRateEl.textContent = (predsData.positive_rate * 100).toFixed(1) + '%';
-    }
-    if (recallEl && predsData.recall != null) {
-        recallEl.textContent = (predsData.recall * 100).toFixed(1) + '%';
     }
     if (avgDiffEl && predsData.avg_diff != null) {
         const sign = predsData.avg_diff >= 0 ? '+' : '';
@@ -3706,9 +3720,15 @@ function renderNextDayPredictions(predsData) {
             return `<tr><td style="padding:2px 8px;color:var(--text-muted);font-size:0.75rem;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.02);">${name}</td><td style="padding:2px 8px;font-size:0.75rem;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.02);">${vStr}</td></tr>`;
         }).join('');
 
+        const score = p.blended_score != null ? p.blended_score : 0;
+        let scoreColor = '#94a3b8';
+        if (score >= 600) scoreColor = '#c084fc';
+        else if (score >= 400) scoreColor = '#818cf8';
+
         tr.innerHTML = `
             <td style="padding:8px 10px;text-align:center;vertical-align:top;border-bottom: 1px solid var(--glass-border);">${rankBadge}</td>
             <td style="padding:8px 10px;font-weight:bold;font-size:1.05rem;vertical-align:top;white-space:nowrap;border-bottom: 1px solid var(--glass-border);">${p.machine}</td>
+            <td style="padding:8px 10px;color:${scoreColor};font-weight:bold;vertical-align:top;white-space:nowrap;text-align:center;border-bottom: 1px solid var(--glass-border);">${Math.round(score)}</td>
             <td style="padding:8px 10px;color:${probColor};font-weight:bold;font-size:1.05rem;vertical-align:top;white-space:nowrap;text-align:center;border-bottom: 1px solid var(--glass-border);">${prob.toFixed(1)}%</td>
             <td style="padding:8px 10px;color:${diffColor};font-weight:bold;vertical-align:top;white-space:nowrap;text-align:center;border-bottom: 1px solid var(--glass-border);">${diff >= 0 ? '+' : ''}${Math.round(diff)}枚</td>
             <td style="padding:8px 10px;vertical-align:top;border-bottom: 1px solid var(--glass-border);">

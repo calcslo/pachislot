@@ -1099,22 +1099,26 @@
                         <div style="background:var(--card-bg); padding:1rem; border-radius:8px; border:1px solid rgba(16,185,129,0.3); min-width:200px;">
                             <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">このモデルの過去データでの実績</div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span>的中率 (設定4以上):</span>
-                                <span id="ml-next-day-hit-rate" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
+                                <span>Top-1 的中率:</span>
+                                <span id="ml-next-day-hit-rate-top1" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span>候補化率:</span>
+                                <span>Top-3 的中率:</span>
+                                <span id="ml-next-day-hit-rate-top3" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>Top-3 累積収支:</span>
+                                <span id="ml-next-day-profit-top3" style="font-weight:bold; color:#fbbf24; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>全体候補化率:</span>
                                 <span id="ml-next-day-positive-rate" style="font-weight:bold; color:#60a5fa; font-size:1.1rem;">-</span>
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span>再現率:</span>
-                                <span id="ml-next-day-recall" style="font-weight:bold; color:#a78bfa; font-size:1.1rem;">-</span>
-                            </div>
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span>予想台の平均差枚:</span>
+                                <span>予測台の平均差枚:</span>
                                 <span id="ml-next-day-avg-diff" style="font-weight:bold; color:#fbbf24; font-size:1.1rem;">-</span>
                             </div>
-                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">※過去のテストデータでのAI予想スコア上位群の実績値です</div>
+                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">※直近54日間のバックテスト（稼働日のみ）の成績です</div>
                             <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.8rem; margin-bottom:0.3rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 2px;">設定別の詳細 (上位20台)</div>
                             <div id="ml-next-day-setting-metrics" style="font-size:0.8rem; display:flex; flex-direction:column; gap:0.2rem;">
                                 <!-- Injected by JS -->
