@@ -1110,6 +1110,27 @@
                             <div id="ml-next-day-ken-alert" class="ml-ken-alert" style="display:none;"></div>
                         </div>
                         
+                        <div style="background:var(--card-bg); padding:1rem; border-radius:8px; border:1px solid rgba(16,185,129,0.3); min-width:200px;">
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">このモデルの過去データでの実績</div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>Top-1 的中率:</span>
+                                <span id="ml-next-day-hit-rate-top1" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>Top-3 的中率:</span>
+                                <span id="ml-next-day-hit-rate-top3" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>Top-3 累積収支:</span>
+                                <span id="ml-next-day-profit-top3" style="font-weight:bold; color:#fbbf24; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span>上位全体平均的中率:</span>
+                                <span id="ml-next-day-hit-rate" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>予測台の平均差枚:</span>
+                                <span id="ml-next-day-avg-diff" style="font-weight:bold; color:#fbbf24; font-size:1.1rem;">-</span>
                             </div>
                             <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">※直近54日間のバックテスト（稼働日のみ）の成績です</div>
                             <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.8rem; margin-bottom:0.3rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 2px;">設定別の詳細 (上位20台)</div>
@@ -1149,128 +1170,22 @@
                     </div>
                 </div>
 
-                <!-- ML Results Container -->
-                <div id="ml-results-container">
-                    <div id="ml-loading"
-                        style="text-align:center; padding: 2rem; color: var(--text-muted); display:none;">
-                        分析データを読み込み中...
-                    </div>
-                    <div id="ml-error"
-                        style="text-align:center; padding: 2rem; color: var(--accent-red); display:none;">
-                        サンプル数が不足しているか、エラーが発生しました。
-                    </div>
-
-                    <div id="ml-content" style="display:none;">
-                        <!-- Summary stats -->
-                        <div class="ml-summary-stats"
-                            style="display:flex; gap: 1rem; margin-bottom: 1rem; flex-wrap:wrap;">
-                            <div class="ml-stat-card"
-                                style="background:var(--card-bg); padding:0.8rem 1.2rem; border-radius:8px; border:1px solid var(--glass-border);">
-                                <div style="font-size:0.8rem; color:var(--text-muted);">サンプル数</div>
-                                <div id="ml-stat-samples"
-                                    style="font-size:1.2rem; font-weight:bold; color:var(--text-main);">0</div>
-                            </div>
-                            <div id="ml-stat-high-wrap" class="ml-stat-card"
-                                style="background:var(--card-bg); padding:0.8rem 1.2rem; border-radius:8px; border:1px solid var(--glass-border); display:none;">
-                                <div style="font-size:0.8rem; color:var(--text-muted);">高設定数 (割合)</div>
-                                <div id="ml-stat-high"
-                                    style="font-size:1.2rem; font-weight:bold; color:var(--accent-blue);">0 (0%)</div>
-                            </div>
-                            <div id="ml-stat-metrics-wrap" class="ml-stat-card"
-                                style="background:var(--card-bg); padding:0.8rem 1.2rem; border-radius:8px; border:1px solid var(--glass-border);">
-                                <div id="ml-stat-metric-label"
-                                    style="font-size:0.8rem; color:var(--text-muted); cursor:help;"
-                                    title="予測モデルの正確さを示す指標です。">精度指標</div>
-                                <div id="ml-stat-metric-val"
-                                    style="font-size:1.2rem; font-weight:bold; color:var(--text-main);">-</div>
-                                <div id="ml-stat-metric-desc"
-                                    style="font-size:0.75rem; color:var(--text-muted); margin-top: 4px;"></div>
-                            </div>
-
-                            <div id="ml-stat-confusion-wrap" class="ml-stat-card"
-                                style="background:var(--card-bg); padding:0.8rem 1.2rem; border-radius:8px; border:1px solid var(--glass-border); display:none; flex-grow: 1;">
-                                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 0.5rem;">予測の内訳
-                                    (混合行列比率)</div>
-                                <div
-                                    style="display: flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; text-align: center;">
-                                    <div title="低設定を正しく低設定と予測">
-                                        <div style="color:var(--text-muted);">真陰性 (正解)</div>
-                                        <div id="ml-stat-tn" style="font-weight:bold; color:#10b981;">0%</div>
-                                    </div>
-                                    <div title="低設定を誤って高設定と予測">
-                                        <div style="color:var(--text-muted);">偽陽性 (ハズレ)</div>
-                                        <div id="ml-stat-fp" style="font-weight:bold; color:#ef4444;">0%</div>
-                                    </div>
-                                    <div title="高設定を誤って低設定と予測">
-                                        <div style="color:var(--text-muted);">偽陰性 (見逃し)</div>
-                                        <div id="ml-stat-fn" style="font-weight:bold; color:#f59e0b;">0%</div>
-                                    </div>
-                                    <div title="高設定を正しく高設定と予測">
-                                        <div style="color:var(--text-muted);">真陽性 (正解)</div>
-                                        <div id="ml-stat-tp" style="font-weight:bold; color:#10b981;">0%</div>
-                                    </div>
-                                </div>
-                            </div>
+                
+                <!-- Utilized Features Collapse -->
+                <div style="width: 100%; margin-bottom: 2rem;">
+                    <details
+                        style="background: var(--bg-main); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                        <summary
+                            style="cursor: pointer; font-size: 0.9rem; color: var(--text-muted); font-weight: bold;">
+                            分析に使用した特徴量（全一覧を見る）</summary>
+                        <div id="ml-features-list"
+                            style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-main); line-height: 1.6; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            <!-- Injected by JS -->
                         </div>
-
-                        <!-- Content blocks for each algo -->
-                        <!-- 1. Decision Tree -->
-                        <div id="ml-algo-tree" class="ml-algo-block" style="display:none;">
-                            <h3 class="chart-title" style="margin-bottom:0.5rem;">条件の組み合わせによる結果予測 (決定木)</h3>
-                            <p class="section-note" style="margin-bottom:1rem;">
-                                データから自動的に「結果に差が出る条件」を探し出し、ツリー構造で整理したものです。上から順に条件をたどっていくことで、特定の状況下での平均的な結果がわかります。
-                            </p>
-                            <div id="ml-tree-text"
-                                style="background: #1e1e1e; color: #d4d4d4; padding: 1.5rem; border-radius: 8px; overflow-x: auto; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: 0.95rem; line-height: 1.6; border: 1px solid var(--glass-border);">
-                            </div>
-                        </div>
-
-                        <!-- 2. Feature Importance -->
-                        <div id="ml-algo-rf" class="ml-algo-block" style="display:none;">
-                            <h3 class="chart-title">特徴量重要度 (Random Forest)</h3>
-                            <p class="section-note">
-                                どの要素が結果（差枚や高設定かどうか）に強く影響を与えているかをランキングで表示します。
-                            </p>
-                            <div class="chart-container" style="height: 400px; max-width: 800px; margin: 0 auto;">
-                                <canvas id="ml-chart-rf"></canvas>
-                            </div>
-                        </div>
-
-                        <!-- 3. Association Rules -->
-                        <div id="ml-algo-assoc" class="ml-algo-block" style="display:none;">
-                            <h3 class="chart-title">アソシエーション分析 (相関ルール)</h3>
-                            <p class="section-note" style="margin-bottom: 0.5rem;">
-                                「もし条件Aが起きているなら、結果Bになりやすい」というルールを抽出します。Lift(リフト値)が1より大きいほど、偶然ではなく意味のある関係と言えます。
-                            </p>
-                            <div
-                                style="background: var(--bg-main); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; border: 1px solid var(--glass-border);">
-                                <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-muted);">
-                                    <li><strong style="color: var(--text-main);">Support (支持度):</strong>
-                                        全データのうち、この「条件と結果のセット」が同時に起こった割合。「これが大きいほど、レアケースではなく頻繁に起こる事象」です。</li>
-                                    <li style="margin-top: 0.5rem;"><strong style="color: var(--text-main);">Confidence
-                                            (確信度):</strong> 条件を満たした台の中で、実際にその結果になった割合。「これが大きいほど、条件を満たした時の的中率が高い」です。</li>
-                                    <li style="margin-top: 0.5rem;"><strong style="color: var(--text-main);">Lift
-                                            (リフト値):</strong>
-                                        偶然その結果になる確率と比べて、条件を満たしたことで何倍起こりやすくなったか。「1を超え、大きいほど条件の強力さ（効果）が高い」です。</li>
-                                </ul>
-                            </div>
-                            <div class="table-container" style="max-height: 800px; overflow: auto; width: 100%;">
-                                <table id="ml-assoc-table" style="min-width: 700px; width: 100%; table-layout: auto;">
-                                    <thead>
-                                        <tr>
-                                            <th style="min-width:220px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);">条件 (Antecedents)</th>
-                                            <th style="min-width:150px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);">結果 (Consequents)</th>
-                                            <th style="min-width:80px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);" title="全データ中、このルールが当てはまる割合">Support</th>
-                                            <th style="min-width:90px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);" title="条件を満たしたときに、結果が起こる確率">Confidence</th>
-                                            <th style="min-width:70px; position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; padding: 10px; border-bottom: 1px solid var(--glass-border);" title="偶然起こる確率に対して何倍起こりやすいか">Lift</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="ml-assoc-tbody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                    </details>
                 </div>
+
+
             </section>
         </div>
     </div>
