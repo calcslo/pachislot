@@ -1094,68 +1094,43 @@
                     （※このタブは、ページ上部の「期間」や「特定日」フィルタの影響を受けず、以下の専用タブで切り替えます）
                 </p>
 
-                <!-- Next Day Prediction Container -->
-                <div id="ml-next-day-container" class="glass-panel" style="margin-bottom: 2rem; border-color: var(--accent-blue); display: none;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
-                        <div>
-                            <h3 style="display:flex; align-items:center; gap:0.5rem; color:var(--accent-blue); margin-bottom: 0.5rem;">
-                                AIによる高設定推測ランキング
-                            </h3>
-                            <p class="section-note" style="margin-bottom:1rem;">
-                                最新日の状態と過去7日間の傾向をもとに、各台の翌日の高設定確率と予想差枚を算出しました。
-                            </p>
-                            <div id="ml-next-day-info" style="font-weight:bold; margin-bottom:1rem; font-size:1.1rem; color: var(--text-main);">
-                                <!-- Injected by JS -->
-                            </div>
-                            <div id="ml-next-day-ken-alert" class="ml-ken-alert" style="display:none;"></div>
+                <!-- ML Controls -->
+                <div class="controls-row">
+                    <div class="control-group">
+                        <label>対象期間:</label>
+                        <div class="tab-container" id="ml-period-tabs">
+                            <button class="tab-btn active" data-ml-period="all">全日</button>
+                            <button class="tab-btn" data-ml-period="day3">3の付く日</button>
+                            <button class="tab-btn" data-ml-period="day5">5の付く日</button>
+                            <button class="tab-btn" data-ml-period="day8">8の付く日</button>
+                            <button class="tab-btn" data-ml-period="event">イベント日(3,5,8)</button>
+                            <button class="tab-btn" data-ml-period="nonevent">イベント日以外</button>
                         </div>
-                        
-                        <div style="background:var(--card-bg); padding:1rem; border-radius:8px; border:1px solid rgba(16,185,129,0.3); min-width:200px;">
-                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">このモデルの過去データでの実績</div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span>Top-1 的中率:</span>
-                                <span id="ml-next-day-hit-rate-top1" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span>Top-3 的中率:</span>
-                                <span id="ml-next-day-hit-rate-top3" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span>Top-3 累積収支:</span>
-                                <span id="ml-next-day-profit-top3" style="font-weight:bold; color:#fbbf24; font-size:1.1rem;">-</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span>上位全体平均的中率:</span>
-                                <span id="ml-next-day-hit-rate" style="font-weight:bold; color:#10b981; font-size:1.1rem;">-</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span>予測台の平均差枚:</span>
-                                <span id="ml-next-day-avg-diff" style="font-weight:bold; color:#fbbf24; font-size:1.1rem;">-</span>
-                            </div>
-                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.3rem;">※直近54日間のバックテスト（稼働日のみ）の成績です</div>
-                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.8rem; margin-bottom:0.3rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 2px;">設定別の詳細 (上位20台)</div>
-                            <div id="ml-next-day-setting-metrics" style="font-size:0.8rem; display:flex; flex-direction:column; gap:0.2rem;">
-                                <!-- Injected by JS -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="table-container" style="max-height: 500px; overflow-y: auto; margin-top: 1rem;">
-                        <table id="ml-next-day-table" style="width: 100%; border-collapse: collapse; text-align: left; min-width: 600px;">
-                            <thead>
-                                <tr style="color: var(--text-muted); font-size: 0.9rem;">
-                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 60px; text-align: center;">ランク</th>
-                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 80px; text-align: left;">台番号</th>
-                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 100px; text-align: center;">AI総合スコア</th>
-                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 100px; text-align: center;">高設定確率</th>
-                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; width: 100px; text-align: center;">予想差枚</th>
-                                    <th style="padding: 10px; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: #1e293b; color: #f8fafc; z-index: 10; text-align: left; min-width: 300px;">AIが推測した主な理由 (詳細)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ml-next-day-tbody"></tbody>
-                        </table>
                     </div>
                 </div>
+                <div class="controls-row" style="margin-top: 1rem;">
+                    <div class="control-group">
+                        <label>目的変数:</label>
+                        <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                            <label><input type="radio" name="ml-target" value="diff" checked> 差枚 (回帰)</label>
+                            <label><input type="radio" name="ml-target" value="setting"> 高設定フラグ (分類)</label>
+                        </div>
+                    </div>
+                    <div class="control-group" style="margin-left: 2rem;">
+                        <label>分析アルゴリズム:</label>
+                        <div class="tab-container" id="ml-algo-tabs">
+                            <button class="tab-btn active" data-ml-algo="tree">決定木 (Decision Tree)</button>
+                            <button class="tab-btn" data-ml-algo="importance">特徴量重要度 (XGBoost)</button>
+                            <button class="tab-btn" data-ml-algo="association">アソシエーション分析</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="ml-results-container" style="margin-top: 1.5rem; display: none;">
+                    <!-- Injected by JS -->
+                </div>
+
+
                 
                 <!-- Backtest Results Container -->
                 <div id="ml-backtest-container" class="glass-panel" style="margin-bottom: 2rem; border-color: var(--accent-blue);">
@@ -1166,7 +1141,7 @@
                         過去のデータを使用し、AIモデルが毎日「高設定期待値トップ3台」を選択した場合の累積差枚推移グラフです。
                     </p>
                     <div style="text-align: center;">
-                        <img src="analysis_results_backtest.png" alt="バックテスト結果グラフ" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--glass-border);">
+                        <img src="analysis_results_backtest.png?v=13" alt="バックテスト結果グラフ" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--glass-border);">
                     </div>
                 </div>
 
@@ -1204,7 +1179,7 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=13" charset="UTF-8"></script>
 </body>
 
 </html>

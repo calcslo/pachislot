@@ -422,29 +422,29 @@ function setupEventListeners() {
     const aeFilter = document.getElementById('accidental-explosion-filter');
     if (aeFilter) {
         aeFilter.addEventListener('change', e => {
-            accidentalExplosionFilter = e.target.value;
+accidentalExplosionFilter = e.target.value;
             if (currentSection === 'analysis-section') updateDashboard();
         });
     }
 
     // --- ML Analysis Section Events ---
-    [].forEach(btn => {
+    document.querySelectorAll('#ml-period-tabs .tab-btn').forEach(btn => {
         btn.addEventListener('click', e => {
-            [].forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#ml-period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             currentMlPeriod = e.target.dataset.mlPeriod;
             if (currentSection === 'ml-analysis-section') renderMLAnalysis();
         });
     });
-    [].forEach(radio => {
+    document.querySelectorAll('input[name="ml-target"]').forEach(radio => {
         radio.addEventListener('change', e => {
             currentMlTarget = e.target.value;
             if (currentSection === 'ml-analysis-section') renderMLAnalysis();
         });
     });
-    [].forEach(btn => {
+    document.querySelectorAll('#ml-algo-tabs .tab-btn').forEach(btn => {
         btn.addEventListener('click', e => {
-            [].forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#ml-algo-tabs .tab-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             currentMlAlgo = e.target.dataset.mlAlgo;
             if (currentSection === 'ml-analysis-section') renderMLAnalysis();
@@ -2145,18 +2145,20 @@ function renderMLTargets() {
     const dateLabel = document.getElementById('ml-target-date');
     if (!container || !loading || !dateLabel) return;
 
-    if (!mlAnalysisData || !mlAnalysisData.next_day_predictions || mlAnalysisData.next_day_predictions.length === 0) {
+    if (!mlAnalysisData || !mlAnalysisData.next_day_predictions || !mlAnalysisData.next_day_predictions.predictions) {
         loading.textContent = "AI予測データが見つかりません。";
         loading.style.display = "block";
         container.style.display = "none";
         return;
     }
 
+    const nextDayObj = mlAnalysisData.next_day_predictions;
+    const preds = nextDayObj.predictions;
+
     loading.style.display = "none";
     container.style.display = "flex";
     container.innerHTML = "";
 
-    const preds = mlAnalysisData.next_day_predictions.slice(0, 5);
     if (mlAnalysisData.target_date) {
         const mode = mlAnalysisData.prediction_mode === 'event_day' ? 'イベント日用モデル適用' : '通常日用モデル適用';
         dateLabel.textContent = `${mlAnalysisData.target_date} の予測 (${mode})`;
@@ -2164,25 +2166,59 @@ function renderMLTargets() {
         dateLabel.textContent = mlAnalysisData.prediction_mode === 'event_day' ? "イベント日用モデル適用中" : "通常日用モデル適用中";
     }
 
-    preds.forEach(p => {
+    if (nextDayObj.is_ken) {
+        const kenAlert = document.createElement('div');
+        kenAlert.style = "background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 1rem; border-radius: 8px; color: #f87171; margin-bottom: 1rem;";
+        kenAlert.innerHTML = `<strong>【見（ケン）推奨】</strong><br>明日は全体的に高設定の期待値が低いか、予測の信頼性が基準を満たしていません。<br><span style="font-size:0.85rem; color:var(--text-muted);">${nextDayObj.ken_reason || ''}</span>`;
+        container.appendChild(kenAlert);
+    }
+
+    preds.slice(0, 5).forEach((p, idx) => {
+        const f = p.features || {};
+        const prob = p.prob_high_setting * 100;
+        
+        const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
+        const dayStr = dayNames[f.weekday] ? dayNames[f.weekday] + '曜' : '';
+        const posNames = ['角', '角2', '角3', 'その他(内側)'];
+        const posStr = posNames[f.position] || '';
+        
+        let nlReason = `<p style="margin:4px 0 8px 0; font-size:0.85rem; line-height:1.4; color: var(--text-main);">`;
+        nlReason += `この台が高設定（確率${prob.toFixed(1)}%）と推測された主な理由です：<br>`;
+        if (f.cons_neg >= 2) nlReason += `・現在 <b style="color:#fbbf24;">${f.cons_neg}日連続で凹んで</b> います。<br>`;
+        if (f.neg_after_pos === 1) nlReason += `・前日は <b style="color:#fbbf24;">高設定挙動（推定4以上）でしたが不発（マイナス終了）</b> でした。<br>`;
+        if (f.prev_diff_1 != null) {
+            if (f.prev_diff_1 > 1000) nlReason += `・前日は <b style="color:#fbbf24;">+${Math.round(f.prev_diff_1)}枚</b> と好調に出ています。<br>`;
+            else if (f.prev_diff_1 < -1000) nlReason += `・前日は <b style="color:#fbbf24;">${Math.round(f.prev_diff_1)}枚</b> と大きく凹んでいます。<br>`;
+        }
+        if (f.cumul_7d_diff != null && f.cumul_7d_diff < -3000) nlReason += `・過去7日間の合計が <b style="color:#fbbf24;">${Math.round(f.cumul_7d_diff)}枚</b> と沈んでおり、反発が期待されます。<br>`;
+        if (f.island_trend != null && f.island_trend > 500) nlReason += `・この台が属する島全体が、直近3日間 <b style="color:#fbbf24;">平均+${Math.round(f.island_trend)}枚</b> と活気づいています。<br>`;
+        if (f.is_event_day === 1) nlReason += `・明日は <b style="color:#fbbf24;">イベント日(3,5,8の付く日)</b> のため、ベース設定の底上げが見込めます。<br>`;
+        if (f.position === 0) nlReason += `・<b style="color:#fbbf24;">角台</b> という配置的な強みがあります。<br>`;
+        if (dayStr) nlReason += `・明日の <b style="color:#fbbf24;">${dayStr}</b> の傾向に合致しています。<br>`;
+        nlReason += `</p>`;
+
         const card = document.createElement('div');
-        const decisionHtml = p.decision === "GO" ? `<span style="color: #10b981; font-weight: bold;">[GO]</span>` : `<span style="color: #f59e0b; font-weight: bold;">[SKIP]</span>`;
-        card.style = `background: var(--card-bg); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;`;
+        const decisionHtml = !nextDayObj.is_ken && idx < 3 ? `<span style="color: #10b981; font-weight: bold; font-size: 1.2rem;">[GO]</span>` : `<span style="color: #f59e0b; font-weight: bold; font-size: 1.2rem;">[SKIP]</span>`;
+        card.style = `background: var(--card-bg); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);`;
         card.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:0.3rem;">
-                <div style="font-size: 1.1rem; font-weight:bold; color: var(--text-main);">
-                    <span style="color: var(--accent-blue); margin-right: 0.5rem;">#${p.rank}</span>
-                    台番号: ${p.machine_num} (${p.machine_name})
+            <div style="display:flex; justify-content: space-between; align-items: flex-start;">
+                <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                    <div style="font-size: 1.2rem; font-weight:bold; color: var(--text-main);">
+                        <span style="color: var(--accent-blue); margin-right: 0.5rem;">#${idx + 1}</span>
+                        台番号: ${p.machine}
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-muted);">
+                        期待差枚: <span style="color:#fbbf24; font-weight:bold;">${p.expected_diff >= 0 ? '+' : ''}${Math.round(p.expected_diff)}枚</span>
+                        | 高設定確率: <span style="color:#10b981; font-weight:bold;">${prob.toFixed(1)}%</span>
+                        | スコア: ${(p.blended_score || 0).toFixed(1)}
+                    </div>
                 </div>
-                <div style="font-size: 0.85rem; color: var(--text-muted);">
-                    期待収支: ${p.expected_profit ? '+' + p.expected_profit.toLocaleString() : '---'}枚 
-                    | 信頼度(標準化): ${(p.norm_confidence || 0).toFixed(2)} 
-                    | 予測スコア: ${(p.pred_prob || 0).toFixed(4)}
+                <div style="text-align: right;">
+                    ${decisionHtml}
                 </div>
             </div>
-            <div style="font-size: 1.2rem; text-align: right;">
-                ${decisionHtml}
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${p.ken_reason || ''}</div>
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                ${nlReason}
             </div>
         `;
         container.appendChild(card);
@@ -3534,5 +3570,68 @@ function renderMLAnalysis() {
             });
         }
     }
-}
 
+    const container = document.getElementById('ml-results-container');
+    if (!container || !mlAnalysisData) return;
+    
+    container.style.display = 'block';
+    const periodData = mlAnalysisData[currentMlPeriod];
+    if (!periodData) {
+        container.innerHTML = '<div style="color:var(--text-muted);">データがありません</div>';
+        return;
+    }
+
+    const targetPrefix = currentMlTarget === 'diff' ? 'regression_' : 'cls_';
+    let algoSuffix = '';
+    if (currentMlAlgo === 'tree') algoSuffix = 'tree';
+    else if (currentMlAlgo === 'importance') algoSuffix = 'rf';
+    else if (currentMlAlgo === 'association') algoSuffix = 'assoc';
+    
+    const key = targetPrefix + algoSuffix;
+    const result = periodData[key];
+    
+    if (!result) {
+        container.innerHTML = '<div style="color:var(--text-muted);">この組み合わせの分析結果はありません</div>';
+        return;
+    }
+
+    let html = '<div style="background:var(--card-bg); padding:1rem; border-radius:8px; border:1px solid var(--glass-border);">';
+    
+    if (currentMlAlgo === 'tree') {
+        html += '<h4 style="color:var(--accent-blue); margin-bottom:0.5rem;">決定木 (条件分岐ルール)</h4>';
+        const treeStr = result.tree_rules || result;
+        html += '<pre style="font-family:monospace; font-size:0.85rem; color:var(--text-main); overflow-x:auto; white-space:pre-wrap;">' + treeStr + '</pre>';
+    } else if (currentMlAlgo === 'importance') {
+        html += '<h4 style="color:var(--accent-blue); margin-bottom:0.5rem;">特徴量重要度 トップ15</h4>';
+        html += '<table style="width:100%; border-collapse:collapse; font-size:0.9rem;">';
+        html += '<tr><th style="text-align:left; padding:0.5rem; border-bottom:1px solid var(--glass-border);">特徴量</th><th style="text-align:right; padding:0.5rem; border-bottom:1px solid var(--glass-border);">重要度 (Weight)</th></tr>';
+        const importances = result.feature_importances || result;
+        importances.forEach(f => {
+            const jpName = mlAnalysisData.feature_names_jp ? (mlAnalysisData.feature_names_jp[f.feature] || f.feature) : f.feature;
+            html += `<tr><td style="padding:0.5rem; border-bottom:1px solid var(--glass-border);">${jpName}</td><td style="text-align:right; padding:0.5rem; border-bottom:1px solid var(--glass-border);">${f.importance.toFixed(4)}</td></tr>`;
+        });
+        html += '</table>';
+    } else if (currentMlAlgo === 'association') {
+        html += '<h4 style="color:var(--accent-blue); margin-bottom:0.5rem;">アソシエーション・ルール (頻出条件パターン)</h4>';
+        const rules = result.rules || result;
+        if (!rules || rules.length === 0) {
+            html += '<p style="color:var(--text-muted); font-size:0.9rem;">有効なルールが見つかりませんでした。</p>';
+        } else {
+            html += '<div style="display:flex; flex-direction:column; gap:0.5rem;">';
+            rules.forEach(r => {
+                html += '<div style="background:var(--bg-main); border: 1px solid var(--glass-border); padding:0.8rem; border-radius:6px;">';
+                html += `<div style="font-weight:bold; color:var(--accent-blue); margin-bottom:0.3rem;">条件: ${r.antecedents.join(' AND ')}</div>`;
+                html += `<div style="font-size:0.85rem; color:var(--text-main);">結果: ${r.consequents.join(', ')}</div>`;
+                html += `<div style="font-size:0.8rem; margin-top:0.3rem; display:flex; gap:1rem;">
+                    <span>支持度: ${r.support.toFixed(3)}</span>
+                    <span>確信度: ${r.confidence.toFixed(3)}</span>
+                    <span>リフト値: ${r.lift.toFixed(3)}</span>
+                </div></div>`;
+            });
+            html += '</div>';
+        }
+    }
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
